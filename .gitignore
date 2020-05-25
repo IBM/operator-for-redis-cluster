@@ -34,3 +34,5 @@ _testmain.go
 /.envrc
 /CHANGELOG.md.bak
 
+vendor
+.idea
