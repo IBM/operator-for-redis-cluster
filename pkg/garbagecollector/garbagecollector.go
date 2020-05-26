@@ -150,16 +150,36 @@ func (c *GarbageCollector) collectRedisClusterServices() error {
 				continue
 			}
 			// NotFound error: Hence remove all the pods.
-			if err := c.kubeClient.CoreV1().Services(service.Namespace).DeleteCollection(CascadeDeleteOptions(0), metav1.ListOptions{
-				LabelSelector: rapi.ClusterNameLabelKey + "=" + redisclusterName}); err != nil {
+			if err := c.deleteRedisClusterServices(service.Namespace, redisclusterName); err != nil {
 				errs = append(errs, fmt.Errorf("Unable to delete Collection of services for rediscluster %s/%s", service.Namespace, redisclusterName))
 				continue
 			}
+
 			collected[path.Join(service.Namespace, redisclusterName)] = struct{}{} // inserted in the collected map
 			glog.Infof("Removed all services for rediscluster %s/%s", service.Namespace, redisclusterName)
 		}
 	}
 	return utilerrors.NewAggregate(errs)
+}
+
+func (c *GarbageCollector) deleteRedisClusterServices(namespace, redisClusterName string) error {
+	services, err := c.kubeClient.CoreV1().Services(namespace).List(metav1.ListOptions{LabelSelector: rapi.ClusterNameLabelKey + "=" + redisClusterName})
+	if err != nil {
+		return err
+	}
+
+	if len(services.Items) == 0 {
+		return nil
+	}
+
+	for _, srv := range services.Items {
+		err := c.kubeClient.CoreV1().Services(namespace).Delete(srv.Name, CascadeDeleteOptions(0))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // CascadeDeleteOptions returns a DeleteOptions with Cascaded set
