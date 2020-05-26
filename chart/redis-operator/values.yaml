@@ -4,7 +4,7 @@
 replicaCount: 1
 image:
   repository: redisoperator/operator
-  tag: master
+  tag: 0.1.1
   pullPolicy: IfNotPresent
 log:
   level: 2
