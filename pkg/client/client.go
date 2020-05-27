@@ -86,7 +86,7 @@ func NewClient(cfg *rest.Config) (versioned.Interface, error) {
 	config.GroupVersion = &v1.SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
+	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
 
 	cs, err := versioned.NewForConfig(&config)
 	if err != nil {
