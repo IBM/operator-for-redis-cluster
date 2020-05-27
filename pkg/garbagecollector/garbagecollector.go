@@ -1,6 +1,7 @@
 package garbagecollector
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"time"
@@ -74,7 +75,7 @@ func (c *GarbageCollector) CollectRedisClusterGarbage() error {
 // then retrieve from the API and in case NotFound then remove via DeleteCollection primitive
 func (c *GarbageCollector) collectRedisClusterPods() error {
 	glog.V(4).Infof("Collecting garbage pods")
-	pods, err := c.kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(metav1.ListOptions{
+	pods, err := c.kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(context.Background(), metav1.ListOptions{
 		LabelSelector: rapi.ClusterNameLabelKey,
 	})
 	if err != nil {
@@ -104,7 +105,7 @@ func (c *GarbageCollector) collectRedisClusterPods() error {
 				continue
 			}
 			// NotFound error: Hence remove all the pods.
-			if err := c.kubeClient.CoreV1().Pods(pod.Namespace).DeleteCollection(CascadeDeleteOptions(0), metav1.ListOptions{
+			if err := c.kubeClient.CoreV1().Pods(pod.Namespace).DeleteCollection(context.Background(), CascadeDeleteOptions(0), metav1.ListOptions{
 				LabelSelector: rapi.ClusterNameLabelKey + "=" + redisclusterName}); err != nil {
 				errs = append(errs, fmt.Errorf("Unable to delete Collection of pods for rediscluster %s/%s", pod.Namespace, redisclusterName))
 				continue
@@ -120,7 +121,7 @@ func (c *GarbageCollector) collectRedisClusterPods() error {
 // then retrieve from the API and in case NotFound then remove via DeleteCollection primitive
 func (c *GarbageCollector) collectRedisClusterServices() error {
 	glog.V(4).Infof("Collecting garbage services")
-	services, err := c.kubeClient.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{
+	services, err := c.kubeClient.CoreV1().Services(metav1.NamespaceAll).List(context.Background(), metav1.ListOptions{
 		LabelSelector: rapi.ClusterNameLabelKey,
 	})
 	if err != nil {
@@ -163,7 +164,7 @@ func (c *GarbageCollector) collectRedisClusterServices() error {
 }
 
 func (c *GarbageCollector) deleteRedisClusterServices(namespace, redisClusterName string) error {
-	services, err := c.kubeClient.CoreV1().Services(namespace).List(metav1.ListOptions{LabelSelector: rapi.ClusterNameLabelKey + "=" + redisClusterName})
+	services, err := c.kubeClient.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: rapi.ClusterNameLabelKey + "=" + redisClusterName})
 	if err != nil {
 		return err
 	}
@@ -173,7 +174,7 @@ func (c *GarbageCollector) deleteRedisClusterServices(namespace, redisClusterNam
 	}
 
 	for _, srv := range services.Items {
-		err := c.kubeClient.CoreV1().Services(namespace).Delete(srv.Name, CascadeDeleteOptions(0))
+		err := c.kubeClient.CoreV1().Services(namespace).Delete(context.Background(), srv.Name, CascadeDeleteOptions(0))
 		if err != nil {
 			return err
 		}
@@ -183,8 +184,8 @@ func (c *GarbageCollector) deleteRedisClusterServices(namespace, redisClusterNam
 }
 
 // CascadeDeleteOptions returns a DeleteOptions with Cascaded set
-func CascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
-	return &metav1.DeleteOptions{
+func CascadeDeleteOptions(gracePeriodSeconds int64) metav1.DeleteOptions {
+	return metav1.DeleteOptions{
 		GracePeriodSeconds: func(t int64) *int64 { return &t }(gracePeriodSeconds),
 		PropagationPolicy: func() *metav1.DeletionPropagation {
 			background := metav1.DeletePropagationBackground
