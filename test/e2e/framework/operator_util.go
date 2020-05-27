@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -221,7 +222,7 @@ func HOIsPodSpecUpdated(client clientset.Interface, rediscluster *rapi.RedisClus
 	return func() error {
 		labelSet := labels.Set{}
 		labelSet[rapi.ClusterNameLabelKey] = rediscluster.Name
-		podList, err := client.Core().Pods(rediscluster.Namespace).List(metav1.ListOptions{LabelSelector: labelSet.AsSelector().String()})
+		podList, err := client.CoreV1().Pods(rediscluster.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSet.AsSelector().String()})
 		if err != nil {
 			Logf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
@@ -254,20 +255,20 @@ func HOIsPodSpecUpdated(client clientset.Interface, rediscluster *rapi.RedisClus
 // HOCreateRedisNodeServiceAccount  is an higher order func that returns the func to create the serviceaccount assiated to the redis-node pod.
 func HOCreateRedisNodeServiceAccount(client clientset.Interface, rediscluster *rapi.RedisCluster) func() error {
 	return func() error {
-		_, err := client.Core().ServiceAccounts(rediscluster.Namespace).Get("redis-node", metav1.GetOptions{})
+		_, err := client.CoreV1().ServiceAccounts(rediscluster.Namespace).Get(context.Background(), "redis-node", metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			newSa := v1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "redis-node",
 				},
 			}
-			_, err = client.Core().ServiceAccounts(rediscluster.Namespace).Create(&newSa)
+			_, err = client.CoreV1().ServiceAccounts(rediscluster.Namespace).Create(context.Background(), &newSa, metav1.CreateOptions{})
 			if err != nil {
 				return err
 			}
 		}
 
-		_, err = client.Rbac().ClusterRoles().Get("redis-node", metav1.GetOptions{})
+		_, err = client.RbacV1().ClusterRoles().Get(context.Background(), "redis-node", metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			cr := rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
@@ -281,12 +282,12 @@ func HOCreateRedisNodeServiceAccount(client clientset.Interface, rediscluster *r
 					},
 				},
 			}
-			_, err = client.Rbac().ClusterRoles().Create(&cr)
+			_, err = client.RbacV1().ClusterRoles().Create(context.Background(), &cr, metav1.CreateOptions{})
 			if err != nil {
 				return err
 			}
 		}
-		_, err = client.Rbac().RoleBindings(rediscluster.Namespace).Get("redis-node", metav1.GetOptions{})
+		_, err = client.RbacV1().RoleBindings(rediscluster.Namespace).Get(context.Background(), "redis-node", metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			rb := rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
@@ -305,7 +306,7 @@ func HOCreateRedisNodeServiceAccount(client clientset.Interface, rediscluster *r
 					},
 				},
 			}
-			_, err = client.Rbac().RoleBindings(rediscluster.Namespace).Create(&rb)
+			_, err = client.RbacV1().RoleBindings(rediscluster.Namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 			if err != nil {
 				return err
 			}
@@ -318,7 +319,7 @@ func HOCreateRedisNodeServiceAccount(client clientset.Interface, rediscluster *r
 // the RedisCluster have been created properly.
 func HOIsRedisClusterPodDisruptionBudgetCreated(client clientset.Interface, rediscluster *rapi.RedisCluster) func() error {
 	return func() error {
-		_, err := client.PolicyV1beta1().PodDisruptionBudgets(rediscluster.Namespace).Get(rediscluster.Name, metav1.GetOptions{})
+		_, err := client.PolicyV1beta1().PodDisruptionBudgets(rediscluster.Namespace).Get(context.Background(), rediscluster.Name, metav1.GetOptions{})
 		if err != nil {
 			Logf("Cannot get PodDisruptionBudget associated to the rediscluster:%s/%s, err:%v", rediscluster.Namespace, rediscluster.Name, err)
 			return err

@@ -136,7 +136,7 @@ func (c *FakeRedisClusters) DeleteCollection(options *v1.DeleteOptions, listOpti
 // Patch applies the patch and returns the patched redisCluster.
 func (c *FakeRedisClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *redis_v1.RedisCluster, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(redisclustersResource, c.ns, name, data, subresources...), &redis_v1.RedisCluster{})
+		Invokes(testing.NewPatchSubresourceAction(redisclustersResource, c.ns, name, types.JSONPatchType, data, subresources...), &redis_v1.RedisCluster{})
 
 	if obj == nil {
 		return nil, err
