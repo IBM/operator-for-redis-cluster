@@ -4,7 +4,7 @@ GIT_ROOT=$(git rev-parse --show-toplevel)
 export GOPATH=$GIT_ROOT/../../../../
 
 echo "Start minikube with RBAC option"
-minikube start --extra-config=apiserver.Authorization.Mode=RBAC
+minikube start
 
 echo "Create the missing rolebinding for k8s dashboard"
 kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default

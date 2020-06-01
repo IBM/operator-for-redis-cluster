@@ -24,6 +24,7 @@ SOFTWARE.
 package v1
 
 import (
+	"context"
 	v1 "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
 	scheme "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned/scheme"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,7 +75,7 @@ func (c *redisClusters) Get(name string, options meta_v1.GetOptions) (result *v1
 		Resource("redisclusters").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(context.Background()).
 		Into(result)
 	return
 }
@@ -86,7 +87,7 @@ func (c *redisClusters) List(opts meta_v1.ListOptions) (result *v1.RedisClusterL
 		Namespace(c.ns).
 		Resource("redisclusters").
 		VersionedParams(&opts, scheme.ParameterCodec).
-		Do().
+		Do(context.Background()).
 		Into(result)
 	return
 }
@@ -98,7 +99,7 @@ func (c *redisClusters) Watch(opts meta_v1.ListOptions) (watch.Interface, error)
 		Namespace(c.ns).
 		Resource("redisclusters").
 		VersionedParams(&opts, scheme.ParameterCodec).
-		Watch()
+		Watch(context.Background())
 }
 
 // Create takes the representation of a redisCluster and creates it.  Returns the server's representation of the redisCluster, and an error, if there is any.
@@ -108,7 +109,7 @@ func (c *redisClusters) Create(redisCluster *v1.RedisCluster) (result *v1.RedisC
 		Namespace(c.ns).
 		Resource("redisclusters").
 		Body(redisCluster).
-		Do().
+		Do(context.Background()).
 		Into(result)
 	return
 }
@@ -121,7 +122,7 @@ func (c *redisClusters) Update(redisCluster *v1.RedisCluster) (result *v1.RedisC
 		Resource("redisclusters").
 		Name(redisCluster.Name).
 		Body(redisCluster).
-		Do().
+		Do(context.Background()).
 		Into(result)
 	return
 }
@@ -137,7 +138,7 @@ func (c *redisClusters) UpdateStatus(redisCluster *v1.RedisCluster) (result *v1.
 		Name(redisCluster.Name).
 		SubResource("status").
 		Body(redisCluster).
-		Do().
+		Do(context.Background()).
 		Into(result)
 	return
 }
@@ -149,7 +150,7 @@ func (c *redisClusters) Delete(name string, options *meta_v1.DeleteOptions) erro
 		Resource("redisclusters").
 		Name(name).
 		Body(options).
-		Do().
+		Do(context.Background()).
 		Error()
 }
 
@@ -160,7 +161,7 @@ func (c *redisClusters) DeleteCollection(options *meta_v1.DeleteOptions, listOpt
 		Resource("redisclusters").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Body(options).
-		Do().
+		Do(context.Background()).
 		Error()
 }
 
@@ -173,7 +174,7 @@ func (c *redisClusters) Patch(name string, pt types.PatchType, data []byte, subr
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
-		Do().
+		Do(context.Background()).
 		Into(result)
 	return
 }

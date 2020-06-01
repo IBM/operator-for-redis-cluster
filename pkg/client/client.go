@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -39,14 +40,14 @@ func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiex
 			},
 		},
 	}
-	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.Background(), crd, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// wait for CRD being established
 	err = wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
-		crd, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(redisClusterResourceName, metav1.GetOptions{})
+		crd, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.Background(), redisClusterResourceName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -65,7 +66,7 @@ func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiex
 		return false, err
 	})
 	if err != nil {
-		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(redisClusterResourceName, nil)
+		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(context.Background(), redisClusterResourceName, metav1.DeleteOptions{})
 		if deleteErr != nil {
 			return nil, errors.NewAggregate([]error{err, deleteErr})
 		}
@@ -86,7 +87,7 @@ func NewClient(cfg *rest.Config) (versioned.Interface, error) {
 	config.GroupVersion = &v1.SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
+	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
 
 	cs, err := versioned.NewForConfig(&config)
 	if err != nil {

@@ -35,6 +35,12 @@ container-%: buildlinux-%
 container-redisnode: buildlinux-redisnode
 	@cd docker/redisnode && docker build -t $(PREFIX)redisnode:$(TAG) .
 
+icm-build-push: build
+	@cd docker/redisnode && docker build -t us.icr.io/icm-docker-images/redisnode:$(VERSION) .
+	@cd docker/operator && docker build -t us.icr.io/icm-docker-images/redisoperator:$(VERSION) .
+	docker push us.icr.io/icm-docker-images/redisnode:$(VERSION)
+	docker push us.icr.io/icm-docker-images/redisoperator:$(VERSION)
+
 build: $(addprefix build-,$(CMDBINS))
 
 buildlinux: $(addprefix buildlinux-,$(CMDBINS))
