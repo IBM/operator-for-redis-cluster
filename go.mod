@@ -5,7 +5,6 @@ go 1.14
 require (
 	github.com/emicklei/go-restful-swagger12 v0.0.0-20170208215640-dcef7f557305 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903 // indirect
 	github.com/heptiolabs/healthcheck v0.0.0-20171201210846-da5fdee475fb
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c // indirect
 	github.com/json-iterator/go v1.1.9 // indirect
@@ -16,7 +15,6 @@ require (
 	github.com/olekukonko/tablewriter v0.0.0-20171203151007-65fec0d89a57
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
-	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/prometheus/client_golang v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.5.1 // indirect
