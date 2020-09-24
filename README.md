@@ -131,7 +131,7 @@ For starting the delivery, you need to clone this repository, then:
 zsh hack/release.sh <version> <remove-git>
 ```
 
-A concreate example is: ```zsh ./hack/release.sh v1.0.1 upstream```
+A concrete example is: ```zsh ./hack/release.sh v1.0.1 upstream```
 
 This script:
 
