@@ -29,15 +29,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     -o operator \
     .
 
-FROM debian:buster-slim
+FROM scratch
 
-LABEL maintainer="william Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>"
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-WORKDIR /
-
-RUN apt-get update && apt-get upgrade -y \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /go/src/icm-Redis-Operator/operator .
+# Add the binary. As it is statically linked, no need to add libc or anything else.
+COPY --from=builder /go/src/icm-Redis-Operator/operator /

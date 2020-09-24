@@ -33,16 +33,20 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     -o redisnode \
     .
 
-FROM debian:buster-slim
+FROM redis:6.0.8-alpine
 
 LABEL maintainer="william Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>"
 
-ENV DEBIAN_FRONTEND=noninteractive
-
 WORKDIR /
 
-RUN apt-get update && apt-get upgrade -y \
-    && rm -rf /var/lib/apt/lists/*
+# Add the binary. As it is statically linked, no need to add libc or anything else.
+COPY --from=builder /go/src/icm-Redis-Operator/redisnode /
 
+# I don't think this is needed
+#COPY redis-cluster.conf /redis-server/redis.conf
+#RUN chmod 777 /redis-server/redis.conf
 
-COPY --from=builder /go/src/icm-Redis-Operator/redisnode .
+# Volume for redis server data
+VOLUME /redis-data
+
+ENTRYPOINT [ "/redisnode" ]
