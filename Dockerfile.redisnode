@@ -28,7 +28,7 @@ COPY cmd/redisnode/main.go ./
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
-    -ldflags "-X main.Version=$(cat ./version.txt)" \
+    -ldflags "-X main.Version=$(cat ./version.txt) -w -s" \
     -a \
     -o redisnode \
     .
