@@ -1,0 +1,52 @@
+FROM golang:1.14-buster AS builder
+
+ARG GOPROXY=direct
+
+ENV DEBIAN_FRONTEND=noninteractive INSTALL_DIRECTORY=/usr/local/bin
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /go/src/icm-Redis-Operator
+
+ENV GOPROXY=https://proxy.golang.org
+
+WORKDIR /go/src/icm-Redis-Operator
+
+ENV GOPROXY=https://proxy.golang.org
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd/ cmd/
+COPY pkg/ pkg/
+COPY version.txt ./
+COPY cmd/redisnode/main.go ./
+
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build \
+    -ldflags "-X main.Version=$(cat ./version.txt) -w -s" \
+    -a \
+    -o redisnode \
+    .
+
+FROM redis:6.0.8-alpine
+
+LABEL maintainer="william Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>"
+
+WORKDIR /
+
+# Add the binary. As it is statically linked, no need to add libc or anything else.
+COPY --from=builder /go/src/icm-Redis-Operator/redisnode /
+
+# I don't think this is needed
+#COPY redis-cluster.conf /redis-server/redis.conf
+#RUN chmod 777 /redis-server/redis.conf
+
+# Volume for redis server data
+VOLUME /redis-data
+
+ENTRYPOINT [ "/redisnode" ]

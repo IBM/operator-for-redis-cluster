@@ -53,7 +53,7 @@ You can found in the `charts` folder two helm charts:
 - `redis-operator`: used to deploy the `redis-operator` into your kubernetes cluster.
 - `redis-cluster`: used to create a "Redis Cluster" instance thanks to the `redis-operator`.
 
-#### Instanciate the `redis-operator`:
+#### Instantiate the `redis-operator`:
 
 ```console
 helm install --name op chart/redis-operator
@@ -81,7 +81,7 @@ helm install --name mycluster chart/redis-cluster --set numberOfMaster=3 --set r
 ...
 ```
 
-> **! Warning !**, if you want to use the docker images corresponding  to the level of code present in the "master" branch. you need to set the image tag when you instanciate the Redis-Cluster chart and the Redis-Operator chart. The "latest" tag is corresponding to the last validated release.
+> **! Warning !**, if you want to use the docker images corresponding  to the level of code present in the "master" branch. you need to set the image tag when you instantiate the Redis-Cluster chart and the Redis-Operator chart. The "latest" tag is corresponding to the last validated release.
 
 ```console
 helm install --name mycluster chart/redis-cluster --set image.tag=master --set numberOfMaster=3 --set replicationFactor=1
@@ -131,7 +131,7 @@ For starting the delivery, you need to clone this repository, then:
 zsh hack/release.sh <version> <remove-git>
 ```
 
-a concreate example is: ```zsh ./hack/release.sh v1.0.1 upstream```
+A concrete example is: ```zsh ./hack/release.sh v1.0.1 upstream```
 
 This script:
 
