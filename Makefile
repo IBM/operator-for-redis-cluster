@@ -38,8 +38,34 @@ container-redisnode: buildlinux-redisnode
 icm-build-push: build
 	@cd docker/redisnode && docker build -t us.icr.io/icm-docker-images/redisnode:$(VERSION) .
 	@cd docker/operator && docker build -t us.icr.io/icm-docker-images/redisoperator:$(VERSION) .
+	@cd docker/redisnode && docker build -t de.icr.io/icm-docker-images/redisnode:$(VERSION) .
+	@cd docker/operator && docker build -t de.icr.io/icm-docker-images/redisoperator:$(VERSION) .
+	@cd docker/redisnode && docker build -t uk.icr.io/icm-docker-images/redisnode:$(VERSION) .
+	@cd docker/operator && docker build -t uk.icr.io/icm-docker-images/redisoperator:$(VERSION) .
+	@cd docker/redisnode && docker build -t au.icr.io/icm-docker-images/redisnode:$(VERSION) .
+	@cd docker/operator && docker build -t au.icr.io/icm-docker-images/redisoperator:$(VERSION) .
+	@cd docker/redisnode && docker build -t jp.icr.io/icm-docker-images/redisnode:$(VERSION) .
+	@cd docker/operator && docker build -t jp.icr.io/icm-docker-images/redisoperator:$(VERSION) .
+	ibmcloud cr region-set us.icr.io
+	ibmcloud cr login
 	docker push us.icr.io/icm-docker-images/redisnode:$(VERSION)
 	docker push us.icr.io/icm-docker-images/redisoperator:$(VERSION)
+	ibmcloud cr region-set de.icr.io
+	ibmcloud cr login
+	docker push de.icr.io/icm-docker-images/redisnode:$(VERSION)
+	docker push de.icr.io/icm-docker-images/redisoperator:$(VERSION)
+	ibmcloud cr region-set jp.icr.io
+	ibmcloud cr login
+	docker push jp.icr.io/icm-docker-images/redisnode:$(VERSION)
+	docker push jp.icr.io/icm-docker-images/redisoperator:$(VERSION)
+	ibmcloud cr region-set uk.icr.io
+	ibmcloud cr login
+	docker push uk.icr.io/icm-docker-images/redisnode:$(VERSION)
+	docker push uk.icr.io/icm-docker-images/redisoperator:$(VERSION)
+	ibmcloud cr region-set au.icr.io
+	ibmcloud cr login
+	docker push au.icr.io/icm-docker-images/redisnode:$(VERSION)
+	docker push au.icr.io/icm-docker-images/redisoperator:$(VERSION)
 
 build: $(addprefix build-,$(CMDBINS))
 
