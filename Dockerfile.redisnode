@@ -33,7 +33,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     -o redisnode \
     .
 
-FROM redis:6.0.8-alpine
+FROM redis:6.0.9-alpine
 
 LABEL maintainer="william Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>"
 
