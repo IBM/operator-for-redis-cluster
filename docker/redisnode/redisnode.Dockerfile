@@ -1,4 +1,4 @@
-FROM redis:6.0.8-alpine
+FROM redis:6.0.9-alpine
 
 # Add the binary. As it is statically linked, no need to add libc or anything else.
 COPY redis-cluster.conf /redis-server/redis.conf
