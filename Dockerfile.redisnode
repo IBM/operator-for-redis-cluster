@@ -1,4 +1,4 @@
-FROM golang:1.14-buster AS builder
+FROM golang:1.15-buster AS builder
 
 ARG GOPROXY=direct
 
@@ -33,7 +33,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     -o redisnode \
     .
 
-FROM redis:6.0.9-alpine
+FROM redis:6.0.10-buster
 
 LABEL maintainer="william Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>"
 

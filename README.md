@@ -123,6 +123,16 @@ make DOCKER_REGISTRY="mydockerregistry:5000/" TAG=<Your-TAG> publish
 
 ### How to Release the Redis-Operator
 
+> THIS IS FOR RELEASE INTO ICM REPOS:
+>
+> Do the following in `master`:
+> 1. Update the `version.txt` file with the next version and commit the change
+> 2. Create a tag on commit with the `version.txt` for the same version number
+> 3. Push the commit and tag
+> 4. Run the following to build and push the change: `make icm-build-push`
+>
+> NOTE: If you need to test the build prior to the above steps, you can run: `make build` and resolve any isssues.
+
 This project is using [goreleaser](https://goreleaser.com/) and an additional script for releasing also the Helm chart.
 
 For starting the delivery, you need to clone this repository, then:
