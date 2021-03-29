@@ -2,9 +2,42 @@ package redis
 
 import (
 	"github.com/mediocregopher/radix/v3"
+	"github.com/mediocregopher/radix/v3/resp/resp2"
 	"strings"
 	"time"
 )
+// ClientInterface redis client interface
+type ClientInterface interface {
+	// Close closes the connection.
+	Close() error
+
+	// Cmd calls the given Redis command.
+	Cmd(cmd string, args ...interface{}) error
+
+	// PipeAppend adds the given call to the pipeline queue.
+	// Use PipeResp() to read the response.
+	PipeAppend(cmd string, args ...interface{})
+
+	// PipeResp returns the reply for the next request in the pipeline queue. Err
+	// with ErrPipelineEmpty is returned if the pipeline queue is empty.
+	PipeResp() resp2.Any
+
+	// PipeClear clears the contents of the current pipeline queue, both commands
+	// queued by PipeAppend which have yet to be sent and responses which have yet
+	// to be retrieved through PipeResp. The first returned int will be the number
+	// of pending commands dropped, the second will be the number of pending
+	// responses dropped
+	PipeClear() (int, int)
+
+	// ReadResp will read a Resp off of the connection without sending anything
+	// first (useful after you've sent a SUSBSCRIBE command). This will block until
+	// a reply is received or the timeout is reached (returning the IOErr). You can
+	// use IsTimeout to check if the Resp is due to a Timeout
+	//
+	// Note: this is a more low-level function, you really shouldn't have to
+	// actually use it unless you're writing your own pub/sub code
+	ReadResp() resp2.Any
+}
 
 // Client structure representing a client connection to redis
 type Client struct {
@@ -41,7 +74,7 @@ func (c *Client) PipeAppend(rcv interface{}, cmd string, args ...string) {
 // PipeResp returns the reply for the next request in the pipeline queue.
 func (c *Client) PipeResp() error {
 	// TODO: fix this pipeline call
-	return c.client.Do(radix.Pipeline)
+	return c.client.Do()
 }
 
 // PipeClear clears the contents of the current pipeline queue

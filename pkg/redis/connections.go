@@ -32,15 +32,15 @@ type AdminConnectionsInterface interface {
 	Remove(addr string)
 	// Get returns a client connection for the given address,
 	// connects if the connection is not in the map yet
-	Get(addr string) (Client, error)
+	Get(addr string) (ClientInterface, error)
 	// GetRandom returns a client connection to a random node of the client map
-	GetRandom() (radix.Client, error)
+	GetRandom() (ClientInterface, error)
 	// GetDifferentFrom returns a random client connection different from given address
-	GetDifferentFrom(addr string) (radix.Client, error)
+	GetDifferentFrom(addr string) (ClientInterface, error)
 	// GetAll returns a map of all clients per address
-	GetAll() map[string]radix.Client
+	GetAll() map[string]ClientInterface
 	//GetSelected returns a map of clients based on the input addresses
-	GetSelected(addrs []string) map[string]radix.Client
+	GetSelected(addrs []string) map[string]ClientInterface
 	// Reconnect force a reconnection on the given address
 	// if the adress is not part of the map, act like Add
 	Reconnect(addr string) error
@@ -57,7 +57,7 @@ type AdminConnectionsInterface interface {
 	// ValidatePipeResp wait for all answers in the pipe and validate the response
 	// in case of network issue clear the pipe and return
 	// in case of error return false
-	ValidatePipeResp(c radix.Client, addr, errMessage string) bool
+	ValidatePipeResp(c ClientInterface, addr, errMessage string) bool
 	// Reset close all connections and clear the connection map
 	Reset()
 }
@@ -65,7 +65,7 @@ type AdminConnectionsInterface interface {
 // AdminConnections connection map for redis cluster
 // currently the admin connection is not threadSafe since it is only use in the Events thread.
 type AdminConnections struct {
-	clients           map[string]radix.Client
+	clients           map[string]ClientInterface
 	connectionTimeout time.Duration
 	commandsMapping   map[string]string
 	clientName        string
@@ -78,7 +78,7 @@ func init() {
 // NewAdminConnections returns and instance of AdminConnectionsInterface
 func NewAdminConnections(addrs []string, options *AdminOptions) AdminConnectionsInterface {
 	cnx := &AdminConnections{
-		clients:           make(map[string]radix.Client),
+		clients:           make(map[string]ClientInterface),
 		connectionTimeout: defaultClientTimeout,
 		commandsMapping:   make(map[string]string),
 		clientName:        defaultClientName,
@@ -120,7 +120,7 @@ func (cnx *AdminConnections) Remove(addr string) {
 
 // Update returns a client connection for the given adress,
 // connects if the connection is not in the map yet
-func (cnx *AdminConnections) Update(addr string) (radix.Client, error) {
+func (cnx *AdminConnections) Update(addr string) (ClientInterface, error) {
 	// if already exist close the current connection
 	if c, ok := cnx.clients[addr]; ok {
 		c.Close()
@@ -137,7 +137,7 @@ func (cnx *AdminConnections) Update(addr string) (radix.Client, error) {
 
 // Get returns a client connection for the given adress,
 // connects if the connection is not in the map yet
-func (cnx *AdminConnections) Get(addr string) (radix.Client, error) {
+func (cnx *AdminConnections) Get(addr string) (ClientInterface, error) {
 	if c, ok := cnx.clients[addr]; ok {
 		return c, nil
 	}
@@ -149,13 +149,13 @@ func (cnx *AdminConnections) Get(addr string) (radix.Client, error) {
 }
 
 // GetRandom returns a client connection to a random node of the client map
-func (cnx *AdminConnections) GetRandom() (radix.Client, error) {
+func (cnx *AdminConnections) GetRandom() (ClientInterface, error) {
 	_, c, err := cnx.getRandomKeyClient()
 	return c, err
 }
 
 // GetDifferentFrom returns random a client connection different from given address
-func (cnx *AdminConnections) GetDifferentFrom(addr string) (radix.Client, error) {
+func (cnx *AdminConnections) GetDifferentFrom(addr string) (ClientInterface, error) {
 	if len(cnx.clients) == 1 {
 		for a, c := range cnx.clients {
 			if a != addr {
@@ -177,13 +177,13 @@ func (cnx *AdminConnections) GetDifferentFrom(addr string) (radix.Client, error)
 }
 
 // GetAll returns a map of all clients per address
-func (cnx *AdminConnections) GetAll() map[string]radix.Client {
+func (cnx *AdminConnections) GetAll() map[string]ClientInterface {
 	return cnx.clients
 }
 
 //GetSelected returns a map of clients based on the input addresses
-func (cnx *AdminConnections) GetSelected(addrs []string) map[string]radix.Client {
-	clientsSelected := make(map[string]radix.Client)
+func (cnx *AdminConnections) GetSelected(addrs []string) map[string]ClientInterface {
+	clientsSelected := make(map[string]ClientInterface)
 	for _, addr := range addrs {
 		if client, ok := cnx.clients[addr]; ok {
 			clientsSelected[addr] = client
@@ -221,7 +221,7 @@ func (cnx *AdminConnections) Reset() {
 	for _, c := range cnx.clients {
 		c.Close()
 	}
-	cnx.clients = map[string]radix.Client{}
+	cnx.clients = map[string]ClientInterface{}
 }
 
 // ValidateResp check the redis resp, eventually reconnect on connection error
@@ -243,7 +243,7 @@ func (cnx *AdminConnections) ValidateResp(resp []byte, addr, errMessage string) 
 // ValidatePipeResp wait for all answers in the pipe and validate the response
 // in case of network issue clear the pipe and return
 // in case of error, return false
-func (cnx *AdminConnections) ValidatePipeResp(client radix.Client, addr, errMessage string) bool {
+func (cnx *AdminConnections) ValidatePipeResp(client ClientInterface, addr, errMessage string) bool {
 	ok := true
 	for {
 		resp := client.PipeResp()
@@ -268,7 +268,7 @@ func (cnx *AdminConnections) ValidatePipeResp(client radix.Client, addr, errMess
 }
 
 // GetRandom returns a client connection to a random node of the client map
-func (cnx *AdminConnections) getRandomKeyClient() (string, radix.Client, error) {
+func (cnx *AdminConnections) getRandomKeyClient() (string, ClientInterface, error) {
 	nbClient := len(cnx.clients)
 	if nbClient == 0 {
 		return "", nil, errors.New(ErrNotFound)
@@ -302,7 +302,7 @@ func (cnx *AdminConnections) handleError(addr string, err error) bool {
 	return false
 }
 
-func (cnx *AdminConnections) connect(addr string) (Client, error) {
+func (cnx *AdminConnections) connect(addr string) (ClientInterface, error) {
 	c, err := NewClient(addr, cnx.connectionTimeout, cnx.commandsMapping)
 	if err != nil {
 		return nil, err
