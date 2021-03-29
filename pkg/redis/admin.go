@@ -2,6 +2,7 @@ package redis
 
 import (
 	"fmt"
+	"github.com/mediocregopher/radix/v3"
 	"net"
 	"strconv"
 	"time"
@@ -124,8 +125,7 @@ func (a *Admin) AttachNodeToCluster(addr string) error {
 		if cAddr == addr {
 			continue
 		}
-		resp := c.Cmd("CLUSTER", "MEET", ip, port)
-		if err = a.Connections().ValidateResp(resp, addr, "Cannot attach node to cluster"); err != nil {
+		if err := c.Do(radix.Cmd("CLUSTER", "MEET", ip, port)); err != nil {
 			return err
 		}
 	}
@@ -233,7 +233,7 @@ func (a *Admin) StartFailover(addr string) error {
 
 	failoverTriggered := false
 	for _, aSlave := range slaves {
-		var slaveClient ClientInterface
+		var slaveClient radix.Client
 		if slaveClient, err = a.Connections().Get(aSlave.IPPort()); err != nil {
 			continue
 		}
