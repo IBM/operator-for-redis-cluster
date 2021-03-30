@@ -126,7 +126,7 @@ func (a *Admin) AttachNodeToCluster(addr string) error {
 		if cAddr == addr {
 			continue
 		}
-		if err := c.DoCmd(nil, "CLUSTER", "MEET", ip, port); err != nil {
+		if err := c.DoCmd(nil, "CLUSTER MEET", ip, port); err != nil {
 			return err
 		}
 	}
@@ -289,7 +289,7 @@ func (a *Admin) ForgetNode(id string) error {
 			glog.V(2).Infof("detach slave id: %s of master: %s", nodeinfos.Node.ID, id)
 		}
 		var resp resp2.Any
-		err = c.DoCmd(&resp, "CLUSTER", "FORGET", id)
+		err = c.DoCmd(&resp, "CLUSTER FORGET", id)
 		_ = a.Connections().ValidateResp(&resp, nodeAddr, "Unable to execute FORGET command")
 	}
 
@@ -337,9 +337,9 @@ func (a *Admin) SetSlots(addr, action string, slots []Slot, nodeID string) error
 	}
 	for _, slot := range slots {
 		if nodeID == "" {
-			err = c.DoCmd(nil, "CLUSTER", "SETSLOT", slot, action)
+			err = c.DoFlatCmd(nil, "CLUSTER SETSLOT", slot.String(), action)
 		} else {
-			err = c.DoCmd(nil, "CLUSTER", "SETSLOT", slot, action, nodeID)
+			err = c.DoFlatCmd(nil, "CLUSTER SETSLOT", slot.String(), action, nodeID)
 		}
 		if err != nil {
 			return fmt.Errorf("Error occured during CLUSTER SETSLOT: %v", err)
@@ -360,7 +360,7 @@ func (a *Admin) AddSlots(addr string, slots []Slot) error {
 	}
 
 	var resp resp2.Any
-	err = c.DoCmd(&resp, "CLUSTER", "ADDSLOTS", slots)
+	err = c.DoFlatCmd(&resp, "CLUSTER", "ADDSLOTS", slots)
 	return a.Connections().ValidateResp(&resp, addr, "Unable to run CLUSTER ADDSLOTS")
 }
 
@@ -374,7 +374,7 @@ func (a *Admin) DelSlots(addr string, slots []Slot) error {
 		return err
 	}
 	var resp resp2.Any
-	err = c.DoCmd(&resp, "CLUSTER", "DELSLOTS", slots)
+	err = c.DoFlatCmd(&resp, "CLUSTER", "DELSLOTS", slots)
 
 	return a.Connections().ValidateResp(&resp, addr, "Unable to run CLUSTER DELSLOTS")
 }
@@ -391,7 +391,7 @@ func (a *Admin) GetKeysInSlot(addr string, slot Slot, batch int, limit bool) ([]
 
 	for {
 		var resp resp2.Any
-		err = c.DoCmd(&resp,"CLUSTER", "GETKEYSINSLOT", slot, strconv.Itoa(batch))
+		err = c.DoFlatCmd(&resp,"CLUSTER GETKEYSINSLOT", slot, strconv.Itoa(batch))
 		if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
 			return allKeys, err
 		}
@@ -418,7 +418,7 @@ func (a *Admin) CountKeysInSlot(addr string, slot Slot) (int64, error) {
 	}
 
 	var resp resp2.Any
-	err = c.DoCmd(&resp, "CLUSTER", "COUNTKEYSINSLOT", slot.String())
+	err = c.DoCmd(&resp, "CLUSTER COUNTKEYSINSLOT", slot.String())
 	if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command COUNTKEYSINSLOT"); err != nil {
 		return 0, err
 	}
@@ -442,7 +442,7 @@ func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, ti
 	for _, slot := range slots {
 		for {
 			var resp resp2.Any
-			err = c.DoCmd(&resp, "CLUSTER", "GETKEYSINSLOT", slot, batchStr)
+			err = c.DoCmd(&resp, "CLUSTER GETKEYSINSLOT", slot.String(), batchStr)
 			if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
 				return keyCount, err
 			}
@@ -462,7 +462,7 @@ func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, ti
 			} else {
 				args = append([]string{dest.IP, dest.Port, "", "0", timeoutStr, "KEYS"}, keys...)
 			}
-			err = c.DoCmd(&resp, "MIGRATE", "", args)
+			err = c.DoCmd(&resp, "MIGRATE", args...)
 			if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command MIGRATE"); err != nil {
 				return keyCount, err
 			}
@@ -479,7 +479,7 @@ func (a *Admin) AttachSlaveToMaster(slave *Node, master *Node) error {
 		return err
 	}
 	var resp resp2.Any
-	err = c.DoCmd(&resp, "CLUSTER", "REPLICATE", master.ID)
+	err = c.DoCmd(&resp, "CLUSTER REPLICATE", master.ID)
 	if err := a.Connections().ValidateResp(&resp, slave.IPPort(), "Unable to run command REPLICATE"); err != nil {
 		return err
 	}
@@ -498,7 +498,7 @@ func (a *Admin) DetachSlave(slave *Node) error {
 		return err
 	}
 	var resp resp2.Any
-	err = c.DoCmd(&resp, "CLUSTER", "RESET", "SOFT")
+	err = c.DoCmd(&resp, "CLUSTER RESET", "SOFT")
 	if err = a.Connections().ValidateResp(&resp, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
 		return err
 	}
@@ -538,7 +538,7 @@ func (a *Admin) FlushAll() {
 		return
 	}
 
-	err = c.DoCmd(nil, "FLUSHALL", "")
+	err = c.DoCmd(nil, "FLUSHALL")
 }
 
 func selectMySlaves(me *Node, nodes Nodes) (Nodes, error) {
@@ -549,7 +549,7 @@ func selectMySlaves(me *Node, nodes Nodes) (Nodes, error) {
 
 func (a *Admin) getInfos(c ClientInterface, addr string) (*NodeInfos, error) {
 	var resp resp2.Any
-	err := c.DoCmd(&resp, "CLUSTER", "NODES")
+	err := c.DoCmd(&resp, "CLUSTER NODES")
 	if err != nil {
 		return nil, fmt.Errorf("Wrong format from CLUSTER NODES: %v", err)
 	}
@@ -561,7 +561,7 @@ func (a *Admin) getInfos(c ClientInterface, addr string) (*NodeInfos, error) {
 
 	if glog.V(3) {
 		//Retrieve server info for debugging
-		err = c.DoCmd(&resp, "INFO", "SERVER")
+		err = c.DoCmd(&resp, "INFO SERVER")
 		if err != nil {
 			return nil, fmt.Errorf("Wrong format from INFO SERVER: %v", err)
 		}
