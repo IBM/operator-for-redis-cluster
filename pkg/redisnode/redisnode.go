@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/mediocregopher/radix/v3/resp/resp2"
 	"net"
 	"net/http"
 	"os"
@@ -16,7 +17,7 @@ import (
 	"github.com/heptiolabs/healthcheck"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	radix "github.com/mediocregopher/radix.v2/redis"
+	"github.com/mediocregopher/radix/v3"
 
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -256,12 +257,14 @@ func readinessCheck(addr string) error {
 		return fmt.Errorf("Readiness failed, err: %v", rediserr)
 	}
 	defer client.Close()
-	array, err := client.Cmd("CLUSTER", "SLOTS").Array()
+	// TODO: fix response type
+	var array resp2.Array
+	err := client.DoCmd(&array,"CLUSTER", "SLOTS")
 	if err != nil {
 		return fmt.Errorf("Readiness failed, cluster slots response err: %v", rediserr)
 	}
 
-	if len(array) == 0 {
+	if len(array.A) == 0 {
 		return fmt.Errorf("Readiness failed, cluster slots response empty")
 	}
 	glog.V(6).Info("Readiness probe ok")
@@ -322,14 +325,14 @@ func testAndWaitConnection(addr string, maxWait time.Duration) error {
 		if timeout <= 0 {
 			return errors.New("Timeout reached")
 		}
-		client, err := radix.DialTimeout("tcp", addr, timeout)
+		client, err := radix.Dial("tcp", addr, radix.DialConnectTimeout(timeout))
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 		defer client.Close()
-
-		if resp, err := client.Cmd("PING").Str(); err != nil {
+		var resp string
+		if err := client.Do(radix.Cmd(resp, "PING")); err != nil {
 			client.Close()
 			time.Sleep(100 * time.Millisecond)
 			continue

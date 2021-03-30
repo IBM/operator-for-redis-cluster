@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/mediocregopher/radix/v3"
 	"math/rand"
 	"net"
 	"os"
@@ -53,7 +52,7 @@ type AdminConnectionsInterface interface {
 	ReplaceAll(addrs []string)
 	// ValidateResp check the redis resp, eventually reconnect on connection error
 	// in case of error, customize the error, log it and return it
-	ValidateResp(err error, addr, errMessage string) error
+	ValidateResp(resp interface{}, addr, errMessage string) error
 	// ValidatePipeResp wait for all answers in the pipe and validate the response
 	// in case of network issue clear the pipe and return
 	// in case of error return false
@@ -96,7 +95,7 @@ func NewAdminConnections(addrs []string, options *AdminOptions) AdminConnections
 	return cnx
 }
 
-// Close used to close all possible resources instanciate by the Connections
+// Close used to close all possible resources instantiated by the Connections
 func (cnx *AdminConnections) Close() {
 	for _, c := range cnx.clients {
 		c.Close()
@@ -226,13 +225,13 @@ func (cnx *AdminConnections) Reset() {
 
 // ValidateResp check the redis resp, eventually reconnect on connection error
 // in case of error, customize the error, log it and return it
-func (cnx *AdminConnections) ValidateResp(resp []byte, addr, errMessage string) error {
+func (cnx *AdminConnections) ValidateResp(resp interface{}, addr, errMessage string) error {
 	if resp == nil {
 		glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)
 		return fmt.Errorf("%s: Unable to connect to node %s", errMessage, addr)
 	}
 	var redisErr resp2.Error
-	if errors.As(, &redisErr) {
+	if errors.As(resp, &redisErr) {
 		cnx.handleError(addr, redisErr.E)
 		glog.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, resp.Err)
 		return fmt.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, resp.Err)
@@ -308,7 +307,8 @@ func (cnx *AdminConnections) connect(addr string) (ClientInterface, error) {
 		return nil, err
 	}
 	if cnx.clientName != "" {
-		err := c.Cmd("CLIENT", "SETNAME", cnx.clientName)
+		var resp string
+		err = c.DoCmd(&resp, "CLIENT", "SETNAME", cnx.clientName)
 		return c, cnx.ValidateResp(resp, addr, "Unable to run command CLIENT SETNAME")
 	}
 
