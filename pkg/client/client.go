@@ -16,9 +16,9 @@ import (
 
 	"github.com/golang/glog"
 
-	redis "github.com/amadeusitgroup/redis-operator/pkg/api/redis"
-	v1 "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	"github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned"
+	redis "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 )
 
 // DefineRedisClusterResource defines a RedisClusterResource as a k8s CR

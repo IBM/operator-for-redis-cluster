@@ -24,7 +24,7 @@ SOFTWARE.
 package fake
 
 import (
-	v1 "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned/typed/redis/v1"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned/typed/redis/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

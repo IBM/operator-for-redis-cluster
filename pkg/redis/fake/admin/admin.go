@@ -1,7 +1,7 @@
 package admin
 
 import (
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 // MigrateKeyRetType structure to describe the return data of the MigrateKey method

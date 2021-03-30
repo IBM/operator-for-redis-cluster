@@ -24,13 +24,13 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	rapi "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	rclient "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned"
-	rinformers "github.com/amadeusitgroup/redis-operator/pkg/client/informers/externalversions"
-	rlisters "github.com/amadeusitgroup/redis-operator/pkg/client/listers/redis/v1"
-	"github.com/amadeusitgroup/redis-operator/pkg/controller/pod"
-	"github.com/amadeusitgroup/redis-operator/pkg/controller/sanitycheck"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rclient "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
+	rinformers "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions"
+	rlisters "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/listers/redis/v1"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/sanitycheck"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 // Controller contains all controller fields

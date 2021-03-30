@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/config"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/golang/glog"
 )
 

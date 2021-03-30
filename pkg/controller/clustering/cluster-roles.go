@@ -1,8 +1,8 @@
 package clustering
 
 import (
-	"github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/golang/glog"
 )
 

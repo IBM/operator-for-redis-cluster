@@ -9,9 +9,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/operator"
-	"github.com/amadeusitgroup/redis-operator/pkg/signal"
-	"github.com/amadeusitgroup/redis-operator/pkg/utils"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/operator"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/signal"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 )
 
 func main() {

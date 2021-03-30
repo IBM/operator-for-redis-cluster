@@ -3,8 +3,8 @@ package framework
 import (
 	"fmt"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/client"
-	"github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

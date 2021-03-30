@@ -24,7 +24,7 @@ SOFTWARE.
 package versioned
 
 import (
-	redisoperatorv1 "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned/typed/redis/v1"
+	redisoperatorv1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned/typed/redis/v1"
 	glog "github.com/golang/glog"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
