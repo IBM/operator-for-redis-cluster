@@ -13,6 +13,10 @@ spec:
       labels:
         app: {{ template "name" . }}
     spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
       serviceAccountName: {{ template "serviceaccount" . }}
       volumes:
         - name: data
