@@ -9,9 +9,9 @@ import (
 
 	gomega "github.com/onsi/gomega"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/api/redis"
-	rapi "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	"github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 
 	"k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"

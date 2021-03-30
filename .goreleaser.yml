@@ -12,7 +12,7 @@ builds:
   - CGO_ENABLED=0
   main: ./cmd/operator/main.go
   flags: -a -installsuffix cgo
-  ldflags: -s -w -X github.com/amadeusitgroup/redis-operator/pkg/utils.VERSION={{.Version}} -X github.com/amadeusitgroup/redis-operator/pkg/utils.COMMIT={{.Commit}} -X github.com/amadeusitgroup/redis-operator/pkg/utils.BUILDTIME={{.Date}} -X github.com/amadeusitgroup/redis-operator/pkg/utils.TAG={{.Tag}}
+  ldflags: -s -w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.VERSION={{.Version}} -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT={{.Commit}} -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME={{.Date}} -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG={{.Tag}}
   binary: operator
 - goos:
   - linux
@@ -22,7 +22,7 @@ builds:
   - CGO_ENABLED=0
   main: ./cmd/redisnode/main.go
   flags: -a -installsuffix cgo
-  ldflags: -s -w -X github.com/amadeusitgroup/redis-operator/pkg/utils.VERSION={{.Version}} -X github.com/amadeusitgroup/redis-operator/pkg/utils.COMMIT={{.Commit}} -X github.com/amadeusitgroup/redis-operator/pkg/utils.BUILDTIME={{.Date}} -X github.com/amadeusitgroup/redis-operator/pkg/utils.TAG={{.Tag}}
+  ldflags: -s -w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.VERSION={{.Version}} -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT={{.Commit}} -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME={{.Date}} -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG={{.Tag}}
   binary: redisnode
 dockers:
 - image: redisoperator/operator

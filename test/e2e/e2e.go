@@ -7,7 +7,7 @@ import (
 	"github.com/onsi/gomega"
 
 	// register framework
-	_ "github.com/amadeusitgroup/redis-operator/test/e2e/framework"
+	_ "github.com/TheWeatherCompany/icm-redis-operator/test/e2e/framework"
 )
 
 // RunE2ETests runs e2e test

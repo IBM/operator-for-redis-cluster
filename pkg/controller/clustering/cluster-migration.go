@@ -7,8 +7,8 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 type migrationInfo struct {

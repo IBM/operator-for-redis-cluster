@@ -2,13 +2,6 @@
 
 ![logo](docs/imgs/logo.png)
 
-### Build Status
-[![Build Status](https://travis-ci.org/AmadeusITGroup/Redis-Operator.svg?branch=master)](https://travis-ci.org/AmadeusITGroup/Redis-Operator)
-[![Go Report Card](https://goreportcard.com/badge/github.com/amadeusitgroup/redis-operator)](https://goreportcard.com/report/github.com/amadeusitgroup/redis-operator)
-[![codecov](https://codecov.io/gh/amadeusitgroup/redis-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/amadeusitgroup/redis-operator)
-
-
-
 ## Project status: alpha
 
 This is an ongoing project.
@@ -97,7 +90,7 @@ docs available [here](docs/kubectl-plugin.md).
 #### Build the container images
 
 ```console
-cd $GOPATH/src/github.com/amadeusitgroup/redis-operator
+cd $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
 make container
 CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/operator/operator ./cmd/operator/main.go
 CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/redisnode/redisnode ./cmd/redisnode/main.go

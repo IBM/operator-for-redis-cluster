@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/labels"
 
-	rapi "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 )
 
 // GetLabelsSet return labels associated to the redis-node pods

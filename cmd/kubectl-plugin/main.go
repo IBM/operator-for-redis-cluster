@@ -19,8 +19,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	v1 "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	rclient "github.com/amadeusitgroup/redis-operator/pkg/client"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rclient "github.com/TheWeatherCompany/icm-redis-operator/pkg/client"
 )
 
 func main() {

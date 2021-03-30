@@ -37,11 +37,11 @@ A good way of making sure everything is all right is running the test suite:
 ```console
 $ make test
 ./go.test.sh
-ok      github.com/amadeusitgroup/redis-operator/pkg/controller 1.520s  coverage: 0.0% of statements
-ok      github.com/amadeusitgroup/redis-operator/pkg/controller/clustering      1.539s  coverage: 26.9% of statements
-ok      github.com/amadeusitgroup/redis-operator/pkg/process    1.031s  coverage: 100.0% of statements
-ok      github.com/amadeusitgroup/redis-operator/pkg/redis      1.570s  coverage: 26.7% of statements
-ok      github.com/amadeusitgroup/redis-operator/pkg/redis/fake 1.026s  coverage: 84.7% of statements
+ok      github.com/TheWeatherCompany/icm-redis-operator/pkg/controller 1.520s  coverage: 0.0% of statements
+ok      github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/clustering      1.539s  coverage: 26.9% of statements
+ok      github.com/TheWeatherCompany/icm-redis-operator/pkg/process    1.031s  coverage: 100.0% of statements
+ok      github.com/TheWeatherCompany/icm-redis-operator/pkg/redis      1.570s  coverage: 26.7% of statements
+ok      github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake 1.026s  coverage: 84.7% of statements
 ```
 
 ## Test your change
@@ -123,7 +123,7 @@ Will run 1 of 1 specs
 
 Ran 1 of 1 Specs in 35.222 seconds
 SUCCESS! -- 1 Passed | 0 Failed | 0 Pending | 0 Skipped PASS
-ok      github.com/amadeusitgroup/redis-operator/test/e2e       35.288s
+ok      github.com/TheWeatherCompany/icm-redis-operator/test/e2e       35.288s
 ```
 
 ## Create a commit

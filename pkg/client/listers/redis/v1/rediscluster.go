@@ -27,7 +27,7 @@ SOFTWARE.
 package v1
 
 import (
-	v1 "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"

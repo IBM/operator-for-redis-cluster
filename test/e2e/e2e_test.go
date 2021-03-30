@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/amadeusitgroup/redis-operator/test/e2e/framework"
+	"github.com/TheWeatherCompany/icm-redis-operator/test/e2e/framework"
 	"github.com/spf13/pflag"
 )
 

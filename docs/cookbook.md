@@ -15,14 +15,14 @@
 Project and environment
 
 ```console
-$ REPO="https://github.com/amadeusitgroup/redis-operator.git"
+$ REPO="https://github.com/TheWeatherCompany/icm-redis-operator.git"
 $ FOLDER="$HOME/tmp/redis-operator"
 
-$ mkdir -p $FOLDER/src/github.com/amadeusitgroup/redis-operator
+$ mkdir -p $FOLDER/src/github.com/TheWeatherCompany/icm-redis-operator
 $ cd $FOLDER
 $ export GOPATH=`pwd`
-$ git clone $REPO $GOPATH/src/github.com/amadeusitgroup/redis-operator
-$ cd $GOPATH/src/github.com/amadeusitgroup/redis-operator
+$ git clone $REPO $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
+$ cd $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
 ```
 
 install the kubectl rediscluster plugin (more info [here](./kubectl-plugin.md))
