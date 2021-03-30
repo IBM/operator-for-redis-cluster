@@ -2,8 +2,6 @@ package admin
 
 import (
 	"github.com/amadeusitgroup/redis-operator/pkg/redis"
-
-	radix "github.com/mediocregopher/radix.v2/redis"
 )
 
 // Connections fake redis connection handler, do nothing
@@ -52,7 +50,7 @@ func (cnx *Connections) GetSelected(addrs []string) map[string]redis.ClientInter
 }
 
 // Reconnect force a reconnection on the given address
-// is the adress is not part of the map, act like Add
+// is the address is not part of the map, act like Add
 func (cnx *Connections) Reconnect(addr string) error {
 	return nil
 }
@@ -74,7 +72,7 @@ func (cnx *Connections) Reset() {
 
 // ValidateResp check the redis resp, eventually reconnect on connection error
 // in case of error, customize the error, log it and return it
-func (cnx *Connections) ValidateResp(err error, addr, errMessage string) error {
+func (cnx *Connections) ValidateResp(resp interface{}, err error) error {
 	return nil
 }
 

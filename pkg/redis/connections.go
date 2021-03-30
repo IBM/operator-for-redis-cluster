@@ -52,11 +52,11 @@ type AdminConnectionsInterface interface {
 	ReplaceAll(addrs []string)
 	// ValidateResp check the redis resp, eventually reconnect on connection error
 	// in case of error, customize the error, log it and return it
-	ValidateResp(resp interface{}, addr, errMessage string) error
+	ValidateResp(resp *resp2.Any, addr, errMessage string) error
 	// ValidatePipeResp wait for all answers in the pipe and validate the response
 	// in case of network issue clear the pipe and return
 	// in case of error return false
-	ValidatePipeResp(c ClientInterface, addr, errMessage string) bool
+	// ValidatePipeResp(c ClientInterface, addr, errMessage string) bool
 	// Reset close all connections and clear the connection map
 	Reset()
 }
@@ -225,16 +225,16 @@ func (cnx *AdminConnections) Reset() {
 
 // ValidateResp check the redis resp, eventually reconnect on connection error
 // in case of error, customize the error, log it and return it
-func (cnx *AdminConnections) ValidateResp(resp interface{}, addr, errMessage string) error {
+func (cnx *AdminConnections) ValidateResp(resp *resp2.Any, addr, errMessage string) error {
 	if resp == nil {
 		glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)
 		return fmt.Errorf("%s: Unable to connect to node %s", errMessage, addr)
 	}
-	var redisErr resp2.Error
-	if errors.As(resp, &redisErr) {
-		cnx.handleError(addr, redisErr.E)
-		glog.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, resp.Err)
-		return fmt.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, resp.Err)
+	var br bufio.Reader
+	if err := resp.UnmarshalRESP(&br); err != nil {
+		cnx.handleError(addr, err)
+		glog.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, err)
+		return fmt.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, err)
 	}
 	return nil
 }
@@ -242,29 +242,29 @@ func (cnx *AdminConnections) ValidateResp(resp interface{}, addr, errMessage str
 // ValidatePipeResp wait for all answers in the pipe and validate the response
 // in case of network issue clear the pipe and return
 // in case of error, return false
-func (cnx *AdminConnections) ValidatePipeResp(client ClientInterface, addr, errMessage string) bool {
-	ok := true
-	for {
-		resp := client.PipeResp()
-		if resp == nil {
-			glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)
-			return false
-		}
-		if resp.Err != nil {
-			if resp.Err == redis.ErrPipelineEmpty {
-				break
-			}
-			glog.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, resp.Err)
-			if cnx.handleError(addr, resp.Err) {
-				// network error, no need to continue
-				return false
-			}
-			ok = false
-		}
-	}
-
-	return ok
-}
+//func (cnx *AdminConnections) ValidatePipeResp(client ClientInterface, addr, errMessage string) bool {
+//	ok := true
+//	for {
+//		resp := client.PipeResp()
+//		if resp == nil {
+//			glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)
+//			return false
+//		}
+//		if resp.Err != nil {
+//			if resp.Err == redis.ErrPipelineEmpty {
+//				break
+//			}
+//			glog.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, resp.Err)
+//			if cnx.handleError(addr, resp.Err) {
+//				// network error, no need to continue
+//				return false
+//			}
+//			ok = false
+//		}
+//	}
+//
+//	return ok
+//}
 
 // GetRandom returns a client connection to a random node of the client map
 func (cnx *AdminConnections) getRandomKeyClient() (string, ClientInterface, error) {
@@ -307,9 +307,9 @@ func (cnx *AdminConnections) connect(addr string) (ClientInterface, error) {
 		return nil, err
 	}
 	if cnx.clientName != "" {
-		var resp string
+		var resp resp2.Any
 		err = c.DoCmd(&resp, "CLIENT", "SETNAME", cnx.clientName)
-		return c, cnx.ValidateResp(resp, addr, "Unable to run command CLIENT SETNAME")
+		return c, cnx.ValidateResp(&resp, addr, "Unable to run command CLIENT SETNAME")
 	}
 
 	return c, nil

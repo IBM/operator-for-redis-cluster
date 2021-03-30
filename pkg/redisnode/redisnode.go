@@ -332,7 +332,7 @@ func testAndWaitConnection(addr string, maxWait time.Duration) error {
 		}
 		defer client.Close()
 		var resp string
-		if err := client.Do(radix.Cmd(resp, "PING")); err != nil {
+		if err := client.Do(radix.Cmd(&resp, "PING")); err != nil {
 			client.Close()
 			time.Sleep(100 * time.Millisecond)
 			continue

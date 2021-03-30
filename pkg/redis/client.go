@@ -13,8 +13,8 @@ type ClientInterface interface {
 	// DoCmd calls the given Redis command and retrieves a result.
 	DoCmd(rcv interface{}, cmd, key string, args ...interface{}) error
 
-	// NumActiveConnections returns the number of active connections
-	NumActiveConnections() int
+	// DoPipe writes multiple Redis commands in a single write and reads their responses.
+	DoPipe(pipeline []radix.CmdAction) error
 }
 
 // Client structure representing a client connection to redis
@@ -41,6 +41,10 @@ func (c *Client) Close() error {
 // Cmd calls the given Redis command.
 func (c *Client) DoCmd(rcv interface{}, cmd, key string, args ...interface{}) error {
 	return c.client.Do(radix.FlatCmd(rcv, c.getCommand(cmd), key, args...))
+}
+
+func (c *Client) DoPipe(pipeline []radix.CmdAction) error {
+	return c.client.Do(radix.Pipeline(pipeline...))
 }
 
 // getCommand return the command name after applying rename-command

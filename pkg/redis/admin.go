@@ -2,6 +2,8 @@ package redis
 
 import (
 	"fmt"
+	"github.com/mediocregopher/radix/v3"
+	"github.com/mediocregopher/radix/v3/resp/resp2"
 	"net"
 	"strconv"
 	"time"
@@ -236,9 +238,9 @@ func (a *Admin) StartFailover(addr string) error {
 		if slaveClient, err = a.Connections().Get(aSlave.IPPort()); err != nil {
 			continue
 		}
-		var resp string
+		var resp resp2.Any
 		err := slaveClient.DoCmd(&resp, "CLUSTER", "FAILOVER")
-		if err = a.Connections().ValidateResp(resp, aSlave.IPPort(), "Unable to execute Failover"); err != nil {
+		if err = a.Connections().ValidateResp(&resp, aSlave.IPPort(), "Unable to execute Failover"); err != nil {
 			continue
 		}
 		failoverTriggered = true
@@ -286,9 +288,9 @@ func (a *Admin) ForgetNode(id string) error {
 			a.DetachSlave(nodeinfos.Node)
 			glog.V(2).Infof("detach slave id: %s of master: %s", nodeinfos.Node.ID, id)
 		}
-		var resp string
+		var resp resp2.Any
 		err = c.DoCmd(&resp, "CLUSTER", "FORGET", id)
-		a.Connections().ValidateResp(resp, nodeAddr, "Unable to execute FORGET command")
+		_ = a.Connections().ValidateResp(&resp, nodeAddr, "Unable to execute FORGET command")
 	}
 
 	glog.Infof("Forget Node:%s ...done", id)
@@ -335,17 +337,13 @@ func (a *Admin) SetSlots(addr, action string, slots []Slot, nodeID string) error
 	}
 	for _, slot := range slots {
 		if nodeID == "" {
-			if err = c.DoCmd(nil, "CLUSTER", "SETSLOT", slot, action); err != nil {
-				return err
-			}
+			err = c.DoCmd(nil, "CLUSTER", "SETSLOT", slot, action)
 		} else {
-			if err = c.DoCmd(nil, "CLUSTER", "SETSLOT", slot, action, nodeID); err != nil {
-				return err
-			}
+			err = c.DoCmd(nil, "CLUSTER", "SETSLOT", slot, action, nodeID)
 		}
-	}
-	if !a.Connections().ValidatePipeResp(c, addr, "Cannot SETSLOT") {
-		return fmt.Errorf("Error occured during CLUSTER SETSLOT %s", action)
+		if err != nil {
+			return fmt.Errorf("Error occured during CLUSTER SETSLOT: %v", err)
+		}
 	}
 
 	return nil
@@ -361,9 +359,9 @@ func (a *Admin) AddSlots(addr string, slots []Slot) error {
 		return err
 	}
 
-	var resp string
+	var resp resp2.Any
 	err = c.DoCmd(&resp, "CLUSTER", "ADDSLOTS", slots)
-	return a.Connections().ValidateResp(resp, addr, "Unable to run CLUSTER ADDSLOTS")
+	return a.Connections().ValidateResp(&resp, addr, "Unable to run CLUSTER ADDSLOTS")
 }
 
 // DelSlots exec the redis command to del slots in a pipeline
@@ -375,10 +373,10 @@ func (a *Admin) DelSlots(addr string, slots []Slot) error {
 	if err != nil {
 		return err
 	}
-	var resp string
+	var resp resp2.Any
 	err = c.DoCmd(&resp, "CLUSTER", "DELSLOTS", slots)
 
-	return a.Connections().ValidateResp(resp, addr, "Unable to run CLUSTER DELSLOTS")
+	return a.Connections().ValidateResp(&resp, addr, "Unable to run CLUSTER DELSLOTS")
 }
 
 // GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
@@ -392,16 +390,16 @@ func (a *Admin) GetKeysInSlot(addr string, slot Slot, batch int, limit bool) ([]
 	}
 
 	for {
-		var keys []string
-		err = c.DoCmd(&keys,"CLUSTER", "GETKEYSINSLOT", slot, strconv.Itoa(batch))
-		if err := a.Connections().ValidateResp(keys, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
+		var resp resp2.Any
+		err = c.DoCmd(&resp,"CLUSTER", "GETKEYSINSLOT", slot, strconv.Itoa(batch))
+		if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
 			return allKeys, err
 		}
 		if err != nil {
 			glog.Errorf("Wrong retured format for CLUSTER GETKEYSINSLOT: %v", err)
 			return allKeys, err
 		}
-
+		keys := resp.I.([]string)
 		allKeys = append(allKeys, keys...)
 
 		keyCount += len(keys)
@@ -419,12 +417,12 @@ func (a *Admin) CountKeysInSlot(addr string, slot Slot) (int64, error) {
 		return 0, err
 	}
 
-	var resp int64
+	var resp resp2.Any
 	err = c.DoCmd(&resp, "CLUSTER", "COUNTKEYSINSLOT", slot.String())
-	if err := a.Connections().ValidateResp(resp, addr, "Unable to run command COUNTKEYSINSLOT"); err != nil {
+	if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command COUNTKEYSINSLOT"); err != nil {
 		return 0, err
 	}
-	return resp, nil
+	return resp.I.(int64), nil
 }
 
 // MigrateKeys use to migrate keys from slots to other slots. if replace is true, replace key on busy error
@@ -443,16 +441,16 @@ func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, ti
 
 	for _, slot := range slots {
 		for {
-			var keys []string
-			err = c.DoCmd(&keys, "CLUSTER", "GETKEYSINSLOT", slot, batchStr)
-			if err := a.Connections().ValidateResp(keys, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
+			var resp resp2.Any
+			err = c.DoCmd(&resp, "CLUSTER", "GETKEYSINSLOT", slot, batchStr)
+			if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
 				return keyCount, err
 			}
 			if err != nil {
 				glog.Errorf("Wrong retured format for CLUSTER GETKEYSINSLOT: %v", err)
 				return keyCount, err
 			}
-
+			keys := resp.I.([]string)
 			keyCount += len(keys)
 			if len(keys) == 0 {
 				break
@@ -464,9 +462,8 @@ func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, ti
 			} else {
 				args = append([]string{dest.IP, dest.Port, "", "0", timeoutStr, "KEYS"}, keys...)
 			}
-			var resp string
 			err = c.DoCmd(&resp, "MIGRATE", "", args)
-			if err := a.Connections().ValidateResp(resp, addr, "Unable to run command MIGRATE"); err != nil {
+			if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command MIGRATE"); err != nil {
 				return keyCount, err
 			}
 		}
@@ -481,9 +478,9 @@ func (a *Admin) AttachSlaveToMaster(slave *Node, master *Node) error {
 	if err != nil {
 		return err
 	}
-	var resp string
+	var resp resp2.Any
 	err = c.DoCmd(&resp, "CLUSTER", "REPLICATE", master.ID)
-	if err := a.Connections().ValidateResp(resp, slave.IPPort(), "Unable to run command REPLICATE"); err != nil {
+	if err := a.Connections().ValidateResp(&resp, slave.IPPort(), "Unable to run command REPLICATE"); err != nil {
 		return err
 	}
 
@@ -500,9 +497,9 @@ func (a *Admin) DetachSlave(slave *Node) error {
 		glog.Errorf("unable to get the connection for slave ID:%s, addr:%s , err:%v", slave.ID, slave.IPPort(), err)
 		return err
 	}
-	var resp string
+	var resp resp2.Any
 	err = c.DoCmd(&resp, "CLUSTER", "RESET", "SOFT")
-	if err = a.Connections().ValidateResp(resp, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
+	if err = a.Connections().ValidateResp(&resp, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
 		return err
 	}
 
@@ -523,11 +520,11 @@ func (a *Admin) FlushAndReset(addr string, mode string) error {
 	if err != nil {
 		return err
 	}
-	// TODO: fix pipeline append
-	c.PipeAppend("FLUSHALL")
-	c.PipeAppend("CLUSTER", "RESET", mode)
-
-	if !a.Connections().ValidatePipeResp(c, addr, "Cannot reset node") {
+	err = c.DoPipe([]radix.CmdAction{
+		radix.Cmd(nil, "FLUSHALL", ""),
+		radix.Cmd(nil, "CLUSTER", "RESET", mode),
+	})
+	if err != nil {
 		return fmt.Errorf("Cannot reset node %s", addr)
 	}
 
@@ -551,16 +548,16 @@ func selectMySlaves(me *Node, nodes Nodes) (Nodes, error) {
 }
 
 func (a *Admin) getInfos(c ClientInterface, addr string) (*NodeInfos, error) {
-	var resp string
+	var resp resp2.Any
 	err := c.DoCmd(&resp, "CLUSTER", "NODES")
 	if err != nil {
 		return nil, fmt.Errorf("Wrong format from CLUSTER NODES: %v", err)
 	}
-	if err = a.Connections().ValidateResp(resp, addr, "Unable to retrieve Node Info"); err != nil {
+	if err = a.Connections().ValidateResp(&resp, addr, "Unable to retrieve Node Info"); err != nil {
 		return nil, err
 	}
-
-	nodeInfos := DecodeNodeInfos(&resp, addr)
+	node := resp.I.(resp2.BulkString)
+	nodeInfos := DecodeNodeInfos(&node.S, addr)
 
 	if glog.V(3) {
 		//Retrieve server info for debugging
@@ -568,12 +565,13 @@ func (a *Admin) getInfos(c ClientInterface, addr string) (*NodeInfos, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Wrong format from INFO SERVER: %v", err)
 		}
-		if err = a.Connections().ValidateResp(resp, addr, "Unable to retrieve Node Info"); err != nil {
+		if err = a.Connections().ValidateResp(&resp, addr, "Unable to retrieve Node Info"); err != nil {
 			return nil, err
 		}
 
 		var serverStartTime time.Time
-		serverStartTime, err = DecodeNodeStartTime(&resp)
+		node = resp.I.(resp2.BulkString)
+		serverStartTime, err = DecodeNodeStartTime(&node.S)
 
 		if err != nil {
 			return nil, err
