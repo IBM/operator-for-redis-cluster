@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 // FixNodesNotMeet Use to fix Redis nodes that didn't them.

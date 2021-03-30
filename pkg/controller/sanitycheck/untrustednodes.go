@@ -6,9 +6,9 @@ import (
 	kapi "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
 
-	rapi "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	"github.com/amadeusitgroup/redis-operator/pkg/controller/pod"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 // FixUntrustedNodes used to remove Nodes that are not trusted by other nodes. It can append when a node

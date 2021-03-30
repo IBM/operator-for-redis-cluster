@@ -11,9 +11,9 @@ import (
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kfakeclient "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/config"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis/fake"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis/fake/admin"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 )
 
 func TestTestAndWaitConnection(t *testing.T) {

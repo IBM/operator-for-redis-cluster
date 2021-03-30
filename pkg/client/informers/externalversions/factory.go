@@ -27,9 +27,9 @@ SOFTWARE.
 package externalversions
 
 import (
-	versioned "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/amadeusitgroup/redis-operator/pkg/client/informers/externalversions/internalinterfaces"
-	redis "github.com/amadeusitgroup/redis-operator/pkg/client/informers/externalversions/redis"
+	versioned "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/internalinterfaces"
+	redis "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/redis"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

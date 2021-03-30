@@ -18,10 +18,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	rclient "github.com/amadeusitgroup/redis-operator/pkg/client"
-	redisinformers "github.com/amadeusitgroup/redis-operator/pkg/client/informers/externalversions"
-	"github.com/amadeusitgroup/redis-operator/pkg/controller"
-	"github.com/amadeusitgroup/redis-operator/pkg/garbagecollector"
+	rclient "github.com/TheWeatherCompany/icm-redis-operator/pkg/client"
+	redisinformers "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/garbagecollector"
 )
 
 // RedisOperator constains all info to run the redis operator.
@@ -150,7 +150,7 @@ func (op *RedisOperator) configureHealth() {
 func (op *RedisOperator) runHTTPServer(stop <-chan struct{}) error {
 
 	go func() {
-		glog.Info("Listening on http://%s\n", op.httpServer.Addr)
+		glog.Infof("Listening on http://%s\n", op.httpServer.Addr)
 
 		if err := op.httpServer.ListenAndServe(); err != nil {
 			glog.Error("Http server error: ", err)

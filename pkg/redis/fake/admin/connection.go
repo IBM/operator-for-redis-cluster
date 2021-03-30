@@ -1,7 +1,7 @@
 package admin
 
 import (
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 // Connections fake redis connection handler, do nothing
@@ -9,7 +9,7 @@ type Connections struct {
 	clients map[string]redis.ClientInterface
 }
 
-// Close used to close all possible resources instanciate by the Connections
+// Close used to close all possible resources instantiate by the Connections
 func (cnx *Connections) Close() {
 }
 

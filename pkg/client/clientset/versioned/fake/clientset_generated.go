@@ -24,9 +24,9 @@ SOFTWARE.
 package fake
 
 import (
-	clientset "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned"
-	redisoperatorv1 "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned/typed/redis/v1"
-	fakeredisoperatorv1 "github.com/amadeusitgroup/redis-operator/pkg/client/clientset/versioned/typed/redis/v1/fake"
+	clientset "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
+	redisoperatorv1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned/typed/redis/v1"
+	fakeredisoperatorv1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned/typed/redis/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

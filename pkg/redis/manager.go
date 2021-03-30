@@ -1,6 +1,6 @@
 package redis
 
-import "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
+import "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 
 // Manager regroups Function for managing a Redis Cluster
 type Manager struct {

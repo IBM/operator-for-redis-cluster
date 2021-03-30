@@ -3,7 +3,7 @@ package redisnode
 import (
 	"time"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/config"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
 	"github.com/spf13/pflag"
 )
 

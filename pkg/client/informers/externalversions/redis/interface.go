@@ -27,8 +27,8 @@ SOFTWARE.
 package redisoperator
 
 import (
-	internalinterfaces "github.com/amadeusitgroup/redis-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/amadeusitgroup/redis-operator/pkg/client/informers/externalversions/redis/v1"
+	internalinterfaces "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/internalinterfaces"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/redis/v1"
 )
 
 // Interface provides access to each of this group's versions.

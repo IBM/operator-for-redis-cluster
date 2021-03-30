@@ -7,8 +7,8 @@ import (
 
 	kapi "k8s.io/api/core/v1"
 
-	rapi "github.com/amadeusitgroup/redis-operator/pkg/api/redis/v1"
-	podctrl "github.com/amadeusitgroup/redis-operator/pkg/controller/pod"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 
 func compareStatus(old, new *rapi.RedisClusterClusterStatus) bool {

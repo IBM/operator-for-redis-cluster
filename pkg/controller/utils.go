@@ -8,8 +8,8 @@ import (
 
 	apiv1 "k8s.io/api/core/v1"
 
-	"github.com/amadeusitgroup/redis-operator/pkg/config"
-	"github.com/amadeusitgroup/redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 // NewRedisAdmin builds and returns new redis.Admin from the list of pods

@@ -15,7 +15,7 @@ env:
   matrix:
   - CLUSTER=openshift
   - CLUSTER=kubernetes
-go_import_path: github.com/amadeusitgroup/redis-operator
+go_import_path: github.com/TheWeatherCompany/icm-redis-operator
 before_install:
 #  install nsenter for helm and port forwarding
 - sudo apt-get -qq update
