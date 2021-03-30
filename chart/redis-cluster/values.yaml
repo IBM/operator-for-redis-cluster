@@ -10,9 +10,10 @@ annotations:
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
 image:
-  repository: redisoperator/redisnode
-  tag: master
+  repository: us.icr.io/icm-docker-images/redisnode
+  tag: 0.1.5
   pullPolicy: IfNotPresent
+imagePullSecret:
 log:
   level: 6
 resources: {}

@@ -150,7 +150,7 @@ func (op *RedisOperator) configureHealth() {
 func (op *RedisOperator) runHTTPServer(stop <-chan struct{}) error {
 
 	go func() {
-		glog.Info("Listening on http://%s\n", op.httpServer.Addr)
+		glog.Infof("Listening on http://%s\n", op.httpServer.Addr)
 
 		if err := op.httpServer.ListenAndServe(); err != nil {
 			glog.Error("Http server error: ", err)

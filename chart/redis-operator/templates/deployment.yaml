@@ -21,6 +21,10 @@ spec:
         app: {{ template "name" . }}
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
       serviceAccountName: "{{ .Values.serviceAccount }}"
       containers:
         - name: {{ .Chart.Name }}
