@@ -2,7 +2,6 @@ package sanitycheck
 
 import (
 	"fmt"
-
 	"github.com/golang/glog"
 
 	"github.com/amadeusitgroup/redis-operator/pkg/redis"
@@ -59,10 +58,8 @@ func nodesMeet(admin redis.AdminInterface, node1, node2 *redis.Node) error {
 	if err != nil {
 		return fmt.Errorf("[Sanity] unable get connection for node:%s, err:%v", node1.IPPort(), err)
 	}
-	resp := c.Cmd("CLUSTER", "MEET", node2.IP, node2.Port)
-	if resp.Err != nil {
-		return fmt.Errorf("[Sanity] unable to execute the cluster meet command, err:%v", resp.Err)
+	if err = c.DoCmd(nil,"CLUSTER", "MEET", node2.IP, node2.Port); err != nil {
+		return fmt.Errorf("[Sanity] unable to execute the cluster meet command, err:%v", err)
 	}
-
 	return nil
 }
