@@ -257,13 +257,12 @@ func readinessCheck(addr string) error {
 	}
 	defer client.Close()
 
-	var array []string
-	err := client.DoCmd(&array,"CLUSTER", "SLOTS")
+	var resp radix.ClusterTopo
+	err := client.DoCmd(&resp,"CLUSTER", "SLOTS")
 	if err != nil {
-		return fmt.Errorf("Readiness failed, cluster slots response err: %v", rediserr)
+		return fmt.Errorf("Readiness failed, cluster slots response err: %v", err)
 	}
-
-	if len(array) == 0 {
+	if len(resp) == 0 {
 		return fmt.Errorf("Readiness failed, cluster slots response empty")
 	}
 	glog.V(6).Info("Readiness probe ok")
