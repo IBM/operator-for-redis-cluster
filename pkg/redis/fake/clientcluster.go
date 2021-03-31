@@ -3,13 +3,12 @@ package fake
 import (
 	"fmt"
 	"github.com/mediocregopher/radix/v3"
-	"github.com/mediocregopher/radix/v3/resp/resp2"
 )
 
 // ClientCluster struct used to simulate in unittest the clientCluster from radix
 type ClientCluster struct {
-	Resps   map[string]*resp2.Any
-	Resp    *resp2.Any
+	Resps   map[string]interface{}
+	Resp    interface{}
 	Clients map[string]*radix.Client
 	Client  *radix.Client
 	Addrs   map[string]string
@@ -22,7 +21,7 @@ type ClientCluster struct {
 // NewClientCluster create a new ClientCluster structure and initialize all field to nil or empty map/strings
 func NewClientCluster() *ClientCluster {
 	return &ClientCluster{
-		Resps:   make(map[string]*resp2.Any),
+		Resps:   make(map[string]interface{}),
 		Clients: make(map[string]*radix.Client),
 		Addrs:   make(map[string]string),
 		Servers: make(map[string]*RedisServer),
@@ -45,7 +44,7 @@ func (c *ClientCluster) Reset() error {
 // command's reply. The command *must* have a key parameter (i.e. len(args) >=
 // 1). If any MOVED or ASK errors are returned they will be transparently
 // handled by this method.
-func (c *ClientCluster) Cmd(cmd string, args ...interface{}) *resp2.Any {
+func (c *ClientCluster) Cmd(cmd string, args ...interface{}) interface{} {
 	command := cmd
 	for _, arg := range args {
 		command = fmt.Sprintf("%s %s", command, arg)

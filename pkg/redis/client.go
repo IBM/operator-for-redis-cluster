@@ -10,9 +10,6 @@ type ClientInterface interface {
 	// Close closes the connection.
 	Close() error
 
-	// DoCmd calls the given Redis command with the specified key and retrieves a result.
-	DoFlatCmd(rcv interface{}, cmd, key string, args ...interface{}) error
-
 	// DoCmd calls the given Redis command and retrieves a result.
 	DoCmd(rcv interface{}, cmd string, args ...string) error
 
@@ -39,11 +36,6 @@ func NewClient(addr string, cnxTimeout time.Duration, commandsMapping map[string
 // Close closes the connection.
 func (c *Client) Close() error {
 	return c.client.Close()
-}
-
-// Cmd calls the given Redis command.
-func (c *Client) DoFlatCmd(rcv interface{}, cmd, key string, args ...interface{}) error {
-	return c.client.Do(radix.FlatCmd(rcv, c.getCommand(cmd), key, args...))
 }
 
 // Cmd calls the given Redis command.

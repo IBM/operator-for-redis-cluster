@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/mediocregopher/radix/v3/resp/resp2"
 )
 
 const (
@@ -52,7 +51,7 @@ type AdminConnectionsInterface interface {
 	ReplaceAll(addrs []string)
 	// ValidateResp check the redis resp, eventually reconnect on connection error
 	// in case of error, customize the error, log it and return it
-	ValidateResp(resp *resp2.Any, err error, addr, errMessage string) error
+	ValidateResp(resp interface{}, err error, addr, errMessage string) error
 	// ValidatePipeResp wait for all answers in the pipe and validate the response
 	// in case of network issue clear the pipe and return
 	// in case of error return false
@@ -225,7 +224,7 @@ func (cnx *AdminConnections) Reset() {
 
 // ValidateResp checks the redis resp and will attempt to reconnect on connection error
 // in case of error, customize the error, log it and return it
-func (cnx *AdminConnections) ValidateResp(resp *resp2.Any, err error, addr, errMessage string) error {
+func (cnx *AdminConnections) ValidateResp(resp interface{}, err error, addr, errMessage string) error {
 	if resp == nil {
 		glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)
 		return fmt.Errorf("%s: Unable to connect to node %s", errMessage, addr)
@@ -306,8 +305,8 @@ func (cnx *AdminConnections) connect(addr string) (ClientInterface, error) {
 		return nil, err
 	}
 	if cnx.clientName != "" {
-		var resp resp2.Any
-		cmdErr := c.DoCmd(&resp, "CLIENT SETNAME", cnx.clientName)
+		var resp string
+		cmdErr := c.DoCmd(&resp, "CLIENT", "SETNAME", cnx.clientName)
 		return c, cnx.ValidateResp(&resp, cmdErr, addr, "Unable to run command CLIENT SETNAME")
 	}
 

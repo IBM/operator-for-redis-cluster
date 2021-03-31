@@ -155,7 +155,7 @@ func (n Nodes) GetNodesByFunc(f FindNodeFunc) (Nodes, error) {
 		}
 	}
 	if len(nodes) == 0 {
-		return nodes, nodeNotFoundedError
+		return nodes, nodeNotFoundError
 	}
 	return nodes, nil
 }
@@ -275,7 +275,7 @@ func (n Nodes) GetNodeByID(id string) (*Node, error) {
 		}
 	}
 
-	return nil, nodeNotFoundedError
+	return nil, nodeNotFoundError
 }
 
 // CountByFunc gives the number elements of NodeSlice that return true for the passed func.

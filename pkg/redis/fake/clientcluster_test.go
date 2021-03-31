@@ -1,15 +1,14 @@
 package fake
 
 import (
-	"github.com/mediocregopher/radix/v3/resp/resp2"
 	"testing"
 )
 
 func TestCmd(t *testing.T) {
 	mock := NewClientCluster()
-	mock.Resps["CLUSTER NODES"] = &resp2.Any{I: "someanswer"}
+	mock.Resps["CLUSTER NODES"] = "someanswer"
 	resp := mock.Cmd("CLUSTER", "NODES")
-	val, ok := resp.I.(string)
+	val, ok := resp.(string)
 	if !ok {
 		t.Fail()
 	}

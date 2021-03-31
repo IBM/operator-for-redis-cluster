@@ -2,7 +2,6 @@ package admin
 
 import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
-	"github.com/mediocregopher/radix/v3/resp/resp2"
 )
 
 // Connections fake redis connection handler, do nothing
@@ -73,7 +72,7 @@ func (cnx *Connections) Reset() {
 
 // ValidateResp check the redis resp, eventually reconnect on connection error
 // in case of error, customize the error, log it and return it
-func (cnx *Connections) ValidateResp(resp *resp2.Any, err error, addr, errMessage string) error {
+func (cnx *Connections) ValidateResp(resp interface{}, err error, addr, errMessage string) error {
 	return nil
 }
 
