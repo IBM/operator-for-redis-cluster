@@ -1,0 +1,6 @@
+numberOfMaster: 3
+replicationFactor: 1
+imagePullSecret: all-icr-io
+image:
+  tag: 0.1.6-radix
+  pullPolicy: Always
