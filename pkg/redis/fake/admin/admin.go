@@ -168,7 +168,7 @@ func (a *Admin) ForgetNodeByAddr(addr string) error {
 }
 
 // SetSlots use to set SETSLOT command on several slots
-func (a *Admin) SetSlots(addr, action string, slots []redis.Slot, nodeID string) error {
+func (a *Admin) SetSlots(addr, action string, slots redis.SlotSlice, nodeID string) error {
 	val, ok := a.SetSlotsRet[addr]
 	if !ok {
 		val = nil
@@ -177,7 +177,7 @@ func (a *Admin) SetSlots(addr, action string, slots []redis.Slot, nodeID string)
 }
 
 // AddSlots use to set ADDSLOT command on several slots
-func (a *Admin) AddSlots(addr string, slots []redis.Slot) error {
+func (a *Admin) AddSlots(addr string, slots redis.SlotSlice) error {
 	val, ok := a.AddSlotsRet[addr]
 	if !ok {
 		val = nil
@@ -186,7 +186,7 @@ func (a *Admin) AddSlots(addr string, slots []redis.Slot) error {
 }
 
 // DelSlots exec the redis command to del slots in a pipeline
-func (a *Admin) DelSlots(addr string, slots []redis.Slot) error {
+func (a *Admin) DelSlots(addr string, slots redis.SlotSlice) error {
 	val, ok := a.DelSlotsRet[addr]
 	if !ok {
 		val = nil
@@ -213,7 +213,7 @@ func (a *Admin) CountKeysInSlot(addr string, node redis.Slot) (int64, error) {
 }
 
 // MigrateKeys use to migrate keys from slots to other slots
-func (a *Admin) MigrateKeys(addr string, dest *redis.Node, slots []redis.Slot, batch, timeout int, replace bool) (int, error) {
+func (a *Admin) MigrateKeys(addr string, dest *redis.Node, slots redis.SlotSlice, batch, timeout int, replace bool) (int, error) {
 	val, ok := a.MigrateKeysRet[addr]
 	if !ok {
 		val = MigrateKeyRetType{Nb: 0, Err: nil}

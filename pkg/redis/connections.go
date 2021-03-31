@@ -230,6 +230,7 @@ func (cnx *AdminConnections) ValidateResp(resp *resp2.Any, addr, errMessage stri
 		glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)
 		return fmt.Errorf("%s: Unable to connect to node %s", errMessage, addr)
 	}
+	// TODO: correctly validate response object
 	var br bufio.Reader
 	if err := resp.UnmarshalRESP(&br); err != nil {
 		cnx.handleError(addr, err)
@@ -308,7 +309,7 @@ func (cnx *AdminConnections) connect(addr string) (ClientInterface, error) {
 	}
 	if cnx.clientName != "" {
 		var resp resp2.Any
-		err = c.DoCmd(&resp, "CLIENT", "SETNAME", cnx.clientName)
+		err = c.DoCmd(&resp, "CLIENT SETNAME", cnx.clientName)
 		return c, cnx.ValidateResp(&resp, addr, "Unable to run command CLIENT SETNAME")
 	}
 

@@ -49,17 +49,17 @@ type AdminInterface interface {
 	ForgetNodeByAddr(id string) error
 	// SetSlots exect the redis command to set slots in a pipeline, provide
 	// and empty nodeID if the set slots commands doesn't take a nodeID in parameter
-	SetSlots(addr string, action string, slots []Slot, nodeID string) error
+	SetSlots(addr string, action string, slots SlotSlice, nodeID string) error
 	// AddSlots exect the redis command to add slots in a pipeline
-	AddSlots(addr string, slots []Slot) error
+	AddSlots(addr string, slots SlotSlice) error
 	// DelSlots exec the redis command to del slots in a pipeline
-	DelSlots(addr string, slots []Slot) error
+	DelSlots(addr string, slots SlotSlice) error
 	// GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
 	GetKeysInSlot(addr string, slot Slot, batch int, limit bool) ([]string, error)
 	// CountKeysInSlot exec the redis command to count the keys given slot on the node
 	CountKeysInSlot(addr string, slot Slot) (int64, error)
 	// MigrateKeys from addr to destination node. returns number of slot migrated. If replace is true, replace key on busy error
-	MigrateKeys(addr string, dest *Node, slots []Slot, batch, timeout int, replace bool) (int, error)
+	MigrateKeys(addr string, dest *Node, slots SlotSlice, batch, timeout int, replace bool) (int, error)
 	// FlushAndReset reset the cluster configuration of the node, the node is flushed in the same pipe to ensure reset works
 	FlushAndReset(addr string, mode string) error
 	// FlushAll flush all keys in cluster
@@ -239,7 +239,7 @@ func (a *Admin) StartFailover(addr string) error {
 			continue
 		}
 		var resp resp2.Any
-		err := slaveClient.DoCmd(&resp, "CLUSTER", "FAILOVER")
+		err := slaveClient.DoCmd(&resp, "CLUSTER FAILOVER")
 		if err = a.Connections().ValidateResp(&resp, aSlave.IPPort(), "Unable to execute Failover"); err != nil {
 			continue
 		}
@@ -327,7 +327,7 @@ func (a *Admin) ForgetNodeByAddr(addr string) error {
 }
 
 // SetSlots use to set SETSLOT command on several slots
-func (a *Admin) SetSlots(addr, action string, slots []Slot, nodeID string) error {
+func (a *Admin) SetSlots(addr, action string, slots SlotSlice, nodeID string) error {
 	if len(slots) == 0 {
 		return nil
 	}
@@ -337,9 +337,9 @@ func (a *Admin) SetSlots(addr, action string, slots []Slot, nodeID string) error
 	}
 	for _, slot := range slots {
 		if nodeID == "" {
-			err = c.DoFlatCmd(nil, "CLUSTER SETSLOT", slot.String(), action)
+			err = c.DoCmd(nil, "CLUSTER SETSLOT", slot.String(), action)
 		} else {
-			err = c.DoFlatCmd(nil, "CLUSTER SETSLOT", slot.String(), action, nodeID)
+			err = c.DoCmd(nil, "CLUSTER SETSLOT", slot.String(), action, nodeID)
 		}
 		if err != nil {
 			return fmt.Errorf("Error occured during CLUSTER SETSLOT: %v", err)
@@ -350,7 +350,7 @@ func (a *Admin) SetSlots(addr, action string, slots []Slot, nodeID string) error
 }
 
 // AddSlots use to ADDSLOT commands on several slots
-func (a *Admin) AddSlots(addr string, slots []Slot) error {
+func (a *Admin) AddSlots(addr string, slots SlotSlice) error {
 	if len(slots) == 0 {
 		return nil
 	}
@@ -358,14 +358,13 @@ func (a *Admin) AddSlots(addr string, slots []Slot) error {
 	if err != nil {
 		return err
 	}
-
 	var resp resp2.Any
-	err = c.DoFlatCmd(&resp, "CLUSTER", "ADDSLOTS", slots)
+	err = c.DoCmd(&resp, "CLUSTER ADDSLOTS", slots.ConvertToStrings()...)
 	return a.Connections().ValidateResp(&resp, addr, "Unable to run CLUSTER ADDSLOTS")
 }
 
 // DelSlots exec the redis command to del slots in a pipeline
-func (a *Admin) DelSlots(addr string, slots []Slot) error {
+func (a *Admin) DelSlots(addr string, slots SlotSlice) error {
 	if len(slots) == 0 {
 		return nil
 	}
@@ -374,8 +373,7 @@ func (a *Admin) DelSlots(addr string, slots []Slot) error {
 		return err
 	}
 	var resp resp2.Any
-	err = c.DoFlatCmd(&resp, "CLUSTER", "DELSLOTS", slots)
-
+	err = c.DoCmd(&resp, "CLUSTER DELSLOTS", slots.ConvertToStrings()...)
 	return a.Connections().ValidateResp(&resp, addr, "Unable to run CLUSTER DELSLOTS")
 }
 
@@ -391,7 +389,7 @@ func (a *Admin) GetKeysInSlot(addr string, slot Slot, batch int, limit bool) ([]
 
 	for {
 		var resp resp2.Any
-		err = c.DoFlatCmd(&resp,"CLUSTER GETKEYSINSLOT", slot, strconv.Itoa(batch))
+		err = c.DoCmd(&resp,"CLUSTER GETKEYSINSLOT", slot.String(), strconv.Itoa(batch))
 		if err := a.Connections().ValidateResp(&resp, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
 			return allKeys, err
 		}
@@ -427,7 +425,7 @@ func (a *Admin) CountKeysInSlot(addr string, slot Slot) (int64, error) {
 
 // MigrateKeys use to migrate keys from slots to other slots. if replace is true, replace key on busy error
 // timeout is in milliseconds
-func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, timeout int, replace bool) (int, error) {
+func (a *Admin) MigrateKeys(addr string, dest *Node, slots SlotSlice, batch int, timeout int, replace bool) (int, error) {
 	if len(slots) == 0 {
 		return 0, nil
 	}
@@ -498,7 +496,7 @@ func (a *Admin) DetachSlave(slave *Node) error {
 		return err
 	}
 	var resp resp2.Any
-	err = c.DoCmd(&resp, "CLUSTER RESET", "SOFT")
+	err = c.DoCmd(&resp, "CLUSTER RESET SOFT")
 	if err = a.Connections().ValidateResp(&resp, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
 		return err
 	}
@@ -521,8 +519,8 @@ func (a *Admin) FlushAndReset(addr string, mode string) error {
 		return err
 	}
 	err = c.DoPipe([]radix.CmdAction{
-		radix.Cmd(nil, "FLUSHALL", ""),
-		radix.Cmd(nil, "CLUSTER", "RESET", mode),
+		radix.Cmd(nil, "FLUSHALL"),
+		radix.Cmd(nil, "CLUSTER RESET", mode),
 	})
 	if err != nil {
 		return fmt.Errorf("Cannot reset node %s", addr)

@@ -259,7 +259,7 @@ func readinessCheck(addr string) error {
 	defer client.Close()
 	// TODO: fix response type?
 	var array resp2.Array
-	err := client.DoCmd(&array,"CLUSTER", "SLOTS")
+	err := client.DoCmd(&array,"CLUSTER SLOTS")
 	if err != nil {
 		return fmt.Errorf("Readiness failed, cluster slots response err: %v", rediserr)
 	}
