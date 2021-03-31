@@ -73,7 +73,7 @@ func (cnx *Connections) Reset() {
 
 // ValidateResp check the redis resp, eventually reconnect on connection error
 // in case of error, customize the error, log it and return it
-func (cnx *Connections) ValidateResp(resp *resp2.Any, addr, errMessage string) error {
+func (cnx *Connections) ValidateResp(resp *resp2.Any, err error, addr, errMessage string) error {
 	return nil
 }
 
