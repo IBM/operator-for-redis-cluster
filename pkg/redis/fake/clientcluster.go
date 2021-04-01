@@ -2,7 +2,7 @@ package fake
 
 import (
 	"fmt"
-	"github.com/mediocregopher/radix/v3"
+	"github.com/mediocregopher/radix/v4"
 )
 
 // ClientCluster struct used to simulate in unittest the clientCluster from radix

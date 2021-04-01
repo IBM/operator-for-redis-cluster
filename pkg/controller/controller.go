@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	"math"
@@ -134,17 +135,18 @@ func (c *Controller) Run(stop <-chan struct{}) error {
 }
 
 func (c *Controller) runWorker() {
-	for c.processNextItem() {
+	ctx := context.Background()
+	for c.processNextItem(ctx) {
 	}
 }
 
-func (c *Controller) processNextItem() bool {
+func (c *Controller) processNextItem(ctx context.Context) bool {
 	key, quit := c.queue.Get()
 	if quit {
 		return false
 	}
 	defer c.queue.Done(key)
-	needRequeue, err := c.sync(key.(string))
+	needRequeue, err := c.sync(ctx, key.(string))
 	if err == nil {
 		c.queue.Forget(key)
 	} else {
@@ -161,7 +163,7 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
-func (c *Controller) sync(key string) (bool, error) {
+func (c *Controller) sync(ctx context.Context, key string) (bool, error) {
 	glog.V(2).Infof("sync() key:%s", key)
 	startTime := metav1.Now()
 	defer func() {
@@ -207,7 +209,7 @@ func (c *Controller) sync(key string) (bool, error) {
 		glog.V(4).Infof("RedisCluster %s/%s: startTime updated", namespace, name)
 		return false, nil
 	}
-	return c.syncCluster(rediscluster)
+	return c.syncCluster(ctx, rediscluster)
 }
 
 func (c *Controller) getRedisClusterService(redisCluster *rapi.RedisCluster) (*apiv1.Service, error) {
@@ -250,7 +252,7 @@ func (c *Controller) getRedisClusterPodDisruptionBudget(redisCluster *rapi.Redis
 	return pdb, nil
 }
 
-func (c *Controller) syncCluster(rediscluster *rapi.RedisCluster) (forceRequeue bool, err error) {
+func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCluster) (forceRequeue bool, err error) {
 	glog.V(6).Info("syncCluster START")
 	defer glog.V(6).Info("syncCluster STOP")
 	forceRequeue = false
@@ -293,13 +295,13 @@ func (c *Controller) syncCluster(rediscluster *rapi.RedisCluster) (forceRequeue 
 	}
 
 	// RedisAdmin is used access the Redis process in the different pods.
-	admin, err := NewRedisAdmin(redisClusterPods, &c.config.redis)
+	admin, err := NewRedisAdmin(ctx, redisClusterPods, &c.config.redis)
 	if err != nil {
 		return forceRequeue, fmt.Errorf("unable to create the redis.Admin, err:%v", err)
 	}
 	defer admin.Close()
 
-	clusterInfos, errGetInfos := admin.GetClusterInfos()
+	clusterInfos, errGetInfos := admin.GetClusterInfos(ctx)
 	if errGetInfos != nil {
 		glog.Errorf("Error when get cluster infos to rebuild bom : %v", errGetInfos)
 		if clusterInfos.Status == redis.ClusterInfosPartial {
@@ -333,7 +335,7 @@ func (c *Controller) syncCluster(rediscluster *rapi.RedisCluster) (forceRequeue 
 	}
 
 	// Now check if the Operator need to execute some operation the redis cluster. if yes run the clusterAction(...) method.
-	needSanitize, err := c.checkSanityCheck(rediscluster, admin, clusterInfos)
+	needSanitize, err := c.checkSanityCheck(ctx, rediscluster, admin, clusterInfos)
 	if err != nil {
 		glog.Errorf("checkSanityCheck, error happened in dryrun mode, err:%v", err)
 		return false, err
@@ -342,7 +344,7 @@ func (c *Controller) syncCluster(rediscluster *rapi.RedisCluster) (forceRequeue 
 	if (allPodsNotReady && needClusterOperation(rediscluster)) || needSanitize {
 		var requeue bool
 		forceRequeue = false
-		requeue, err = c.clusterAction(admin, rediscluster, clusterInfos)
+		requeue, err = c.clusterAction(ctx, admin, rediscluster, clusterInfos)
 		if err != nil {
 			glog.Errorf("error during action on cluster: %s-%s, err: %v", rediscluster.Namespace, rediscluster.Name, err)
 		} else if requeue {
@@ -363,8 +365,8 @@ func (c *Controller) syncCluster(rediscluster *rapi.RedisCluster) (forceRequeue 
 	return forceRequeue, nil
 }
 
-func (c *Controller) checkSanityCheck(cluster *rapi.RedisCluster, admin redis.AdminInterface, infos *redis.ClusterInfos) (bool, error) {
-	return sanitycheck.RunSanityChecks(admin, &c.config.redis, c.podControl, cluster, infos, true)
+func (c *Controller) checkSanityCheck(ctx context.Context, cluster *rapi.RedisCluster, admin redis.AdminInterface, infos *redis.ClusterInfos) (bool, error) {
+	return sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, true)
 }
 
 func (c *Controller) updateClusterIfNeed(cluster *rapi.RedisCluster, newStatus *rapi.RedisClusterClusterStatus) (bool, error) {

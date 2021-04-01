@@ -1,6 +1,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/util/errors"
@@ -11,7 +12,7 @@ import (
 )
 
 // FixGhostMasterNodes used to removed gost redis nodes
-func FixGhostMasterNodes(admin redis.AdminInterface, podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, info *redis.ClusterInfos) (bool, error) {
+func FixGhostMasterNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, info *redis.ClusterInfos) (bool, error) {
 	ghosts := listGhostMasterNodes(podControl, cluster, info)
 	var errs []error
 	doneAnAction := false
@@ -19,7 +20,7 @@ func FixGhostMasterNodes(admin redis.AdminInterface, podControl pod.RedisCluster
 		doneAnAction = true
 		glog.Infof("forget ghost master nodes with no slot, id:%s", nodeID)
 
-		if err := admin.ForgetNode(nodeID); err != nil {
+		if err := admin.ForgetNode(ctx, nodeID); err != nil {
 			errs = append(errs, err)
 		}
 	}

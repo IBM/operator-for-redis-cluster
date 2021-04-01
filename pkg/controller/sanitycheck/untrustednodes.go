@@ -1,6 +1,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"github.com/golang/glog"
 
 	kapi "k8s.io/api/core/v1"
@@ -13,7 +14,7 @@ import (
 
 // FixUntrustedNodes used to remove Nodes that are not trusted by other nodes. It can append when a node
 // are removed from the cluster (with the "forget nodes" command) but try to rejoins the cluster.
-func FixUntrustedNodes(admin redis.AdminInterface, podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
+func FixUntrustedNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
 	untrustedNode := listUntrustedNodes(infos)
 	var errs []error
 	doneAnAction := false
@@ -48,7 +49,7 @@ func FixUntrustedNodes(admin redis.AdminInterface, podControl pod.RedisClusterCo
 		}
 		doneAnAction = true
 		if !dryRun {
-			if err := admin.ForgetNode(id); err != nil {
+			if err := admin.ForgetNode(ctx, id); err != nil {
 				errs = append(errs, err)
 			}
 		}

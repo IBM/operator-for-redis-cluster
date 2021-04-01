@@ -1,7 +1,9 @@
 package redis
 
 import (
-	"github.com/mediocregopher/radix/v3"
+	"context"
+	"github.com/mediocregopher/radix/v4"
+	"net"
 	"strings"
 	"time"
 )
@@ -11,25 +13,35 @@ type ClientInterface interface {
 	Close() error
 
 	// DoCmd calls the given Redis command and retrieves a result.
-	DoCmd(rcv interface{}, cmd string, args ...string) error
+	DoCmd(ctx context.Context, rcv interface{}, cmd string, args ...string) error
 
-	// DoPipe writes multiple Redis commands in a single write and reads their responses.
-	DoPipe(pipeline []radix.CmdAction) error
+	// PipeAppend adds the given call to the pipeline queue.
+	PipeAppend(action radix.Action)
+
+	// PipeReset discards all Actions and resets all internal state.
+	PipeReset()
 }
 
 // Client structure representing a client connection to redis
 type Client struct {
 	commandsMapping map[string]string
 	client          radix.Client
+	pipeline        *radix.Pipeline
 }
 
 // NewClient build a client connection and connect to a redis address
-func NewClient(addr string, cnxTimeout time.Duration, commandsMapping map[string]string) (*Client, error) {
+func NewClient(ctx context.Context, addr string, cnxTimeout time.Duration, commandsMapping map[string]string) (*Client, error) {
 	var err error
 	c := &Client{
 		commandsMapping: commandsMapping,
+		pipeline: radix.NewPipeline(),
 	}
-	c.client, err = radix.Dial("tcp", addr, radix.DialConnectTimeout(cnxTimeout))
+	dialer := &radix.Dialer{
+		NetDialer: &net.Dialer{
+			Timeout:       cnxTimeout,
+		},
+	}
+	c.client, err = dialer.Dial(ctx, "tcp", addr)
 	return c, err
 }
 
@@ -38,13 +50,20 @@ func (c *Client) Close() error {
 	return c.client.Close()
 }
 
-// Cmd calls the given Redis command.
-func (c *Client) DoCmd(rcv interface{}, cmd string, args ...string) error {
-	return c.client.Do(radix.Cmd(rcv, c.getCommand(cmd), args...))
+// DoCmd calls the given Redis command.
+func (c *Client) DoCmd(ctx context.Context, rcv interface{}, cmd string, args ...string) error {
+	return c.client.Do(ctx, radix.Cmd(rcv, c.getCommand(cmd), args...))
 }
 
-func (c *Client) DoPipe(pipeline []radix.CmdAction) error {
-	return c.client.Do(radix.Pipeline(pipeline...))
+// PipeAppend adds the given call to the pipeline queue.
+func (c *Client) PipeAppend(action radix.Action) {
+	c.pipeline.Append(action)
+}
+
+// PipeReset discards all Actions and resets all internal state.
+func (c *Client) PipeReset() {
+	c.pipeline.Reset()
+	c.pipeline.Properties()
 }
 
 // getCommand return the command name after applying rename-command

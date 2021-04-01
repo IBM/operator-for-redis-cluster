@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
@@ -15,7 +16,7 @@ func (cnx *Connections) Close() {
 
 // Add connect to the given address and
 // register the client connection to the map
-func (cnx *Connections) Add(addr string) error {
+func (cnx *Connections) Add(ctx context.Context, addr string) error {
 	return nil
 }
 
@@ -25,7 +26,7 @@ func (cnx *Connections) Remove(addr string) {
 
 // Get returns a client connection for the given adress,
 // connects if the connection is not in the map yet
-func (cnx *Connections) Get(addr string) (redis.ClientInterface, error) {
+func (cnx *Connections) Get(ctx context.Context, addr string) (redis.ClientInterface, error) {
 	return nil, nil
 }
 
@@ -51,19 +52,19 @@ func (cnx *Connections) GetSelected(addrs []string) map[string]redis.ClientInter
 
 // Reconnect force a reconnection on the given address
 // is the address is not part of the map, act like Add
-func (cnx *Connections) Reconnect(addr string) error {
+func (cnx *Connections) Reconnect(ctx context.Context, addr string) error {
 	return nil
 }
 
 // AddAll connect to the given list of addresses and
 // register them in the map
 // fail silently
-func (cnx *Connections) AddAll(addrs []string) {
+func (cnx *Connections) AddAll(ctx context.Context, addrs []string) {
 }
 
 // ReplaceAll clear the pool and re-populate it with new connections
 // fail silently
-func (cnx *Connections) ReplaceAll(addrs []string) {
+func (cnx *Connections) ReplaceAll(ctx context.Context, addrs []string) {
 }
 
 // Reset close all connections and clear the connection map
@@ -72,13 +73,13 @@ func (cnx *Connections) Reset() {
 
 // ValidateResp check the redis resp, eventually reconnect on connection error
 // in case of error, customize the error, log it and return it
-func (cnx *Connections) ValidateResp(resp interface{}, err error, addr, errMessage string) error {
+func (cnx *Connections) ValidateResp(ctx context.Context, resp interface{}, err error, addr, errMessage string) error {
 	return nil
 }
 
 // ValidatePipeResp wait for all answers in the pipe and validate the response
 // in case of network issue clear the pipe and return
 // in case of error, return false
-func (cnx *Connections) ValidatePipeResp(client redis.ClientInterface, addr, errMessage string) bool {
-	return true
-}
+//func (cnx *Connections) ValidatePipeResp(client redis.ClientInterface, addr, errMessage string) bool {
+//	return true
+//}

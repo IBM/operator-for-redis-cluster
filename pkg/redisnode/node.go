@@ -1,6 +1,7 @@
 package redisnode
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -119,33 +120,33 @@ func (n *Node) addSettingInConfigFile(line string) error {
 }
 
 // InitRedisCluster used to init a redis cluster with the current node
-func (n *Node) InitRedisCluster(addr string) error {
+func (n *Node) InitRedisCluster(ctx context.Context, addr string) error {
 	glog.Info("InitRedis Cluster... starting")
-	err := n.RedisAdmin.InitRedisCluster(addr)
+	err := n.RedisAdmin.InitRedisCluster(ctx, addr)
 	glog.Info("InitRedis Cluster... done")
 
 	return err
 }
 
 // AttachNodeToCluster used to attach the current node to a redis cluster
-func (n *Node) AttachNodeToCluster(addr string) error {
+func (n *Node) AttachNodeToCluster(ctx context.Context, addr string) error {
 	glog.Info("AttachNodeToCluster... starting")
 
-	return n.RedisAdmin.AttachNodeToCluster(addr)
+	return n.RedisAdmin.AttachNodeToCluster(ctx, addr)
 }
 
 // ForgetNode used to remove a node for a cluster
-func (n *Node) ForgetNode() error {
+func (n *Node) ForgetNode(ctx context.Context) error {
 	glog.Info("ForgetNode... starting")
 
-	return n.RedisAdmin.ForgetNodeByAddr(n.Addr)
+	return n.RedisAdmin.ForgetNodeByAddr(ctx, n.Addr)
 }
 
 // StartFailover start Failover if needed
-func (n *Node) StartFailover() error {
+func (n *Node) StartFailover(ctx context.Context) error {
 	glog.Info("StartFailover... starting")
 
-	return n.RedisAdmin.StartFailover(n.Addr)
+	return n.RedisAdmin.StartFailover(ctx, n.Addr)
 }
 
 // ClearDataFolder completely erase all files in the /data folder
