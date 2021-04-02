@@ -343,9 +343,9 @@ func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSli
 		} else {
 			c.PipeAppend(radix.Cmd(nil, "CLUSTER", "SETSLOT", slot.String(), action, nodeID))
 		}
-		//if !a.Connections().ValidatePipeResp(c, addr, "Cannot SETSLOT") {
-		//	return fmt.Errorf("Error occured during CLUSTER SETSLOT %s", action)
-		//}
+	}
+	if err = c.DoPipe(ctx); err != nil {
+		return fmt.Errorf("Error %v occured on node %s during CLUSTER SETSLOT %s", err, addr, action)
 	}
 	c.PipeReset()
 	return nil
@@ -518,9 +518,9 @@ func (a *Admin) FlushAndReset(ctx context.Context, addr string, mode string) err
 	c.PipeAppend(radix.Cmd(nil, "FLUSHALL"))
 	c.PipeAppend(radix.Cmd(nil, "CLUSTER", "RESET", mode))
 
-	//if !a.Connections().ValidatePipeResp(c, addr, "Cannot reset node") {
-	//	return fmt.Errorf("Cannot reset node %s", addr)
-	//}
+	if err = c.DoPipe(ctx); err != nil {
+		return fmt.Errorf("Error %v occured on node %s during CLUSTER RESET", err, addr)
+	}
 
 	return nil
 }

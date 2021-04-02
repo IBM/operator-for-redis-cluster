@@ -1,6 +1,7 @@
 package fake
 
 import (
+	"context"
 	"fmt"
 	"github.com/mediocregopher/radix/v4"
 )
@@ -40,20 +41,20 @@ func (c *ClientCluster) Reset() error {
 	return c.Error
 }
 
-// Cmd performs the given command on the correct cluster node and gives back the
-// command's reply. The command *must* have a key parameter (i.e. len(args) >=
-// 1). If any MOVED or ASK errors are returned they will be transparently
-// handled by this method.
-func (c *ClientCluster) Cmd(cmd string, args ...interface{}) interface{} {
+// DoCmd performs the given command on the correct cluster node and gives back the
+// command's reply in the target object. The command *must* have a key parameter
+// (i.e. len(args) >= 1). If any MOVED or ASK errors are returned they will be
+// transparently handled by this method.
+func (c *ClientCluster) DoCmd(ctx context.Context, rcv *interface{}, cmd string, args ...interface{}) error {
 	command := cmd
 	for _, arg := range args {
 		command = fmt.Sprintf("%s %s", command, arg)
 	}
 	if resp, ok := c.Resps[command]; ok {
-		return resp
+		*rcv = resp
+		return nil
 	}
-
-	return c.Resp
+	return c.Error
 }
 
 // GetForKey returns the Client which *ought* to handle the given key, based

@@ -20,6 +20,9 @@ type ClientInterface interface {
 
 	// PipeReset discards all Actions and resets all internal state.
 	PipeReset()
+
+	// DoPipe executes all of the commands in the pipeline.
+	DoPipe(ctx context.Context) error
 }
 
 // Client structure representing a client connection to redis
@@ -63,6 +66,11 @@ func (c *Client) PipeAppend(action radix.Action) {
 // PipeReset discards all Actions and resets all internal state.
 func (c *Client) PipeReset() {
 	c.pipeline.Reset()
+}
+
+// DoPipe executes all of the commands in the pipeline.
+func (c *Client) DoPipe(ctx context.Context) error {
+	return c.client.Do(ctx, c.pipeline)
 }
 
 // getCommand return the command name after applying rename-command

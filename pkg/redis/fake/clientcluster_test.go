@@ -1,18 +1,20 @@
 package fake
 
 import (
+	"context"
 	"testing"
 )
 
-func TestCmd(t *testing.T) {
+func TestDoCmd(t *testing.T) {
 	mock := NewClientCluster()
+	ctx := context.Background()
 	mock.Resps["CLUSTER NODES"] = "someanswer"
-	resp := mock.Cmd("CLUSTER", "NODES")
-	val, ok := resp.(string)
-	if !ok {
-		t.Fail()
+	var resp interface{}
+	err := mock.DoCmd(ctx, &resp, "CLUSTER", "NODES")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
 	}
-	if val != "someanswer" {
-		t.Errorf("Expected '%s', got '%s'", "someanswer", val)
+	if resp != "someanswer" {
+		t.Errorf("Expected '%s', got '%s'", "someanswer", resp)
 	}
 }

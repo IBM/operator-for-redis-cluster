@@ -325,7 +325,12 @@ func testAndWaitConnection(ctx context.Context, addr string, maxWait time.Durati
 		if timeout <= 0 {
 			return errors.New("Timeout reached")
 		}
-		client, err := radix.Dial(ctx, "tcp", addr)
+		dialer := &radix.Dialer{
+			NetDialer: &net.Dialer{
+				Timeout: timeout,
+			},
+		}
+		client, err := dialer.Dial(ctx, "tcp", addr)
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue

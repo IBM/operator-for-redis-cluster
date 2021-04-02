@@ -76,10 +76,3 @@ func (cnx *Connections) Reset() {
 func (cnx *Connections) ValidateResp(ctx context.Context, resp interface{}, err error, addr, errMessage string) error {
 	return nil
 }
-
-// ValidatePipeResp wait for all answers in the pipe and validate the response
-// in case of network issue clear the pipe and return
-// in case of error, return false
-//func (cnx *Connections) ValidatePipeResp(client redis.ClientInterface, addr, errMessage string) bool {
-//	return true
-//}

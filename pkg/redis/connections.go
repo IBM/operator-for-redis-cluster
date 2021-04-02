@@ -53,10 +53,6 @@ type AdminConnectionsInterface interface {
 	// ValidateResp check the redis resp, eventually reconnect on connection error
 	// in case of error, customize the error, log it and return it
 	ValidateResp(ctx context.Context, resp interface{}, err error, addr, errMessage string) error
-	// ValidatePipeResp wait for all answers in the pipe and validate the response
-	// in case of network issue clear the pipe and return
-	// in case of error return false
-	// ValidatePipeResp(c ClientInterface, addr, errMessage string) bool
 	// Reset close all connections and clear the connection map
 	Reset()
 }
@@ -237,33 +233,6 @@ func (cnx *AdminConnections) ValidateResp(ctx context.Context, resp interface{},
 	}
 	return nil
 }
-
-// ValidatePipeResp wait for all answers in the pipe and validate the response
-// in case of network issue clear the pipe and return
-// in case of error, return false
-//func (cnx *AdminConnections) ValidatePipeResp(client ClientInterface, addr, errMessage string) bool {
-//	ok := true
-//	for {
-//		resp := client.PipeResp()
-//		if resp == nil {
-//			glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)
-//			return false
-//		}
-//		if resp.Err != nil {
-//			if resp.Err == redis.ErrPipelineEmpty {
-//				break
-//			}
-//			glog.Errorf("%s: Unexpected error on node %s: %v", errMessage, addr, resp.Err)
-//			if cnx.handleError(addr, resp.Err) {
-//				// network error, no need to continue
-//				return false
-//			}
-//			ok = false
-//		}
-//	}
-//
-//	return ok
-//}
 
 // GetRandom returns a client connection to a random node of the client map
 func (cnx *AdminConnections) getRandomKeyClient() (string, ClientInterface, error) {
