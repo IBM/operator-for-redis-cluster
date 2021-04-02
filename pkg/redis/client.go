@@ -63,7 +63,6 @@ func (c *Client) PipeAppend(action radix.Action) {
 // PipeReset discards all Actions and resets all internal state.
 func (c *Client) PipeReset() {
 	c.pipeline.Reset()
-	c.pipeline.Properties()
 }
 
 // getCommand return the command name after applying rename-command
