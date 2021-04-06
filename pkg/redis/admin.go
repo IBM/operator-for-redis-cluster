@@ -493,7 +493,7 @@ func (a *Admin) DetachSlave(ctx context.Context, slave *Node) error {
 		return err
 	}
 	var resp string
-	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "RESET SOFT")
+	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "RESET", ResetSoft)
 	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
 		return err
 	}
