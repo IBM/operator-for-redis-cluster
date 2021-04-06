@@ -1,7 +1,9 @@
 package redis
 
 import (
+	"context"
 	"fmt"
+	"github.com/mediocregopher/radix/v4"
 	"net"
 	"strconv"
 	"time"
@@ -27,45 +29,45 @@ type AdminInterface interface {
 	// Close the admin connections
 	Close()
 	// InitRedisCluster used to configure the first node of a cluster
-	InitRedisCluster(addr string) error
+	InitRedisCluster(ctx context.Context, addr string) error
 	// GetClusterInfos get node infos for all nodes
-	GetClusterInfos() (*ClusterInfos, error)
+	GetClusterInfos(ctx context.Context) (*ClusterInfos, error)
 	// GetClusterInfosSelected return the Nodes infos for all nodes selected in the cluster
-	GetClusterInfosSelected(addrs []string) (*ClusterInfos, error)
+	GetClusterInfosSelected(ctx context.Context, addrs []string) (*ClusterInfos, error)
 	// AttachNodeToCluster command use to connect a Node to the cluster
 	// the connection will be done on a random node part of the connection pool
-	AttachNodeToCluster(addr string) error
+	AttachNodeToCluster(ctx context.Context, addr string) error
 	// AttachSlaveToMaster attach a slave to a master node
-	AttachSlaveToMaster(slave *Node, master *Node) error
+	AttachSlaveToMaster(ctx context.Context, slave *Node, master *Node) error
 	// DetachSlave dettach a slave to its master
-	DetachSlave(slave *Node) error
+	DetachSlave(ctx context.Context, slave *Node) error
 	// StartFailover execute the failover of the Redis Master corresponding to the addr
-	StartFailover(addr string) error
+	StartFailover(ctx context.Context, addr string) error
 	// ForgetNode execute the Redis command to force the cluster to forgot the the Node
-	ForgetNode(id string) error
+	ForgetNode(ctx context.Context, id string) error
 	// ForgetNodeByAddr execute the Redis command to force the cluster to forgot the the Node
-	ForgetNodeByAddr(id string) error
+	ForgetNodeByAddr(ctx context.Context, id string) error
 	// SetSlots exect the redis command to set slots in a pipeline, provide
 	// and empty nodeID if the set slots commands doesn't take a nodeID in parameter
-	SetSlots(addr string, action string, slots []Slot, nodeID string) error
+	SetSlots(ctx context.Context, addr string, action string, slots SlotSlice, nodeID string) error
 	// AddSlots exect the redis command to add slots in a pipeline
-	AddSlots(addr string, slots []Slot) error
+	AddSlots(ctx context.Context, addr string, slots SlotSlice) error
 	// DelSlots exec the redis command to del slots in a pipeline
-	DelSlots(addr string, slots []Slot) error
+	DelSlots(ctx context.Context, addr string, slots SlotSlice) error
 	// GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
-	GetKeysInSlot(addr string, slot Slot, batch int, limit bool) ([]string, error)
+	GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch int, limit bool) ([]string, error)
 	// CountKeysInSlot exec the redis command to count the keys given slot on the node
-	CountKeysInSlot(addr string, slot Slot) (int64, error)
+	CountKeysInSlot(ctx context.Context, addr string, slot Slot) (int64, error)
 	// MigrateKeys from addr to destination node. returns number of slot migrated. If replace is true, replace key on busy error
-	MigrateKeys(addr string, dest *Node, slots []Slot, batch, timeout int, replace bool) (int, error)
+	MigrateKeys(ctx context.Context, addr string, dest *Node, slots SlotSlice, batch, timeout int, replace bool) (int, error)
 	// FlushAndReset reset the cluster configuration of the node, the node is flushed in the same pipe to ensure reset works
-	FlushAndReset(addr string, mode string) error
+	FlushAndReset(ctx context.Context, addr string, mode string) error
 	// FlushAll flush all keys in cluster
-	FlushAll()
+	FlushAll(ctx context.Context, )
 	// GetHashMaxSlot get the max slot value
 	GetHashMaxSlot() Slot
 	//RebuildConnectionMap rebuild the connection map according to the given addresses
-	RebuildConnectionMap(addrs []string, options *AdminOptions)
+	RebuildConnectionMap(ctx context.Context, addrs []string, options *AdminOptions)
 }
 
 // AdminOptions optional options for redis admin
@@ -83,13 +85,13 @@ type Admin struct {
 
 // NewAdmin returns new AdminInterface instance
 // at the same time it connects to all Redis Nodes thanks to the addrs list
-func NewAdmin(addrs []string, options *AdminOptions) AdminInterface {
+func NewAdmin(ctx context.Context, addrs []string, options *AdminOptions) AdminInterface {
 	a := &Admin{
 		hashMaxSlots: defaultHashMaxSlots,
 	}
 
 	// perform initial connections
-	a.cnx = NewAdminConnections(addrs, options)
+	a.cnx = NewAdminConnections(ctx, addrs, options)
 
 	return a
 }
@@ -110,7 +112,7 @@ func (a *Admin) GetHashMaxSlot() Slot {
 }
 
 // AttachNodeToCluster command use to connect a Node to the cluster
-func (a *Admin) AttachNodeToCluster(addr string) error {
+func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 	ip, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return err
@@ -124,30 +126,31 @@ func (a *Admin) AttachNodeToCluster(addr string) error {
 		if cAddr == addr {
 			continue
 		}
-		resp := c.Cmd("CLUSTER", "MEET", ip, port)
-		if err = a.Connections().ValidateResp(resp, addr, "Cannot attach node to cluster"); err != nil {
+		var resp string
+		cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "MEET", ip, port)
+		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr,"Cannot attach node to cluster"); err != nil {
 			return err
 		}
 	}
 
-	a.Connections().Add(addr)
+	a.Connections().Add(ctx, addr)
 
 	glog.Infof("Node %s attached properly", addr)
 	return nil
 }
 
 // InitRedisCluster used to init a single node redis cluster
-func (a *Admin) InitRedisCluster(addr string) error {
-	return a.AddSlots(addr, BuildSlotSlice(0, a.GetHashMaxSlot()))
+func (a *Admin) InitRedisCluster(ctx context.Context, addr string) error {
+	return a.AddSlots(ctx, addr, BuildSlotSlice(0, a.GetHashMaxSlot()))
 }
 
 // GetClusterInfos return the Nodes infos for all nodes
-func (a *Admin) GetClusterInfos() (*ClusterInfos, error) {
+func (a *Admin) GetClusterInfos(ctx context.Context) (*ClusterInfos, error) {
 	infos := NewClusterInfos()
 	clusterErr := NewClusterInfosError()
 
 	for addr, c := range a.Connections().GetAll() {
-		nodeinfos, err := a.getInfos(c, addr)
+		nodeinfos, err := a.getInfos(ctx, c, addr)
 		if err != nil {
 			infos.Status = ClusterInfosPartial
 			clusterErr.partial = true
@@ -171,12 +174,12 @@ func (a *Admin) GetClusterInfos() (*ClusterInfos, error) {
 }
 
 //GetClusterInfosSelected return the Nodes infos for all nodes selected in the cluster
-func (a *Admin) GetClusterInfosSelected(addrs []string) (*ClusterInfos, error) {
+func (a *Admin) GetClusterInfosSelected(ctx context.Context, addrs []string) (*ClusterInfos, error) {
 	infos := NewClusterInfos()
 	clusterErr := NewClusterInfosError()
 
 	for addr, c := range a.Connections().GetSelected(addrs) {
-		nodeinfos, err := a.getInfos(c, addr)
+		nodeinfos, err := a.getInfos(ctx, c, addr)
 		if err != nil {
 			infos.Status = ClusterInfosPartial
 			clusterErr.partial = true
@@ -200,13 +203,13 @@ func (a *Admin) GetClusterInfosSelected(addrs []string) (*ClusterInfos, error) {
 }
 
 // StartFailover used to force the failover of a specific redis master node
-func (a *Admin) StartFailover(addr string) error {
-	c, err := a.Connections().Get(addr)
+func (a *Admin) StartFailover(ctx context.Context, addr string) error {
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return err
 	}
 	var me *NodeInfos
-	me, err = a.getInfos(c, addr)
+	me, err = a.getInfos(ctx, c, addr)
 	if err != nil {
 		return err
 	}
@@ -234,12 +237,12 @@ func (a *Admin) StartFailover(addr string) error {
 	failoverTriggered := false
 	for _, aSlave := range slaves {
 		var slaveClient ClientInterface
-		if slaveClient, err = a.Connections().Get(aSlave.IPPort()); err != nil {
+		if slaveClient, err = a.Connections().Get(ctx, aSlave.IPPort()); err != nil {
 			continue
 		}
-
-		resp := slaveClient.Cmd("CLUSTER", "FAILOVER")
-		if err = a.Connections().ValidateResp(resp, aSlave.IPPort(), "Unable to execute Failover"); err != nil {
+		var resp string
+		cmdErr := slaveClient.DoCmd(ctx, &resp, "CLUSTER", "FAILOVER")
+		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, aSlave.IPPort(), "Unable to execute Failover"); err != nil {
 			continue
 		}
 		failoverTriggered = true
@@ -251,7 +254,7 @@ func (a *Admin) StartFailover(addr string) error {
 	}
 
 	for {
-		me, err = a.getInfos(c, addr)
+		me, err = a.getInfos(ctx, c, addr)
 		if err != nil {
 			return err
 		}
@@ -271,25 +274,25 @@ func (a *Admin) StartFailover(addr string) error {
 }
 
 // ForgetNode used to force other redis cluster node to forget a specific node
-func (a *Admin) ForgetNode(id string) error {
-	infos, _ := a.GetClusterInfos()
+func (a *Admin) ForgetNode(ctx context.Context, id string) error {
+	infos, _ := a.GetClusterInfos(ctx)
 	for nodeAddr, nodeinfos := range infos.Infos {
 		if nodeinfos.Node.ID == id {
 			continue
 		}
-		c, err := a.Connections().Get(nodeAddr)
+		c, err := a.Connections().Get(ctx, nodeAddr)
 		if err != nil {
 			glog.Errorf("Cannot force a forget on node %s, for node %s: %v", nodeAddr, id, err)
 			continue
 		}
 
 		if IsSlave(nodeinfos.Node) && nodeinfos.Node.MasterReferent == id {
-			a.DetachSlave(nodeinfos.Node)
+			a.DetachSlave(ctx, nodeinfos.Node)
 			glog.V(2).Infof("detach slave id: %s of master: %s", nodeinfos.Node.ID, id)
 		}
-
-		resp := c.Cmd("CLUSTER", "FORGET", id)
-		a.Connections().ValidateResp(resp, nodeAddr, "Unable to execute FORGET command")
+		var resp string
+		err = c.DoCmd(ctx, &resp, "CLUSTER", "FORGET", id)
+		_ = a.Connections().ValidateResp(ctx, &resp, err, nodeAddr, "Unable to execute FORGET command")
 	}
 
 	glog.Infof("Forget Node:%s ...done", id)
@@ -297,8 +300,8 @@ func (a *Admin) ForgetNode(id string) error {
 }
 
 // ForgetNodeByAddr used to force other redis cluster node to forget a specific node
-func (a *Admin) ForgetNodeByAddr(addr string) error {
-	infos, _ := a.GetClusterInfos()
+func (a *Admin) ForgetNodeByAddr(ctx context.Context, addr string) error {
+	infos, _ := a.GetClusterInfos(ctx)
 	var me *Node
 	myinfo, ok := infos.Infos[addr]
 	if !ok {
@@ -322,84 +325,80 @@ func (a *Admin) ForgetNodeByAddr(addr string) error {
 		return fmt.Errorf("Cannot forget node %s, not found in infos", addr)
 	}
 
-	return a.ForgetNode(me.ID)
+	return a.ForgetNode(ctx, me.ID)
 }
 
 // SetSlots use to set SETSLOT command on several slots
-func (a *Admin) SetSlots(addr, action string, slots []Slot, nodeID string) error {
+func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSlice, nodeID string) error {
 	if len(slots) == 0 {
 		return nil
 	}
-	c, err := a.Connections().Get(addr)
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return err
 	}
 	for _, slot := range slots {
 		if nodeID == "" {
-			c.PipeAppend("CLUSTER", "SETSLOT", slot, action)
+			c.PipeAppend(radix.Cmd(nil, "CLUSTER" , "SETSLOT", slot.String(), action))
 		} else {
-			c.PipeAppend("CLUSTER", "SETSLOT", slot, action, nodeID)
+			c.PipeAppend(radix.Cmd(nil, "CLUSTER", "SETSLOT", slot.String(), action, nodeID))
 		}
 	}
-	if !a.Connections().ValidatePipeResp(c, addr, "Cannot SETSLOT") {
-		return fmt.Errorf("Error occured during CLUSTER SETSLOT %s", action)
+	if err = c.DoPipe(ctx); err != nil {
+		return fmt.Errorf("Error %v occured on node %s during CLUSTER SETSLOT %s", err, addr, action)
 	}
-	c.PipeClear()
-
+	c.PipeReset()
 	return nil
 }
 
 // AddSlots use to ADDSLOT commands on several slots
-func (a *Admin) AddSlots(addr string, slots []Slot) error {
+func (a *Admin) AddSlots(ctx context.Context, addr string, slots SlotSlice) error {
 	if len(slots) == 0 {
 		return nil
 	}
-	c, err := a.Connections().Get(addr)
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return err
 	}
-
-	resp := c.Cmd("CLUSTER", "ADDSLOTS", slots)
-
-	return a.Connections().ValidateResp(resp, addr, "Unable to run CLUSTER ADDSLOTS")
+	var resp string
+	args := []string{"ADDSLOTS"}
+	args = append(args, slots.ConvertToStrings()...)
+	err = c.DoCmd(ctx, &resp, "CLUSTER", args...)
+	return a.Connections().ValidateResp(ctx, &resp, err, addr, "Unable to run CLUSTER ADDSLOTS")
 }
 
 // DelSlots exec the redis command to del slots in a pipeline
-func (a *Admin) DelSlots(addr string, slots []Slot) error {
+func (a *Admin) DelSlots(ctx context.Context, addr string, slots SlotSlice) error {
 	if len(slots) == 0 {
 		return nil
 	}
-	c, err := a.Connections().Get(addr)
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return err
 	}
-
-	resp := c.Cmd("CLUSTER", "DELSLOTS", slots)
-
-	return a.Connections().ValidateResp(resp, addr, "Unable to run CLUSTER DELSLOTS")
+	var resp string
+	args := []string{"DELSLOTS"}
+	args = append(args, slots.ConvertToStrings()...)
+	err = c.DoCmd(ctx, &resp, "CLUSTER", args...)
+	return a.Connections().ValidateResp(ctx, &resp, err, addr, "Unable to run CLUSTER DELSLOTS")
 }
 
 // GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
 // Batch is the number of keys fetch per batch, Limit can be use to limit to one batch
-func (a *Admin) GetKeysInSlot(addr string, slot Slot, batch int, limit bool) ([]string, error) {
+func (a *Admin) GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch int, limit bool) ([]string, error) {
 	keyCount := 0
-	allKeys := []string{}
-	c, err := a.Connections().Get(addr)
+	var allKeys []string
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return allKeys, err
 	}
 
 	for {
-		resp := c.Cmd("CLUSTER", "GETKEYSINSLOT", slot, strconv.Itoa(batch))
-		if err := a.Connections().ValidateResp(resp, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
+		var keys []string
+		cmdErr := c.DoCmd(ctx, &keys, "CLUSTER",  "GETKEYSINSLOT", slot.String(), strconv.Itoa(batch))
+		if err := a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "Unable to run command CLUSTER GETKEYSINSLOT"); err != nil {
 			return allKeys, err
 		}
-		keys, err := resp.List()
-		if err != nil {
-			glog.Errorf("Wrong retured format for CLUSTER GETKEYSINSLOT: %v", err)
-			return allKeys, err
-		}
-
 		allKeys = append(allKeys, keys...)
 
 		keyCount += len(keys)
@@ -411,27 +410,28 @@ func (a *Admin) GetKeysInSlot(addr string, slot Slot, batch int, limit bool) ([]
 }
 
 // CountKeysInSlot exec the redis command to count the number of keys in the given slot on a node
-func (a *Admin) CountKeysInSlot(addr string, slot Slot) (int64, error) {
-	c, err := a.Connections().Get(addr)
+func (a *Admin) CountKeysInSlot(ctx context.Context, addr string, slot Slot) (int64, error) {
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return 0, err
 	}
 
-	resp := c.Cmd("CLUSTER", "COUNTKEYSINSLOT", slot)
-	if err := a.Connections().ValidateResp(resp, addr, "Unable to run command COUNTKEYSINSLOT"); err != nil {
+	var resp int64
+	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "COUNTKEYSINSLOT", slot.String())
+	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to run command COUNTKEYSINSLOT"); err != nil {
 		return 0, err
 	}
-	return resp.Int64()
+	return resp, nil
 }
 
 // MigrateKeys use to migrate keys from slots to other slots. if replace is true, replace key on busy error
 // timeout is in milliseconds
-func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, timeout int, replace bool) (int, error) {
+func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *Node, slots SlotSlice, batch int, timeout int, replace bool) (int, error) {
 	if len(slots) == 0 {
 		return 0, nil
 	}
 	keyCount := 0
-	c, err := a.Connections().Get(addr)
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return keyCount, err
 	}
@@ -440,16 +440,11 @@ func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, ti
 
 	for _, slot := range slots {
 		for {
-			resp := c.Cmd("CLUSTER", "GETKEYSINSLOT", slot, batchStr)
-			if err := a.Connections().ValidateResp(resp, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
+			var keys []string
+			cmdErr := c.DoCmd(ctx, &keys, "CLUSTER", "GETKEYSINSLOT", slot.String(), batchStr)
+			if err := a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
 				return keyCount, err
 			}
-			keys, err := resp.List()
-			if err != nil {
-				glog.Errorf("Wrong retured format for CLUSTER GETKEYSINSLOT: %v", err)
-				return keyCount, err
-			}
-
 			keyCount += len(keys)
 			if len(keys) == 0 {
 				break
@@ -461,9 +456,9 @@ func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, ti
 			} else {
 				args = append([]string{dest.IP, dest.Port, "", "0", timeoutStr, "KEYS"}, keys...)
 			}
-
-			resp = c.Cmd("MIGRATE", args)
-			if err := a.Connections().ValidateResp(resp, addr, "Unable to run command MIGRATE"); err != nil {
+			var resp string
+			cmdErr = c.DoCmd(ctx, &resp, "MIGRATE", args...)
+			if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to run command MIGRATE"); err != nil {
 				return keyCount, err
 			}
 		}
@@ -473,14 +468,14 @@ func (a *Admin) MigrateKeys(addr string, dest *Node, slots []Slot, batch int, ti
 }
 
 // AttachSlaveToMaster attach a slave to a master node
-func (a *Admin) AttachSlaveToMaster(slave *Node, master *Node) error {
-	c, err := a.Connections().Get(slave.IPPort())
+func (a *Admin) AttachSlaveToMaster(ctx context.Context, slave *Node, master *Node) error {
+	c, err := a.Connections().Get(ctx, slave.IPPort())
 	if err != nil {
 		return err
 	}
-
-	resp := c.Cmd("CLUSTER", "REPLICATE", master.ID)
-	if err := a.Connections().ValidateResp(resp, slave.IPPort(), "Unable to run command REPLICATE"); err != nil {
+	var resp string
+	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "REPLICATE", master.ID)
+	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, slave.IPPort(), "Unable to run command REPLICATE"); err != nil {
 		return err
 	}
 
@@ -491,19 +486,19 @@ func (a *Admin) AttachSlaveToMaster(slave *Node, master *Node) error {
 }
 
 // DetachSlave use to detach a slave to a master
-func (a *Admin) DetachSlave(slave *Node) error {
-	c, err := a.Connections().Get(slave.IPPort())
+func (a *Admin) DetachSlave(ctx context.Context, slave *Node) error {
+	c, err := a.Connections().Get(ctx, slave.IPPort())
 	if err != nil {
 		glog.Errorf("unable to get the connection for slave ID:%s, addr:%s , err:%v", slave.ID, slave.IPPort(), err)
 		return err
 	}
-
-	resp := c.Cmd("CLUSTER", "RESET", "SOFT")
-	if err = a.Connections().ValidateResp(resp, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
+	var resp string
+	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "RESET", ResetSoft)
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
 		return err
 	}
 
-	if err = a.AttachNodeToCluster(slave.IPPort()); err != nil {
+	if err = a.AttachNodeToCluster(ctx, slave.IPPort()); err != nil {
 		glog.Errorf("[DetachSlave] unable to AttachNodeToCluster the Slave id: %s addr:%s", slave.ID, slave.IPPort())
 		return err
 	}
@@ -515,29 +510,28 @@ func (a *Admin) DetachSlave(slave *Node) error {
 }
 
 // FlushAndReset flush the cluster and reset the cluster configuration of the node. Commands are piped, to ensure no items arrived between flush and reset
-func (a *Admin) FlushAndReset(addr string, mode string) error {
-	c, err := a.Connections().Get(addr)
+func (a *Admin) FlushAndReset(ctx context.Context, addr string, mode string) error {
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
 		return err
 	}
-	c.PipeAppend("FLUSHALL")
-	c.PipeAppend("CLUSTER", "RESET", mode)
+	c.PipeAppend(radix.Cmd(nil, "FLUSHALL"))
+	c.PipeAppend(radix.Cmd(nil, "CLUSTER", "RESET", mode))
 
-	if !a.Connections().ValidatePipeResp(c, addr, "Cannot reset node") {
-		return fmt.Errorf("Cannot reset node %s", addr)
+	if err = c.DoPipe(ctx); err != nil {
+		return fmt.Errorf("Error %v occured on node %s during CLUSTER RESET", err, addr)
 	}
 
 	return nil
 }
 
 // FlushAll flush all keys in cluster
-func (a *Admin) FlushAll() {
+func (a *Admin) FlushAll(ctx context.Context) {
 	c, err := a.Connections().GetRandom()
 	if err != nil {
 		return
 	}
-
-	c.Cmd("FLUSHALL")
+	err = c.DoCmd(ctx, nil, "FLUSHALL")
 }
 
 func selectMySlaves(me *Node, nodes Nodes) (Nodes, error) {
@@ -546,35 +540,24 @@ func selectMySlaves(me *Node, nodes Nodes) (Nodes, error) {
 	})
 }
 
-func (a *Admin) getInfos(c ClientInterface, addr string) (*NodeInfos, error) {
-	resp := c.Cmd("CLUSTER", "NODES")
-	if err := a.Connections().ValidateResp(resp, addr, "Unable to retrieve Node Info"); err != nil {
+func (a *Admin) getInfos(ctx context.Context, c ClientInterface, addr string) (*NodeInfos, error) {
+	var resp string
+	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "NODES")
+	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to retrieve node info"); err != nil {
 		return nil, err
 	}
-
-	var raw string
-	var err error
-	raw, err = resp.Str()
-
-	if err != nil {
-		return nil, fmt.Errorf("Wrong format from CLUSTER NODES: %v", err)
-	}
-
-	nodeInfos := DecodeNodeInfos(&raw, addr)
+	nodeInfos := DecodeNodeInfos(&resp, addr)
 
 	if glog.V(3) {
-		//Retrieve server info for debugging
-		resp = c.Cmd("INFO", "SERVER")
-		if err = a.Connections().ValidateResp(resp, addr, "Unable to retrieve Node Info"); err != nil {
+		// Retrieve server info for debugging
+		var resp string
+		cmdErr = c.DoCmd(ctx, &resp, "INFO", "SERVER")
+		if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to retrieve node info"); err != nil {
 			return nil, err
-		}
-		raw, err = resp.Str()
-		if err != nil {
-			return nil, fmt.Errorf("Wrong format from INFO SERVER: %v", err)
 		}
 
 		var serverStartTime time.Time
-		serverStartTime, err = DecodeNodeStartTime(&raw)
+		serverStartTime, err := DecodeNodeStartTime(&resp)
 
 		if err != nil {
 			return nil, err
@@ -586,8 +569,8 @@ func (a *Admin) getInfos(c ClientInterface, addr string) (*NodeInfos, error) {
 	return nodeInfos, nil
 }
 
-//RebuildConnectionMap rebuild the connection map according to the given addresse
-func (a *Admin) RebuildConnectionMap(addrs []string, options *AdminOptions) {
+// RebuildConnectionMap rebuild the connection map according to the given addresse
+func (a *Admin) RebuildConnectionMap(ctx context.Context, addrs []string, options *AdminOptions) {
 	a.cnx.Reset()
-	a.cnx = NewAdminConnections(addrs, options)
+	a.cnx = NewAdminConnections(ctx, addrs, options)
 }

@@ -1,15 +1,15 @@
 package fake
 
 import (
+	"context"
 	"fmt"
-
-	radix "github.com/mediocregopher/radix.v2/redis"
+	"github.com/mediocregopher/radix/v4"
 )
 
 // ClientCluster struct used to simulate in unittest the clientCluster from radix
 type ClientCluster struct {
-	Resps   map[string]*radix.Resp
-	Resp    *radix.Resp
+	Resps   map[string]interface{}
+	Resp    interface{}
 	Clients map[string]*radix.Client
 	Client  *radix.Client
 	Addrs   map[string]string
@@ -22,7 +22,7 @@ type ClientCluster struct {
 // NewClientCluster create a new ClientCluster structure and initialize all field to nil or empty map/strings
 func NewClientCluster() *ClientCluster {
 	return &ClientCluster{
-		Resps:   make(map[string]*radix.Resp),
+		Resps:   make(map[string]interface{}),
 		Clients: make(map[string]*radix.Client),
 		Addrs:   make(map[string]string),
 		Servers: make(map[string]*RedisServer),
@@ -41,20 +41,20 @@ func (c *ClientCluster) Reset() error {
 	return c.Error
 }
 
-// Cmd performs the given command on the correct cluster node and gives back the
-// command's reply. The command *must* have a key parameter (i.e. len(args) >=
-// 1). If any MOVED or ASK errors are returned they will be transparently
-// handled by this method.
-func (c *ClientCluster) Cmd(cmd string, args ...interface{}) *radix.Resp {
+// DoCmd performs the given command on the correct cluster node and gives back the
+// command's reply in the target object. The command *must* have a key parameter
+// (i.e. len(args) >= 1). If any MOVED or ASK errors are returned they will be
+// transparently handled by this method.
+func (c *ClientCluster) DoCmd(ctx context.Context, rcv *interface{}, cmd string, args ...interface{}) error {
 	command := cmd
 	for _, arg := range args {
 		command = fmt.Sprintf("%s %s", command, arg)
 	}
 	if resp, ok := c.Resps[command]; ok {
-		return resp
+		*rcv = resp
+		return nil
 	}
-
-	return c.Resp
+	return c.Error
 }
 
 // GetForKey returns the Client which *ought* to handle the given key, based

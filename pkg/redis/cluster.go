@@ -47,7 +47,7 @@ func (c *Cluster) GetNodeByID(id string) (*Node, error) {
 	if n, ok := c.Nodes[id]; ok {
 		return n, nil
 	}
-	return nil, nodeNotFoundedError
+	return nil, nodeNotFoundError
 }
 
 // GetNodeByIP returns a Cluster Node by its ID
@@ -83,7 +83,7 @@ func (c *Cluster) GetNodeByFunc(f FindNodeFunc) (*Node, error) {
 			return n, nil
 		}
 	}
-	return nil, nodeNotFoundedError
+	return nil, nodeNotFoundError
 }
 
 // GetNodesByFunc returns first node found by the FindNodeFunc
@@ -95,7 +95,7 @@ func (c *Cluster) GetNodesByFunc(f FindNodeFunc) (Nodes, error) {
 		}
 	}
 	if len(nodes) == 0 {
-		return nodes, nodeNotFoundedError
+		return nodes, nodeNotFoundError
 	}
 	return nodes, nil
 }

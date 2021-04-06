@@ -1,21 +1,21 @@
 package sanitycheck
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/golang/glog"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
 // FixNodesNotMeet Use to fix Redis nodes that didn't them.
-func FixNodesNotMeet(admin redis.AdminInterface, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
-	return fixNodesNotMeetFunc(admin, infos, nodesMeet, dryRun)
+func FixNodesNotMeet(ctx context.Context, admin redis.AdminInterface, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
+	return fixNodesNotMeetFunc(ctx, admin, infos, nodesMeet, dryRun)
 }
 
-type nodesMeetFunc func(admin redis.AdminInterface, node1, node2 *redis.Node) error
+type nodesMeetFunc func(ctx context.Context, admin redis.AdminInterface, node1, node2 *redis.Node) error
 
-func fixNodesNotMeetFunc(admin redis.AdminInterface, infos *redis.ClusterInfos, meetFunc nodesMeetFunc, dryRun bool) (bool, error) {
+func fixNodesNotMeetFunc(ctx context.Context, admin redis.AdminInterface, infos *redis.ClusterInfos, meetFunc nodesMeetFunc, dryRun bool) (bool, error) {
 	if infos == nil || infos.Infos == nil {
 		return false, nil
 	}
@@ -38,7 +38,7 @@ func fixNodesNotMeetFunc(admin redis.AdminInterface, infos *redis.ClusterInfos, 
 			if !found {
 				var err error
 				if !dryRun {
-					err = meetFunc(admin, node1.Node, node2.Node)
+					err = meetFunc(ctx, admin, node1.Node, node2.Node)
 				}
 				if err != nil {
 					glog.Errorf("[SanityChecks] meet failed %s %s, err:%v", node1.Node.ID, node2.Node.ID, err)
@@ -53,16 +53,14 @@ func fixNodesNotMeetFunc(admin redis.AdminInterface, infos *redis.ClusterInfos, 
 	return doneAnAction, globalErr
 }
 
-func nodesMeet(admin redis.AdminInterface, node1, node2 *redis.Node) error {
+func nodesMeet(ctx context.Context, admin redis.AdminInterface, node1, node2 *redis.Node) error {
 	glog.V(2).Infof("[Sanity] Cluster Meet, id1:%s id2:%s", node1.ID, node2.ID)
-	c, err := admin.Connections().Get(node1.IPPort())
+	c, err := admin.Connections().Get(ctx, node1.IPPort())
 	if err != nil {
 		return fmt.Errorf("[Sanity] unable get connection for node:%s, err:%v", node1.IPPort(), err)
 	}
-	resp := c.Cmd("CLUSTER", "MEET", node2.IP, node2.Port)
-	if resp.Err != nil {
-		return fmt.Errorf("[Sanity] unable to execute the cluster meet command, err:%v", resp.Err)
+	if err = c.DoCmd(nil, "CLUSTER", "MEET", node2.IP, node2.Port); err != nil {
+		return fmt.Errorf("[Sanity] unable to execute the cluster meet command, err:%v", err)
 	}
-
 	return nil
 }

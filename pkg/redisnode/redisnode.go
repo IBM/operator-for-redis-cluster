@@ -16,7 +16,7 @@ import (
 	"github.com/heptiolabs/healthcheck"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	radix "github.com/mediocregopher/radix.v2/redis"
+	"github.com/mediocregopher/radix/v4"
 
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -28,7 +28,7 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 )
 
-// RedisNode constains all info to run the redis-node.
+// RedisNode contains all info to run the redis-node.
 type RedisNode struct {
 	config     *Config
 	kubeClient clientset.Interface
@@ -96,7 +96,7 @@ func (r *RedisNode) init() (*Node, error) {
 	// Therefore, we need to wait for the possible failover to finish.
 	// 2*nodetimeout for failed state detection, 2*nodetimeout for voting, 2*nodetimeout for safety
 	time.Sleep(r.config.RedisStartDelay)
-
+	ctx := context.Background()
 	nodesAddr, err := getRedisNodesAddrs(r.kubeClient, r.config.Cluster.Namespace, r.config.Cluster.NodeService)
 	if err != nil {
 		glog.Warning(err)
@@ -121,7 +121,7 @@ func (r *RedisNode) init() (*Node, error) {
 		r.admOptions.ClientName = host // will be pod name in kubernetes
 	}
 
-	r.redisAdmin = redis.NewAdmin(nodesAddr, &r.admOptions)
+	r.redisAdmin = redis.NewAdmin(ctx, nodesAddr, &r.admOptions)
 
 	me := NewNode(r.config, r.redisAdmin)
 	if me == nil {
@@ -138,7 +138,7 @@ func (r *RedisNode) init() (*Node, error) {
 	me.ClearDataFolder() // may be needed if container crashes and restart at the same place
 
 	r.httpServer = &http.Server{Addr: r.config.HTTPServerAddr}
-	if err := r.configureHealth(); err != nil {
+	if err := r.configureHealth(ctx); err != nil {
 		glog.Errorf("unable to configure health checks, err:%v", err)
 		return nil, err
 	}
@@ -147,10 +147,11 @@ func (r *RedisNode) init() (*Node, error) {
 }
 
 func (r *RedisNode) run(me *Node) (*Node, error) {
+	ctx := context.Background()
 	// Start redis server and wait for it to be accessible
 	chRedis := make(chan error)
 	go WrapRedis(r.config, chRedis)
-	starterr := testAndWaitConnection(me.Addr, r.config.RedisStartWait)
+	starterr := testAndWaitConnection(ctx, me.Addr, r.config.RedisStartWait)
 	if starterr != nil {
 		glog.Error("Error while waiting for redis to start: ", starterr)
 		return nil, starterr
@@ -162,14 +163,14 @@ func (r *RedisNode) run(me *Node) (*Node, error) {
 
 		if initCluster {
 			glog.Infof("Initializing cluster with slots from 0 to %d", redis.HashMaxSlots)
-			if err := me.InitRedisCluster(me.Addr); err != nil {
+			if err := me.InitRedisCluster(ctx, me.Addr); err != nil {
 				glog.Error("Unable to init the cluster with this node, err:", err)
 				return false, err
 			}
 		} else {
 			glog.Infof("Attaching node to cluster")
-			r.redisAdmin.RebuildConnectionMap(nodes, &r.admOptions)
-			if err := me.AttachNodeToCluster(me.Addr); err != nil {
+			r.redisAdmin.RebuildConnectionMap(ctx, nodes, &r.admOptions)
+			if err := me.AttachNodeToCluster(ctx, me.Addr); err != nil {
 				glog.Error("Unable to attach a node to the cluster, err:", err)
 				return false, nil
 			}
@@ -207,29 +208,30 @@ func (r *RedisNode) isClusterInitialization(currentIP string) ([]string, bool) {
 }
 
 func (r *RedisNode) handleStop(me *Node) error {
+	ctx := context.Background()
 	nodesAddr, err := getRedisNodesAddrs(r.kubeClient, r.config.Cluster.Namespace, r.config.Cluster.NodeService)
 	if err != nil {
 		glog.Error("Unable to retrieve Redis Node, err:", err)
 		return err
 	}
 
-	r.redisAdmin.Connections().ReplaceAll(nodesAddr)
-	if err = me.StartFailover(); err != nil {
+	r.redisAdmin.Connections().ReplaceAll(ctx, nodesAddr)
+	if err = me.StartFailover(ctx); err != nil {
 		glog.Errorf("Failover node:%s  error:%s", me.Addr, err)
 	}
 
-	if err = me.ForgetNode(); err != nil {
+	if err = me.ForgetNode(ctx); err != nil {
 		glog.Errorf("Forget node:%s  error:%s", me.Addr, err)
 	}
 
 	return err
 }
 
-func (r *RedisNode) configureHealth() error {
+func (r *RedisNode) configureHealth(ctx context.Context) error {
 	addr := net.JoinHostPort("127.0.0.1", r.config.Redis.ServerPort)
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("Check redis-node readiness", func() error {
-		if err := readinessCheck(addr); err != nil {
+		if err := readinessCheck(ctx, addr); err != nil {
 			glog.Errorf("readiness check failed, err:%v", err)
 			return err
 		}
@@ -237,7 +239,7 @@ func (r *RedisNode) configureHealth() error {
 	})
 
 	health.AddLivenessCheck("Check redis-node liveness", func() error {
-		if err := livenessCheck(addr); err != nil {
+		if err := livenessCheck(ctx, addr); err != nil {
 			glog.Errorf("liveness check failed, err:%v", err)
 			return err
 		}
@@ -250,26 +252,27 @@ func (r *RedisNode) configureHealth() error {
 	return nil
 }
 
-func readinessCheck(addr string) error {
-	client, rediserr := redis.NewClient(addr, time.Second, map[string]string{}) // will fail if node not accessible or slot range not set
+func readinessCheck(ctx context.Context, addr string) error {
+	client, rediserr := redis.NewClient(ctx, addr, time.Second, map[string]string{}) // will fail if node not accessible or slot range not set
 	if rediserr != nil {
 		return fmt.Errorf("Readiness failed, err: %v", rediserr)
 	}
 	defer client.Close()
-	array, err := client.Cmd("CLUSTER", "SLOTS").Array()
-	if err != nil {
-		return fmt.Errorf("Readiness failed, cluster slots response err: %v", rediserr)
-	}
 
-	if len(array) == 0 {
+	var resp radix.ClusterTopo
+	err := client.DoCmd(ctx, &resp,"CLUSTER", "SLOTS")
+	if err != nil {
+		return fmt.Errorf("Readiness failed, cluster slots response err: %v", err)
+	}
+	if len(resp) == 0 {
 		return fmt.Errorf("Readiness failed, cluster slots response empty")
 	}
 	glog.V(6).Info("Readiness probe ok")
 	return nil
 }
 
-func livenessCheck(addr string) error {
-	client, rediserr := redis.NewClient(addr, time.Second, map[string]string{}) // will fail if node not accessible or slot range not set
+func livenessCheck(ctx context.Context, addr string) error {
+	client, rediserr := redis.NewClient(ctx, addr, time.Second, map[string]string{}) // will fail if node not accessible or slot range not set
 	if rediserr != nil {
 		return fmt.Errorf("Liveness failed, err: %v", rediserr)
 	}
@@ -313,7 +316,7 @@ func WrapRedis(c *Config, ch chan error) {
 	ch <- nil
 }
 
-func testAndWaitConnection(addr string, maxWait time.Duration) error {
+func testAndWaitConnection(ctx context.Context, addr string, maxWait time.Duration) error {
 	startTime := time.Now()
 	waitTime := maxWait
 	for {
@@ -322,14 +325,19 @@ func testAndWaitConnection(addr string, maxWait time.Duration) error {
 		if timeout <= 0 {
 			return errors.New("Timeout reached")
 		}
-		client, err := radix.DialTimeout("tcp", addr, timeout)
+		dialer := &radix.Dialer{
+			NetDialer: &net.Dialer{
+				Timeout: timeout,
+			},
+		}
+		client, err := dialer.Dial(ctx, "tcp", addr)
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 		defer client.Close()
-
-		if resp, err := client.Cmd("PING").Str(); err != nil {
+		var resp string
+		if err := client.Do(ctx, radix.Cmd(&resp, "PING")); err != nil {
 			client.Close()
 			time.Sleep(100 * time.Millisecond)
 			continue

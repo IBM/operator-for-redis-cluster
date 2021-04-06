@@ -1,20 +1,20 @@
 package fake
 
 import (
+	"context"
 	"testing"
-
-	"github.com/mediocregopher/radix.v2/redis"
 )
 
-func TestCmd(t *testing.T) {
+func TestDoCmd(t *testing.T) {
 	mock := NewClientCluster()
-	mock.Resps["CLUSTER NODES"] = redis.NewRespSimple("someanswer")
-	resp := mock.Cmd("CLUSTER", "NODES")
-	val, err := resp.Str()
+	ctx := context.Background()
+	mock.Resps["CLUSTER NODES"] = "someanswer"
+	var resp interface{}
+	err := mock.DoCmd(ctx, &resp, "CLUSTER", "NODES")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	if val != "someanswer" {
-		t.Errorf("Expected '%s', got '%s'", "someanswer", val)
+	if resp != "someanswer" {
+		t.Errorf("Expected '%s', got '%s'", "someanswer", resp)
 	}
 }

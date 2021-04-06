@@ -1,59 +1,50 @@
 package redis
 
 import (
+	"context"
+	"github.com/mediocregopher/radix/v4"
+	"net"
 	"strings"
 	"time"
-
-	"github.com/mediocregopher/radix.v2/redis"
 )
-
 // ClientInterface redis client interface
 type ClientInterface interface {
 	// Close closes the connection.
 	Close() error
 
-	// Cmd calls the given Redis command.
-	Cmd(cmd string, args ...interface{}) *redis.Resp
+	// DoCmd calls the given Redis command and retrieves a result.
+	DoCmd(ctx context.Context, rcv interface{}, cmd string, args ...string) error
 
 	// PipeAppend adds the given call to the pipeline queue.
-	// Use PipeResp() to read the response.
-	PipeAppend(cmd string, args ...interface{})
+	PipeAppend(action radix.Action)
 
-	// PipeResp returns the reply for the next request in the pipeline queue. Err
-	// with ErrPipelineEmpty is returned if the pipeline queue is empty.
-	PipeResp() *redis.Resp
+	// PipeReset discards all Actions and resets all internal state.
+	PipeReset()
 
-	// PipeClear clears the contents of the current pipeline queue, both commands
-	// queued by PipeAppend which have yet to be sent and responses which have yet
-	// to be retrieved through PipeResp. The first returned int will be the number
-	// of pending commands dropped, the second will be the number of pending
-	// responses dropped
-	PipeClear() (int, int)
-
-	// ReadResp will read a Resp off of the connection without sending anything
-	// first (useful after you've sent a SUSBSCRIBE command). This will block until
-	// a reply is received or the timeout is reached (returning the IOErr). You can
-	// use IsTimeout to check if the Resp is due to a Timeout
-	//
-	// Note: this is a more low-level function, you really shouldn't have to
-	// actually use it unless you're writing your own pub/sub code
-	ReadResp() *redis.Resp
+	// DoPipe executes all of the commands in the pipeline.
+	DoPipe(ctx context.Context) error
 }
 
 // Client structure representing a client connection to redis
 type Client struct {
 	commandsMapping map[string]string
-	client          *redis.Client
+	client          radix.Client
+	pipeline        *radix.Pipeline
 }
 
 // NewClient build a client connection and connect to a redis address
-func NewClient(addr string, cnxTimeout time.Duration, commandsMapping map[string]string) (ClientInterface, error) {
+func NewClient(ctx context.Context, addr string, cnxTimeout time.Duration, commandsMapping map[string]string) (*Client, error) {
 	var err error
 	c := &Client{
 		commandsMapping: commandsMapping,
+		pipeline: radix.NewPipeline(),
 	}
-
-	c.client, err = redis.DialTimeout("tcp", addr, cnxTimeout)
+	dialer := &radix.Dialer{
+		NetDialer: &net.Dialer{
+			Timeout:       cnxTimeout,
+		},
+	}
+	c.client, err = dialer.Dial(ctx, "tcp", addr)
 	return c, err
 }
 
@@ -62,29 +53,24 @@ func (c *Client) Close() error {
 	return c.client.Close()
 }
 
-// Cmd calls the given Redis command.
-func (c *Client) Cmd(cmd string, args ...interface{}) *redis.Resp {
-	return c.client.Cmd(c.getCommand(cmd), args)
+// DoCmd calls the given Redis command.
+func (c *Client) DoCmd(ctx context.Context, rcv interface{}, cmd string, args ...string) error {
+	return c.client.Do(ctx, radix.Cmd(rcv, c.getCommand(cmd), args...))
 }
 
 // PipeAppend adds the given call to the pipeline queue.
-func (c *Client) PipeAppend(cmd string, args ...interface{}) {
-	c.client.PipeAppend(c.getCommand(cmd), args)
+func (c *Client) PipeAppend(action radix.Action) {
+	c.pipeline.Append(action)
 }
 
-// PipeResp returns the reply for the next request in the pipeline queue. Err
-func (c *Client) PipeResp() *redis.Resp {
-	return c.client.PipeResp()
+// PipeReset discards all Actions and resets all internal state.
+func (c *Client) PipeReset() {
+	c.pipeline.Reset()
 }
 
-// PipeClear clears the contents of the current pipeline queue
-func (c *Client) PipeClear() (int, int) {
-	return c.client.PipeClear()
-}
-
-// ReadResp will read a Resp off of the connection without sending anything
-func (c *Client) ReadResp() *redis.Resp {
-	return c.client.ReadResp()
+// DoPipe executes all of the commands in the pipeline.
+func (c *Client) DoPipe(ctx context.Context) error {
+	return c.client.Do(ctx, c.pipeline)
 }
 
 // getCommand return the command name after applying rename-command

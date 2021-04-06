@@ -1,6 +1,7 @@
 package clustering
 
 import (
+	"context"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/golang/glog"
@@ -25,7 +26,7 @@ func ClassifyNodesByRole(nodes redis.Nodes) (masters, slaves, nones redis.Nodes)
 }
 
 // DispatchSlave aim is to dispatch the available redis to slave of the current masters
-func DispatchSlave(cluster *redis.Cluster, nodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
+func DispatchSlave(ctx context.Context, cluster *redis.Cluster, nodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
 
 	currentMasterNodes, currentSlaveNodes, futurSlaveNodes := ClassifyNodesByRole(nodes)
 
@@ -38,11 +39,11 @@ func DispatchSlave(cluster *redis.Cluster, nodes redis.Nodes, replicationLevel i
 	if len(slavesByMaster) > 0 {
 		return nil
 	}
-	return AttachingSlavesToMaster(cluster, admin, slavesByMaster)
+	return AttachingSlavesToMaster(ctx, cluster, admin, slavesByMaster)
 }
 
 // AttachingSlavesToMaster used to attach slaves to there masters
-func AttachingSlavesToMaster(cluster *redis.Cluster, admin redis.AdminInterface, slavesByMaster map[string]redis.Nodes) error {
+func AttachingSlavesToMaster(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, slavesByMaster map[string]redis.Nodes) error {
 	var globalErr error
 	for masterID, slaves := range slavesByMaster {
 		masterNode, err := cluster.GetNodeByID(masterID)
@@ -53,7 +54,7 @@ func AttachingSlavesToMaster(cluster *redis.Cluster, admin redis.AdminInterface,
 		for _, slave := range slaves {
 			glog.V(2).Infof("[AttachingSlavesToMaster] Attaching node %s to master %s", slave.ID, masterID)
 
-			err := admin.AttachSlaveToMaster(slave, masterNode)
+			err := admin.AttachSlaveToMaster(ctx, slave, masterNode)
 			if err != nil {
 				glog.Errorf("Error while attaching node %s to master %s: %v", slave.ID, masterID, err)
 				globalErr = err
@@ -64,7 +65,7 @@ func AttachingSlavesToMaster(cluster *redis.Cluster, admin redis.AdminInterface,
 }
 
 // DispatchSlavesToNewMasters use to dispatch available Nodes as slave to Master in the case of rolling update
-func DispatchSlavesToNewMasters(newMasterNodesSlice, oldSlaveNodesSlice, newSlaveNodesSlice redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
+func DispatchSlavesToNewMasters(ctx context.Context, newMasterNodesSlice, oldSlaveNodesSlice, newSlaveNodesSlice redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
 	glog.V(3).Info("DispatchSlavesToNewMasters start")
 	var err error
 	slavesByMaster := make(map[string]redis.Nodes)
@@ -99,7 +100,7 @@ func DispatchSlavesToNewMasters(newMasterNodesSlice, oldSlaveNodesSlice, newSlav
 		}
 		if selectedMaster != "" {
 			glog.V(2).Infof("Attaching node %s to master %s", slave.ID, selectedMaster)
-			if err2 := admin.AttachSlaveToMaster(slave, masterByID[selectedMaster]); err2 != nil {
+			if err2 := admin.AttachSlaveToMaster(ctx, slave, masterByID[selectedMaster]); err2 != nil {
 				glog.Errorf("Error while attaching node %s to master %s: %v", slave.ID, selectedMaster, err)
 				break
 			}
@@ -112,7 +113,7 @@ func DispatchSlavesToNewMasters(newMasterNodesSlice, oldSlaveNodesSlice, newSlav
 }
 
 // DispatchSlaveByMaster use to dispatch available Nodes as slave to Master
-func DispatchSlaveByMaster(futurMasterNodes, currentSlaveNodes, futurSlaveNodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
+func DispatchSlaveByMaster(ctx context.Context, futurMasterNodes, currentSlaveNodes, futurSlaveNodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
 
 	var err error
 
@@ -162,7 +163,7 @@ func DispatchSlaveByMaster(futurMasterNodes, currentSlaveNodes, futurSlaveNodes 
 		}
 		if selectedMaster != "" {
 			glog.V(2).Infof("Attaching node %s to master %s", slave.ID, selectedMaster)
-			err = admin.AttachSlaveToMaster(slave, masterByID[selectedMaster])
+			err = admin.AttachSlaveToMaster(ctx, slave, masterByID[selectedMaster])
 			if err != nil {
 				glog.Errorf("Error while attaching node %s to master %s: %v", slave.ID, selectedMaster, err)
 				break

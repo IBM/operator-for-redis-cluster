@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -15,17 +16,17 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-func (c *Controller) clusterAction(admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) (bool, error) {
+func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) (bool, error) {
 	var err error
 	// run sanity check if needed
-	needSanity, err := sanitycheck.RunSanityChecks(admin, &c.config.redis, c.podControl, cluster, infos, true)
+	needSanity, err := sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, true)
 	if err != nil {
 		glog.Errorf("[clusterAction] cluster %s/%s, an error occurs during sanitycheck: %v ", cluster.Namespace, cluster.Name, err)
 		return false, err
 	}
 	if needSanity {
 		glog.V(3).Infof("[clusterAction] run sanitycheck cluster: %s/%s", cluster.Namespace, cluster.Name)
-		return sanitycheck.RunSanityChecks(admin, &c.config.redis, c.podControl, cluster, infos, false)
+		return sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, false)
 	}
 
 	// Start more pods in needed
@@ -51,7 +52,7 @@ func (c *Controller) clusterAction(admin redis.AdminInterface, cluster *rapi.Red
 	}
 
 	// Reconfigure the Cluster if needed
-	hasChanged, err := c.applyConfiguration(admin, cluster)
+	hasChanged, err := c.applyConfiguration(ctx, admin, cluster)
 	if err != nil {
 		glog.Errorf("[clusterAction] cluster %s/%s, an error occurs: %v ", cluster.Namespace, cluster.Name, err)
 		return false, err
@@ -67,7 +68,7 @@ func (c *Controller) clusterAction(admin redis.AdminInterface, cluster *rapi.Red
 }
 
 // manageRollingUpdate used to manage properly a cluster rolling update if the podtemplate spec has changed
-func (c *Controller) manageRollingUpdate(admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (bool, error) {
+func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (bool, error) {
 	nbRequirePodForSpec := *cluster.Spec.NumberOfMaster * (1 + *cluster.Spec.ReplicationFactor)
 	nbPodByNodeMigration := 1 + *cluster.Spec.ReplicationFactor
 	nbPodToCreate := nbRequirePodForSpec + nbPodByNodeMigration - cluster.Status.Cluster.NbPods
@@ -122,7 +123,7 @@ func (c *Controller) manageRollingUpdate(admin redis.AdminInterface, cluster *ra
 		cluster.Status.Cluster.NodesPlacement = rapi.NodesPlacementInfoOptimal
 	}
 
-	if err = clustering.AttachingSlavesToMaster(rCluster, admin, slavesByMaster); err != nil {
+	if err = clustering.AttachingSlavesToMaster(ctx, rCluster, admin, slavesByMaster); err != nil {
 		glog.Error("Unable to dispatch slave on new master, err:", err)
 		return false, err
 	}
@@ -130,14 +131,14 @@ func (c *Controller) manageRollingUpdate(admin redis.AdminInterface, cluster *ra
 	currentMasters := append(oldMasterNodes, newMasterNodes...)
 	allMasters := append(currentMasters, selectedNewMasters...)
 	// now we can move slot from old master to new master
-	if err = clustering.DispatchSlotToNewMasters(rCluster, admin, selectedMasters, currentMasters, allMasters); err != nil {
+	if err = clustering.DispatchSlotToNewMasters(ctx, rCluster, admin, selectedMasters, currentMasters, allMasters); err != nil {
 		glog.Error("Unable to dispatch slot on new master, err:", err)
 		return false, err
 	}
 
 	removedMasters, removeSlaves := getOldNodesToRemove(currentMasters, selectedMasters, nodes)
 
-	nodesToDelete, err := detachAndForgetNodes(admin, removedMasters, removeSlaves)
+	nodesToDelete, err := detachAndForgetNodes(ctx, admin, removedMasters, removeSlaves)
 	if err != nil {
 		glog.Error("Unable to detach and forhet old masters and associated slaves, err:", err)
 		return false, err
@@ -154,7 +155,7 @@ func (c *Controller) manageRollingUpdate(admin redis.AdminInterface, cluster *ra
 }
 
 // managePodScaleDown used to manage properly the scale down of a cluster
-func (c *Controller) managePodScaleDown(admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (bool, error) {
+func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (bool, error) {
 	glog.V(6).Info("managePodScaleDown START")
 	defer glog.V(6).Info("managePodScaleDown STOP")
 
@@ -179,7 +180,7 @@ func (c *Controller) managePodScaleDown(admin redis.AdminInterface, cluster *rap
 					errGlobal = err
 					continue
 				}
-				if err := admin.DetachSlave(node); err != nil {
+				if err := admin.DetachSlave(ctx, node); err != nil {
 					glog.Errorf("unable to detach the Slave Node with the ID: %s", node.ID)
 					errGlobal = err
 					continue
@@ -212,14 +213,14 @@ func (c *Controller) managePodScaleDown(admin redis.AdminInterface, cluster *rap
 			return false, err
 		}
 
-		if err := clustering.DispatchSlotToNewMasters(rCluster, admin, newMasters, curMasters, allMaster); err != nil {
+		if err := clustering.DispatchSlotToNewMasters(ctx, rCluster, admin, newMasters, curMasters, allMaster); err != nil {
 			glog.Error("Unable to dispatch slot on new master, err:", err)
 			return false, err
 		}
 
 		removedMasters, removeSlaves := getOldNodesToRemove(curMasters, newMasters, nodes)
 
-		if _, err := detachAndForgetNodes(admin, removedMasters, removeSlaves); err != nil {
+		if _, err := detachAndForgetNodes(ctx, admin, removedMasters, removeSlaves); err != nil {
 			glog.Error("Unable to detach and forhet old masters and associated slaves, err:", err)
 			return false, err
 		}
@@ -244,7 +245,7 @@ func (c *Controller) managePodScaleDown(admin redis.AdminInterface, cluster *rap
 				}
 				errorAppends := ""
 				for _, node := range selection {
-					if err = admin.AttachSlaveToMaster(node, master); err != nil {
+					if err = admin.AttachSlaveToMaster(ctx, node, master); err != nil {
 						glog.Errorf("error during manageScaleDown")
 						errorAppends += fmt.Sprintf("[%s]err:%s ,", node.ID, err)
 					}
@@ -263,7 +264,7 @@ func (c *Controller) managePodScaleDown(admin redis.AdminInterface, cluster *rap
 				}
 				errs := []error{}
 				for _, rNode := range podsToDeletion {
-					admin.DetachSlave(rNode)
+					admin.DetachSlave(ctx, rNode)
 					if rNode.Pod != nil {
 						if err := c.podControl.DeletePod(cluster, rNode.Pod.Name); err != nil {
 							errs = append(errs, err)
@@ -301,16 +302,16 @@ func getOldNodesToRemove(curMasters, newMasters, nodes redis.Nodes) (removedMast
 	return removedMasters, removeSlaves
 }
 
-func detachAndForgetNodes(admin redis.AdminInterface, masters, slaves redis.Nodes) (redis.Nodes, error) {
+func detachAndForgetNodes(ctx context.Context, admin redis.AdminInterface, masters, slaves redis.Nodes) (redis.Nodes, error) {
 	for _, node := range slaves {
-		if err := admin.DetachSlave(node); err != nil {
+		if err := admin.DetachSlave(ctx, node); err != nil {
 			glog.Errorf("unable to detach the slave with ID:%s, err:%v", node.ID, err)
 		}
 	}
 
 	removedNodes := append(masters, slaves...)
 	for _, node := range removedNodes {
-		if err := admin.ForgetNode(node.ID); err != nil {
+		if err := admin.ForgetNode(ctx, node.ID); err != nil {
 			glog.Errorf("unable to forger the node with ID:%s, err:%v", node.ID, err)
 		}
 	}
@@ -386,7 +387,7 @@ func selectSlavesToDelete(cluster *rapi.RedisCluster, nodes redis.Nodes, idMaste
 // applyConfiguration apply new configuration if needed:
 // - add or delete pods
 // - configure the redis-server process
-func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rapi.RedisCluster) (bool, error) {
+func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster) (bool, error) {
 	glog.V(6).Info("applyConfiguration START")
 	defer glog.V(6).Info("applyConfiguration STOP")
 
@@ -396,7 +397,7 @@ func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rap
 	cReplicaFactor := *cluster.Spec.ReplicationFactor
 	cNbMaster := *cluster.Spec.NumberOfMaster
 
-	rCluster, nodes, err := newRedisCluster(admin, cluster)
+	rCluster, nodes, err := newRedisCluster(ctx, admin, cluster)
 	if err != nil {
 		glog.Errorf("Unable to create the RedisCluster view, error:%v", err)
 		return false, err
@@ -410,7 +411,7 @@ func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rap
 		}
 
 		glog.Info("applyConfiguration needRollingUpdate")
-		return c.manageRollingUpdate(admin, cluster, rCluster, nodes)
+		return c.manageRollingUpdate(ctx, admin, cluster, rCluster, nodes)
 	}
 	if setRollingUpdategCondition(&cluster.Status, false) {
 		if cluster, err = c.updateHandler(cluster); err != nil {
@@ -425,7 +426,7 @@ func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rap
 			}
 		}
 		glog.Info("applyConfiguration needLessPods")
-		return c.managePodScaleDown(admin, cluster, rCluster, nodes)
+		return c.managePodScaleDown(ctx, admin, cluster, rCluster, nodes)
 	}
 	if setRebalancingCondition(&cluster.Status, false) {
 		if cluster, err = c.updateHandler(cluster); err != nil {
@@ -472,7 +473,7 @@ func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rap
 	if cNbMaster < int32(len(curMasters)) {
 		// this happens usually after a scale down of the cluster
 		// we should dispatch slots before dispatching slaves
-		if err := clustering.DispatchSlotToNewMasters(rCluster, admin, newMasters, curMasters, allMaster); err != nil {
+		if err := clustering.DispatchSlotToNewMasters(ctx, rCluster, admin, newMasters, curMasters, allMaster); err != nil {
 			glog.Error("Unable to dispatch slot on new master, err:", err)
 			return false, err
 		}
@@ -483,7 +484,7 @@ func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rap
 			rCluster.NodesPlacement = rapi.NodesPlacementInfoBestEffort
 		}
 
-		if err := clustering.AttachingSlavesToMaster(rCluster, admin, newRedisSlavesByMaster); err != nil {
+		if err := clustering.AttachingSlavesToMaster(ctx, rCluster, admin, newRedisSlavesByMaster); err != nil {
 			glog.Error("Unable to dispatch slave on new master, err:", err)
 			return false, err
 		}
@@ -495,12 +496,12 @@ func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rap
 			rCluster.NodesPlacement = rapi.NodesPlacementInfoBestEffort
 		}
 
-		if err := clustering.AttachingSlavesToMaster(rCluster, admin, newRedisSlavesByMaster); err != nil {
+		if err := clustering.AttachingSlavesToMaster(ctx, rCluster, admin, newRedisSlavesByMaster); err != nil {
 			glog.Error("Unable to dispatch slave on new master, err:", err)
 			return false, err
 		}
 
-		if err := clustering.DispatchSlotToNewMasters(rCluster, admin, newMasters, curMasters, allMaster); err != nil {
+		if err := clustering.DispatchSlotToNewMasters(ctx, rCluster, admin, newMasters, curMasters, allMaster); err != nil {
 			glog.Error("Unable to dispatch slot on new master, err:", err)
 			return false, err
 		}
@@ -514,8 +515,8 @@ func (c *Controller) applyConfiguration(admin redis.AdminInterface, cluster *rap
 	return asChanged, nil
 }
 
-func newRedisCluster(admin redis.AdminInterface, cluster *rapi.RedisCluster) (*redis.Cluster, redis.Nodes, error) {
-	infos, err := admin.GetClusterInfos()
+func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster) (*redis.Cluster, redis.Nodes, error) {
+	infos, err := admin.GetClusterInfos(ctx)
 	if redis.IsPartialError(err) {
 		glog.Errorf("Error getting consolidated view of the cluster err: %v", err)
 		return nil, nil, err

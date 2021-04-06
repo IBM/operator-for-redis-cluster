@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -13,7 +14,7 @@ import (
 )
 
 // NewRedisAdmin builds and returns new redis.Admin from the list of pods
-func NewRedisAdmin(pods []*apiv1.Pod, cfg *config.Redis) (redis.AdminInterface, error) {
+func NewRedisAdmin(ctx context.Context, pods []*apiv1.Pod, cfg *config.Redis) (redis.AdminInterface, error) {
 	nodesAddrs := []string{}
 	for _, pod := range pods {
 		redisPort := redis.DefaultRedisPort
@@ -33,7 +34,7 @@ func NewRedisAdmin(pods []*apiv1.Pod, cfg *config.Redis) (redis.AdminInterface, 
 		RenameCommandsFile: cfg.GetRenameCommandsFile(),
 	}
 
-	return redis.NewAdmin(nodesAddrs, &adminConfig), nil
+	return redis.NewAdmin(ctx, nodesAddrs, &adminConfig), nil
 }
 
 // IsPodReady check if pod is in ready condition, return the error message otherwise

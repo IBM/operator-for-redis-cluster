@@ -1,6 +1,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -13,14 +14,14 @@ import (
 )
 
 // FixClusterSplit use to detect and fix Cluster split
-func FixClusterSplit(admin redis.AdminInterface, config *config.Redis, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
+func FixClusterSplit(ctx context.Context, admin redis.AdminInterface, config *config.Redis, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
 	clusters := buildClustersLists(infos)
 
 	if len(clusters) > 1 {
 		if dryRun {
 			return true, nil
 		}
-		return true, reassignClusters(admin, config, clusters)
+		return true, reassignClusters(ctx, admin, config, clusters)
 	}
 	glog.V(3).Info("[SanityChecks] No split cluster detected")
 	return false, nil
@@ -28,7 +29,7 @@ func FixClusterSplit(admin redis.AdminInterface, config *config.Redis, infos *re
 
 type cluster []string
 
-func reassignClusters(admin redis.AdminInterface, config *config.Redis, clusters []cluster) error {
+func reassignClusters(ctx context.Context, admin redis.AdminInterface, config *config.Redis, clusters []cluster) error {
 	glog.Error("[SanityChecks] Cluster split detected, the Redis manager will recover from the issue, but data may be lost")
 	var errs []error
 	// only one cluster may remain
@@ -39,22 +40,22 @@ func reassignClusters(admin redis.AdminInterface, config *config.Redis, clusters
 	}
 	glog.Infof("[SanityChecks] Cluster '%s' is elected as main cluster", mainCluster)
 	// reset admin to connect to the correct cluster
-	admin.Connections().ReplaceAll(mainCluster)
+	admin.Connections().ReplaceAll(ctx, mainCluster)
 
 	// reconfigure bad clusters
 	for _, cluster := range badClusters {
 		glog.Warningf("[SanityChecks] All keys stored in redis cluster '%s' will be lost", cluster)
-		clusterAdmin := redis.NewAdmin(cluster,
+		clusterAdmin := redis.NewAdmin(ctx, cluster,
 			&redis.AdminOptions{
 				ConnectionTimeout:  time.Duration(config.DialTimeout) * time.Millisecond,
 				RenameCommandsFile: config.GetRenameCommandsFile(),
 			})
 		for _, nodeAddr := range cluster {
-			if err := clusterAdmin.FlushAndReset(nodeAddr, redis.ResetHard); err != nil {
+			if err := clusterAdmin.FlushAndReset(ctx, nodeAddr, redis.ResetHard); err != nil {
 				glog.Errorf("unable to flush the node: %s, err:%v", nodeAddr, err)
 				errs = append(errs, err)
 			}
-			if err := admin.AttachNodeToCluster(nodeAddr); err != nil {
+			if err := admin.AttachNodeToCluster(ctx, nodeAddr); err != nil {
 				glog.Errorf("unable to attach the node: %s, err:%v", nodeAddr, err)
 				errs = append(errs, err)
 			}

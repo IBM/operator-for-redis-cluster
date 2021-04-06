@@ -28,8 +28,15 @@ func (s SlotSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s SlotSlice) String() string {
 	return fmt.Sprintf("%s", SlotRangesFromSlots(s))
 }
+func (s SlotSlice) ConvertToStrings() []string {
+	var strSlots []string
+	for _, i := range s {
+		strSlots = append(strSlots, i.String())
+	}
+	return strSlots
+}
 
-// DecodeSlot parse a string representation of a slot slot
+// DecodeSlot parses a string representation of a slot slot
 func DecodeSlot(s string) (Slot, error) {
 	slot, err := strconv.ParseUint(s, 10, 64)
 	return Slot(slot), err
@@ -41,7 +48,7 @@ type SlotRange struct {
 	Max Slot `json:"max"`
 }
 
-// String string representation of a slotrange
+// String string representation of a slot range
 func (s SlotRange) String() string {
 	return s.Min.String() + slotSeparator + s.Max.String()
 }
@@ -68,7 +75,7 @@ type MigratingSlot struct {
 	ToNodeID string `json:"toNodeId"`
 }
 
-// String string representation of a migratting slot
+// String string representation of a migrating slot
 func (s MigratingSlot) String() string {
 	return s.SlotID.String() + migratingSeparator + s.ToNodeID
 }

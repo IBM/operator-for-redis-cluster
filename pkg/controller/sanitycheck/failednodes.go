@@ -1,6 +1,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/util/errors"
@@ -10,7 +11,7 @@ import (
 )
 
 // FixFailedNodes fix failed nodes: in some cases (cluster without enough master after crash or scale down), some nodes may still know about fail nodes
-func FixFailedNodes(admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
+func FixFailedNodes(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
 	forgetSet := listGhostNodes(cluster, infos)
 	var errs []error
 	doneAnAction := false
@@ -18,7 +19,7 @@ func FixFailedNodes(admin redis.AdminInterface, cluster *rapi.RedisCluster, info
 		doneAnAction = true
 		glog.Infof("Sanitychecks: Forgetting failed node %s, this command might fail, this is not an error", id)
 		if !dryRun {
-			if err := admin.ForgetNode(id); err != nil {
+			if err := admin.ForgetNode(ctx, id); err != nil {
 				errs = append(errs, err)
 			}
 		}

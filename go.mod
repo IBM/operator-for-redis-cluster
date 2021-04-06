@@ -6,7 +6,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/mattn/go-runewidth v0.0.10 // indirect
-	github.com/mediocregopher/radix.v2 v0.0.0-20181115013041-b67df6e626f9
+	github.com/mediocregopher/radix/v4 v4.0.0-beta.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo v1.15.0
 	github.com/onsi/gomega v1.10.5

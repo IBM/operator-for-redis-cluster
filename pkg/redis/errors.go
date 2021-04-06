@@ -7,12 +7,12 @@ type Error string
 
 func (e Error) Error() string { return string(e) }
 
-// nodeNotFoundedError returns when a node is not present in the cluster
-const nodeNotFoundedError = Error("node not founded")
+// nodeNotFoundError returns when a node is not present in the cluster
+const nodeNotFoundError = Error("node not found")
 
 // IsNodeNotFoundedError returns true if the current error is a NodeNotFoundedError
 func IsNodeNotFoundedError(err error) bool {
-	return err == nodeNotFoundedError
+	return err == nodeNotFoundError
 }
 
 // ClusterInfosError error type for redis cluster infos access
