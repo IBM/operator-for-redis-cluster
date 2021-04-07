@@ -3,6 +3,7 @@ module github.com/TheWeatherCompany/icm-redis-operator
 go 1.15
 
 require (
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/mattn/go-runewidth v0.0.10 // indirect

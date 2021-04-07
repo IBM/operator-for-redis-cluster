@@ -11,7 +11,7 @@ import (
 	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 
-func compareStatus(old, new *rapi.RedisClusterClusterStatus) bool {
+func compareStatus(old, new *rapi.RedisClusterState) bool {
 	if compareStringValue("ClusterStatus", string(old.Status), string(new.Status)) {
 		return true
 	}

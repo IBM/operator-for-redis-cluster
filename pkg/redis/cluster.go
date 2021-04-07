@@ -105,8 +105,8 @@ func (c *Cluster) GetNodesByFunc(f FindNodeFunc) (Nodes, error) {
 type FindNodeFunc func(node *Node) bool
 
 // ToAPIClusterStatus convert the Cluster information to a api
-func (c *Cluster) ToAPIClusterStatus() v1.RedisClusterClusterStatus {
-	status := v1.RedisClusterClusterStatus{}
+func (c *Cluster) ToAPIClusterStatus() v1.RedisClusterState {
+	status := v1.RedisClusterState{}
 	status.Status = c.Status
 	for _, node := range c.Nodes {
 		status.Nodes = append(status.Nodes, node.ToAPINode())

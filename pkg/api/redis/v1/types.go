@@ -70,7 +70,7 @@ type RedisClusterStatus struct {
 	// Human readable message indicating details about last transition.
 	Message string `json:"message,omitempty"`
 	// Cluster a view of the current RedisCluster
-	Cluster RedisClusterClusterStatus
+	Cluster RedisClusterState `json:"cluster"`
 }
 
 // RedisClusterCondition represent the condition of the RedisCluster
@@ -89,10 +89,11 @@ type RedisClusterCondition struct {
 	Message string `json:"message,omitempty"`
 }
 
-// RedisClusterClusterStatus represent the Redis Cluster status
-type RedisClusterClusterStatus struct {
+// RedisClusterState represent the Redis Cluster status
+type RedisClusterState struct {
 	Status               ClusterStatus `json:"status"`
 	NumberOfMaster       int32         `json:"numberOfMaster,omitempty"`
+	NbOfMastersReady     int32         `json:"numberOfMastersReady,omitempty"`
 	MinReplicationFactor int32         `json:"minReplicationFactor,omitempty"`
 	MaxReplicationFactor int32         `json:"maxReplicationFactor,omitempty"`
 
@@ -103,10 +104,12 @@ type RedisClusterClusterStatus struct {
 	NbPodsReady    int32 `json:"nbPodsReady,omitempty"`
 	NbRedisRunning int32 `json:"nbRedisNodesRunning,omitempty"`
 
+	LabelSelectorPath string `json:"labelSelectorPath"`
+
 	Nodes []RedisClusterNode `json:"nodes"`
 }
 
-func (s RedisClusterClusterStatus) String() string {
+func (s RedisClusterState) String() string {
 	output := ""
 	output += fmt.Sprintf("status:%s\n", s.Status)
 	output += fmt.Sprintf("NumberOfMaster:%d\n", s.NumberOfMaster)

@@ -95,7 +95,7 @@ func Test_selectSlavesToDelete(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterClusterStatus{
+						Cluster: rapi.RedisClusterState{
 							Nodes: []rapi.RedisClusterNode{
 								master1, master2, master3, slave1, slave2, slave3, slave1bis,
 							},
@@ -113,7 +113,7 @@ func Test_selectSlavesToDelete(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterClusterStatus{
+						Cluster: rapi.RedisClusterState{
 							Nodes: []rapi.RedisClusterNode{
 								master1, master2, master3, slave1, slave2, slave3, slave1bis,
 							},
@@ -216,7 +216,7 @@ func Test_newRedisCluster(t *testing.T) {
 						Namespace: "myNamespace",
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterClusterStatus{
+						Cluster: rapi.RedisClusterState{
 							Nodes: []rapi.RedisClusterNode{},
 						},
 					},
@@ -298,7 +298,7 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},
-						Cluster: rapi.RedisClusterClusterStatus{
+						Cluster: rapi.RedisClusterState{
 							NumberOfMaster:       1,
 							MinReplicationFactor: 1,
 							MaxReplicationFactor: 1,
@@ -342,7 +342,7 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},
-						Cluster: rapi.RedisClusterClusterStatus{
+						Cluster: rapi.RedisClusterState{
 							NumberOfMaster:       1,
 							MinReplicationFactor: 1,
 							MaxReplicationFactor: 1,

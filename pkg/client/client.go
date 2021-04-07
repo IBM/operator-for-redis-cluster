@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"github.com/gogo/protobuf/proto"
 	"reflect"
 	"time"
 
@@ -32,6 +33,13 @@ func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiex
 			Group:   redis.GroupName,
 			Version: v1.SchemeGroupVersion.Version,
 			Scope:   apiextensionsv1beta1.NamespaceScoped,
+			Subresources: &apiextensionsv1beta1.CustomResourceSubresources{
+				Scale: &apiextensionsv1beta1.CustomResourceSubresourceScale{
+					LabelSelectorPath:  proto.String(".status.cluster.labelSelectorPath"),
+					SpecReplicasPath:   ".spec.numberOfMaster",
+					StatusReplicasPath: ".status.cluster.numberOfMastersReady",
+				},
+			},
 			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
 				Plural:     v1.ResourcePlural,
 				Singular:   v1.ResourceSingular,

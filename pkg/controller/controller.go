@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-
 	"math"
 	"reflect"
 	"time"
@@ -369,7 +368,7 @@ func (c *Controller) checkSanityCheck(ctx context.Context, cluster *rapi.RedisCl
 	return sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, true)
 }
 
-func (c *Controller) updateClusterIfNeed(cluster *rapi.RedisCluster, newStatus *rapi.RedisClusterClusterStatus) (bool, error) {
+func (c *Controller) updateClusterIfNeed(cluster *rapi.RedisCluster, newStatus *rapi.RedisClusterState) (bool, error) {
 	if compareStatus(&cluster.Status.Cluster, newStatus) {
 		glog.V(3).Infof("Status changed for cluster: %s-%s", cluster.Namespace, cluster.Name)
 		// the status have been update, needs to update the RedisCluster
@@ -382,8 +381,8 @@ func (c *Controller) updateClusterIfNeed(cluster *rapi.RedisCluster, newStatus *
 	return false, nil
 }
 
-func (c *Controller) buildClusterStatus(admin redis.AdminInterface, clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod, cluster *rapi.RedisCluster) (*rapi.RedisClusterClusterStatus, error) {
-	clusterStatus := &rapi.RedisClusterClusterStatus{}
+func (c *Controller) buildClusterStatus(admin redis.AdminInterface, clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod, cluster *rapi.RedisCluster) (*rapi.RedisClusterState, error) {
+	clusterStatus := &rapi.RedisClusterState{}
 	clusterStatus.NbPodsReady = 0
 	clusterStatus.NbRedisRunning = 0
 	clusterStatus.MaxReplicationFactor = 0
@@ -393,10 +392,12 @@ func (c *Controller) buildClusterStatus(admin redis.AdminInterface, clusterInfos
 	var nbRedisRunning, nbPodsReady int32
 
 	nbMaster := int32(0)
+	nbOfMastersReady := int32(0)
 	nbSlaveByMaster := map[string]int{}
 
 	for _, pod := range pods {
-		if podready, _ := IsPodReady(pod); podready {
+		podReady := false
+		if podReady, _ = IsPodReady(pod); podReady {
 			nbPodsReady++
 		}
 
@@ -421,6 +422,9 @@ func (c *Controller) buildClusterStatus(admin redis.AdminInterface, clusterInfos
 					nbSlaveByMaster[redisNode.ID] = 0
 				}
 				nbMaster++
+				if podReady {
+					nbOfMastersReady++
+				}
 			}
 
 			newNode.ID = redisNode.ID
@@ -443,8 +447,16 @@ func (c *Controller) buildClusterStatus(admin redis.AdminInterface, clusterInfos
 	}
 	clusterStatus.NbRedisRunning = nbRedisRunning
 	clusterStatus.NumberOfMaster = nbMaster
+	clusterStatus.NbOfMastersReady = nbOfMastersReady
 	clusterStatus.NbPodsReady = nbPodsReady
 	clusterStatus.Status = rapi.ClusterStatusOK
+
+	podLabels, err := pod.GetLabelsSet(cluster)
+	if err != nil {
+		glog.Errorf("Unable to get labelset. err: %v", err)
+	}
+
+	clusterStatus.LabelSelectorPath = podLabels.String()
 
 	minReplicationFactor := math.MaxInt32
 	maxReplicationFactor := 0

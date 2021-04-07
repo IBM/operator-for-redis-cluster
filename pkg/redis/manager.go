@@ -14,9 +14,9 @@ func NewManager(admin *Admin) *Manager {
 	}
 }
 
-// BuildClusterStatus builds and returns new instance of the RedisClusterClusterStatus
-func (m *Manager) BuildClusterStatus() (*v1.RedisClusterClusterStatus, error) {
-	status := &v1.RedisClusterClusterStatus{}
+// BuildClusterStatus builds and returns new instance of the RedisClusterState
+func (m *Manager) BuildClusterStatus() (*v1.RedisClusterState, error) {
+	status := &v1.RedisClusterState{}
 
 	return status, nil
 }
