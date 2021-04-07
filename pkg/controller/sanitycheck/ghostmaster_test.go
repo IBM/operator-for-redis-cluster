@@ -1,6 +1,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"testing"
 
 	kapiv1 "k8s.io/api/core/v1"
@@ -19,6 +20,7 @@ func TestFixGhostMasterNodes(t *testing.T) {
 	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Pod: pod1}
 	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: pod2, Slots: []redis.Slot{1}}
 	redisGhostMaster := redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: pod3, Slots: []redis.Slot{}}
+	ctx := context.Background()
 
 	type args struct {
 		adminFunc  func() redis.AdminInterface
@@ -85,7 +87,7 @@ func TestFixGhostMasterNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			admin := tt.args.adminFunc()
-			got, err := FixGhostMasterNodes(admin, tt.args.podControl, tt.args.cluster, tt.args.info)
+			got, err := FixGhostMasterNodes(ctx, admin, tt.args.podControl, tt.args.cluster, tt.args.info)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FixGhostMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
 				return

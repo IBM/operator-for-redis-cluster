@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
@@ -113,7 +114,7 @@ func (a *Admin) GetHashMaxSlot() redis.Slot {
 }
 
 // AttachNodeToCluster command use to connect a Node to the cluster
-func (a *Admin) AttachNodeToCluster(addr string) error {
+func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 	val, ok := a.AttachNodeToClusterRet[addr]
 	if !ok {
 		val = nil
@@ -122,7 +123,7 @@ func (a *Admin) AttachNodeToCluster(addr string) error {
 }
 
 // InitRedisCluster used to init a single node redis cluster
-func (a *Admin) InitRedisCluster(addr string) error {
+func (a *Admin) InitRedisCluster(ctx context.Context, addr string) error{
 	val, ok := a.InitRedisClusterRet[addr]
 	if !ok {
 		val = nil
@@ -131,17 +132,17 @@ func (a *Admin) InitRedisCluster(addr string) error {
 }
 
 // GetClusterInfos returns redis cluster infos from all clients
-func (a *Admin) GetClusterInfos() (*redis.ClusterInfos, error) {
+func (a *Admin) GetClusterInfos(ctx context.Context) (*redis.ClusterInfos, error) {
 	return a.GetClusterInfosRet.ClusterInfos, a.GetClusterInfosRet.Err
 }
 
 // GetClusterInfosSelected returns redis cluster infos from all clients
-func (a *Admin) GetClusterInfosSelected(addr []string) (*redis.ClusterInfos, error) {
+func (a *Admin) GetClusterInfosSelected(ctx context.Context, addr []string) (*redis.ClusterInfos, error) {
 	return a.GetClusterInfosSelectedRet.ClusterInfos, a.GetClusterInfosSelectedRet.Err
 }
 
 // StartFailover used to force the failover of a specific redis master node
-func (a *Admin) StartFailover(addr string) error {
+func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 	val, ok := a.StartFailoverRet[addr]
 	if !ok {
 		val = nil
@@ -150,7 +151,7 @@ func (a *Admin) StartFailover(addr string) error {
 }
 
 // ForgetNode used to force other redis cluster node to forget a specific node
-func (a *Admin) ForgetNode(addr string) error {
+func (a *Admin) ForgetNode(ctx context.Context, addr string) error {
 	val, ok := a.ForgetNodeRet[addr]
 	if !ok {
 		val = nil
@@ -159,7 +160,7 @@ func (a *Admin) ForgetNode(addr string) error {
 }
 
 // ForgetNodeByAddr used to force other redis cluster node to forget a specific node
-func (a *Admin) ForgetNodeByAddr(addr string) error {
+func (a *Admin) ForgetNodeByAddr(ctx context.Context, addr string) error {
 	val, ok := a.ForgetNodeRet[addr]
 	if !ok {
 		val = nil
@@ -168,7 +169,7 @@ func (a *Admin) ForgetNodeByAddr(addr string) error {
 }
 
 // SetSlots use to set SETSLOT command on several slots
-func (a *Admin) SetSlots(addr, action string, slots redis.SlotSlice, nodeID string) error {
+func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots redis.SlotSlice, nodeID string) error {
 	val, ok := a.SetSlotsRet[addr]
 	if !ok {
 		val = nil
@@ -177,7 +178,7 @@ func (a *Admin) SetSlots(addr, action string, slots redis.SlotSlice, nodeID stri
 }
 
 // AddSlots use to set ADDSLOT command on several slots
-func (a *Admin) AddSlots(addr string, slots redis.SlotSlice) error {
+func (a *Admin) AddSlots(ctx context.Context, addr string, slots redis.SlotSlice) error {
 	val, ok := a.AddSlotsRet[addr]
 	if !ok {
 		val = nil
@@ -186,7 +187,7 @@ func (a *Admin) AddSlots(addr string, slots redis.SlotSlice) error {
 }
 
 // DelSlots exec the redis command to del slots in a pipeline
-func (a *Admin) DelSlots(addr string, slots redis.SlotSlice) error {
+func (a *Admin) DelSlots(ctx context.Context, addr string, slots redis.SlotSlice) error {
 	val, ok := a.DelSlotsRet[addr]
 	if !ok {
 		val = nil
@@ -195,7 +196,7 @@ func (a *Admin) DelSlots(addr string, slots redis.SlotSlice) error {
 }
 
 // GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
-func (a *Admin) GetKeysInSlot(addr string, node redis.Slot, batch int, limit bool) ([]string, error) {
+func (a *Admin) GetKeysInSlot(ctx context.Context, addr string, node redis.Slot, batch int, limit bool) ([]string, error) {
 	val, ok := a.GetKeysInSlotRet[addr]
 	if !ok {
 		val = GetKeysInSlotRetType{Keys: []string{}, Err: nil}
@@ -204,7 +205,7 @@ func (a *Admin) GetKeysInSlot(addr string, node redis.Slot, batch int, limit boo
 }
 
 // CountKeysInSlot exec the redis command to count the keys in the given slot of the node
-func (a *Admin) CountKeysInSlot(addr string, node redis.Slot) (int64, error) {
+func (a *Admin) CountKeysInSlot(ctx context.Context, addr string, node redis.Slot) (int64, error) {
 	val, ok := a.CountKeysInSlotRet[addr]
 	if !ok {
 		val = CountKeysInSlotRetType{NbKeys: int64(0), Err: nil}
@@ -213,7 +214,7 @@ func (a *Admin) CountKeysInSlot(addr string, node redis.Slot) (int64, error) {
 }
 
 // MigrateKeys use to migrate keys from slots to other slots
-func (a *Admin) MigrateKeys(addr string, dest *redis.Node, slots redis.SlotSlice, batch, timeout int, replace bool) (int, error) {
+func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *redis.Node, slots redis.SlotSlice, batch, timeout int, replace bool) (int, error) {
 	val, ok := a.MigrateKeysRet[addr]
 	if !ok {
 		val = MigrateKeyRetType{Nb: 0, Err: nil}
@@ -222,7 +223,7 @@ func (a *Admin) MigrateKeys(addr string, dest *redis.Node, slots redis.SlotSlice
 }
 
 // AttachSlaveToMaster attach a slave to a master node
-func (a *Admin) AttachSlaveToMaster(slave *redis.Node, master *redis.Node) error {
+func (a *Admin) AttachSlaveToMaster(ctx context.Context, slave *redis.Node, master *redis.Node) error {
 	val, ok := a.AttachSlaveToMasterRet[master.ID]
 	if !ok {
 		val = nil
@@ -230,8 +231,8 @@ func (a *Admin) AttachSlaveToMaster(slave *redis.Node, master *redis.Node) error
 	return val
 }
 
-// DetachSlave dettach a slave to its master
-func (a *Admin) DetachSlave(slave *redis.Node) error {
+// DetachSlave detach a slave to its master
+func (a *Admin) DetachSlave(ctx context.Context, slave *redis.Node) error {
 	val, ok := a.DetachSlaveToMasterRet[slave.ID]
 	if !ok {
 		val = nil
@@ -240,7 +241,7 @@ func (a *Admin) DetachSlave(slave *redis.Node) error {
 }
 
 // FlushAndReset reset the cluster configuration of the node, also flush in the same pipe
-func (a *Admin) FlushAndReset(addr string, mode string) error {
+func (a *Admin) FlushAndReset(ctx context.Context, addr string, mode string) error {
 	val, ok := a.FlushAndResetRet[addr]
 	if !ok {
 		val = nil
@@ -249,9 +250,9 @@ func (a *Admin) FlushAndReset(addr string, mode string) error {
 }
 
 // FlushAll flush all keys in cluster
-func (a *Admin) FlushAll() {
+func (a *Admin) FlushAll(ctx context.Context) {
 }
 
 //RebuildConnectionMap rebuild the connection map according to the given addresse
-func (a *Admin) RebuildConnectionMap(addrs []string, options *redis.AdminOptions) {
+func (a *Admin) RebuildConnectionMap(ctx context.Context, addrs []string, options *redis.AdminOptions) {
 }

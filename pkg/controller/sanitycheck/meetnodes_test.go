@@ -1,6 +1,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 )
 
 func Test_fixNodesNotMeetFunc(t *testing.T) {
+	ctx := context.Background()
 	type args struct {
 		admin   redis.AdminInterface
 		infos   *redis.ClusterInfos
@@ -114,7 +116,7 @@ func Test_fixNodesNotMeetFunc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			meetTest := meetNodesTest{meet: tt.args.meetMap}
-			got, err := fixNodesNotMeetFunc(tt.args.admin, tt.args.infos, meetTest.meetFuncTest, false)
+			got, err := fixNodesNotMeetFunc(ctx, tt.args.admin, tt.args.infos, meetTest.meetFuncTest, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fixNodesNotMeetFunc() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -132,7 +134,7 @@ type meetNodesTest struct {
 	meet map[string]listIds
 }
 
-func (m *meetNodesTest) meetFuncTest(admin redis.AdminInterface, node1, node2 *redis.Node) error {
+func (m *meetNodesTest) meetFuncTest(ctx context.Context, admin redis.AdminInterface, node1, node2 *redis.Node) error {
 	list1, ok := m.meet[node1.ID]
 	if !ok {
 		return fmt.Errorf("unexpected node1:%s", node1.ID)

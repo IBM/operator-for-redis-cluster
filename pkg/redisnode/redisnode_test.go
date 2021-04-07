@@ -1,6 +1,7 @@
 package redisnode
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	//	"net"
@@ -18,6 +19,7 @@ import (
 
 func TestTestAndWaitConnection(t *testing.T) {
 	redisSrv1 := fake.NewRedisServer(t)
+	ctx := context.Background()
 	defer redisSrv1.Close()
 	addr1 := redisSrv1.GetHostPort()
 
@@ -25,7 +27,7 @@ func TestTestAndWaitConnection(t *testing.T) {
 	resp := "PONG"
 	redisSrv1.PushResponse(rq, resp)
 
-	err := testAndWaitConnection(addr1, 1)
+	err := testAndWaitConnection(ctx, addr1, 1)
 	if err != nil {
 		t.Errorf("Unexpected error while waiting for fake redis node: %v", err)
 	}

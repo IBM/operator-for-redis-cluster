@@ -39,7 +39,7 @@ type AdminInterface interface {
 	AttachNodeToCluster(ctx context.Context, addr string) error
 	// AttachSlaveToMaster attach a slave to a master node
 	AttachSlaveToMaster(ctx context.Context, slave *Node, master *Node) error
-	// DetachSlave dettach a slave to its master
+	// DetachSlave detach a slave to its master
 	DetachSlave(ctx context.Context, slave *Node) error
 	// StartFailover execute the failover of the Redis Master corresponding to the addr
 	StartFailover(ctx context.Context, addr string) error
@@ -47,23 +47,23 @@ type AdminInterface interface {
 	ForgetNode(ctx context.Context, id string) error
 	// ForgetNodeByAddr execute the Redis command to force the cluster to forgot the the Node
 	ForgetNodeByAddr(ctx context.Context, id string) error
-	// SetSlots exect the redis command to set slots in a pipeline, provide
+	// SetSlots execute the redis command to set slots in a pipeline, provide
 	// and empty nodeID if the set slots commands doesn't take a nodeID in parameter
 	SetSlots(ctx context.Context, addr string, action string, slots SlotSlice, nodeID string) error
-	// AddSlots exect the redis command to add slots in a pipeline
+	// AddSlots execute the redis command to add slots in a pipeline
 	AddSlots(ctx context.Context, addr string, slots SlotSlice) error
-	// DelSlots exec the redis command to del slots in a pipeline
+	// DelSlots execute the redis command to del slots in a pipeline
 	DelSlots(ctx context.Context, addr string, slots SlotSlice) error
-	// GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
+	// GetKeysInSlot execute the redis command to get the keys in the given slot on the node we are connected to
 	GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch int, limit bool) ([]string, error)
-	// CountKeysInSlot exec the redis command to count the keys given slot on the node
+	// CountKeysInSlot execute the redis command to count the keys given slot on the node
 	CountKeysInSlot(ctx context.Context, addr string, slot Slot) (int64, error)
 	// MigrateKeys from addr to destination node. returns number of slot migrated. If replace is true, replace key on busy error
 	MigrateKeys(ctx context.Context, addr string, dest *Node, slots SlotSlice, batch, timeout int, replace bool) (int, error)
 	// FlushAndReset reset the cluster configuration of the node, the node is flushed in the same pipe to ensure reset works
 	FlushAndReset(ctx context.Context, addr string, mode string) error
 	// FlushAll flush all keys in cluster
-	FlushAll(ctx context.Context, )
+	FlushAll(ctx context.Context)
 	// GetHashMaxSlot get the max slot value
 	GetHashMaxSlot() Slot
 	//RebuildConnectionMap rebuild the connection map according to the given addresses

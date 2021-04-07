@@ -1,6 +1,7 @@
 package clustering
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -12,7 +13,7 @@ func TestAssignSlave(t *testing.T) {
 	// TODO currently only test there is no error, more accurate testing is needed
 	masterRole := "master"
 	slaveRole := "slave"
-
+	ctx := context.Background()
 	redisNode1 := &redis.Node{ID: "1", Role: masterRole, IP: "1.1.1.1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: newPod("pod1", "vm1")}
 	redisNode2 := &redis.Node{ID: "2", Role: masterRole, IP: "1.1.1.2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: newPod("pod2", "vm2")}
 	redisNode3 := &redis.Node{ID: "3", Role: slaveRole, MasterReferent: "1", IP: "1.1.1.3", Port: "1234", Slots: []redis.Slot{}, Pod: newPod("pod3", "vm3")}
@@ -41,7 +42,7 @@ func TestAssignSlave(t *testing.T) {
 		},
 	}
 
-	err := DispatchSlave(c, nodes, 2, admin.NewFakeAdmin([]string{}))
+	err := DispatchSlave(ctx, c, nodes, 2, admin.NewFakeAdmin([]string{}))
 	if err != nil {
 		t.Errorf("Unexpected error returned: %v", err)
 	}

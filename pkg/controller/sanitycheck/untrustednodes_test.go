@@ -1,6 +1,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -21,6 +22,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: pod2, Slots: []redis.Slot{1}}
 	redisUntrusted := redis.Node{ID: "redis3", FailStatus: []string{string(redis.NodeStatusHandshake)}, Role: "master", IP: "10.0.0.3", Pod: pod3, Slots: []redis.Slot{}}
 	redis4 := redis.Node{ID: "redis4", Role: "slave", IP: "10.0.0.3", Pod: pod3}
+	ctx := context.Background()
 
 	type args struct {
 		adminFunc  func() redis.AdminInterface
@@ -168,7 +170,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			admin := tt.args.adminFunc()
-			got, err := FixUntrustedNodes(admin, tt.args.podControl, tt.args.cluster, tt.args.infos, false)
+			got, err := FixUntrustedNodes(ctx, admin, tt.args.podControl, tt.args.cluster, tt.args.infos, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FixUntrustedNodes() error = %v, wantErr %v", err, tt.wantErr)
 				return

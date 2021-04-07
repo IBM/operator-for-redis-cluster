@@ -1,6 +1,7 @@
 package redisnode
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -59,6 +60,7 @@ include bar.cfg
 
 func TestAdminCommands(t *testing.T) {
 	a := admin.NewFakeAdmin([]string{})
+	ctx := context.Background()
 	c := Config{
 		Redis: config.Redis{ServerPort: "1234"},
 	}
@@ -67,8 +69,8 @@ func TestAdminCommands(t *testing.T) {
 	defer node.Clear()
 
 	// all methods below simply call the fake admin, test currently only improves coverage
-	node.InitRedisCluster("1.1.1.1")
-	node.AttachNodeToCluster("1.1.1.1")
-	node.ForgetNode()
-	node.StartFailover()
+	node.InitRedisCluster(ctx, "1.1.1.1")
+	node.AttachNodeToCluster(ctx, "1.1.1.1")
+	node.ForgetNode(ctx)
+	node.StartFailover(ctx)
 }
