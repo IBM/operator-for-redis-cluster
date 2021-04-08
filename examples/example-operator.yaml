@@ -1,4 +1,0 @@
-imagePullSecret: all-icr-io
-image:
-  tag: 0.1.6-radix
-  pullPolicy: Always

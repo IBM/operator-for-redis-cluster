@@ -33,7 +33,7 @@ type RedisClusterControlInteface interface {
 
 var _ RedisClusterControlInteface = &RedisClusterControl{}
 
-// RedisClusterControl contains requieres accessor to managing the RedisCluster pods
+// RedisClusterControl contains requires accessor to managing the RedisCluster pods
 type RedisClusterControl struct {
 	PodLister  corev1listers.PodLister
 	KubeClient clientset.Interface

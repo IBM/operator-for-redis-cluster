@@ -17,15 +17,10 @@ var TAG string
 //with for example COMMIT=$(shell git rev-parse HEAD)
 var COMMIT string
 
-//VERSION should be populated by at build time: -ldflags "-w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.VERSION=${VERSION}
-//with for example VERSION=$(shell git rev-parse --abbrev-ref HEAD)
-var VERSION string
-
 // BuildInfos returns builds information
 func BuildInfos() {
 	fmt.Println("Program started at: " + time.Now().String())
 	fmt.Println("BUILDTIME=" + BUILDTIME)
 	fmt.Println("TAG=" + TAG)
 	fmt.Println("COMMIT=" + COMMIT)
-	fmt.Println("VERSION=" + VERSION)
 }

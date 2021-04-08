@@ -5,7 +5,7 @@ ARTIFACT_INITCONTAINER=init-container
 PREFIX=redisoperator/
 #PREFIX = gcr.io/google_containers/
 
-SOURCES := $(shell find $(SOURCEDIR) ! -name "*_test.go" -name '*.go')
+SOURCES := $(shell find . ! -name "*_test.go" -name '*.go')
 
 CMDBINS := operator redisnode
 
@@ -18,7 +18,7 @@ LDFLAGS= -ldflags "-w -X ${BUILDINFOPKG}.TAG=${TAG} -X ${BUILDINFOPKG}.COMMIT=${
 
 all: build
 
-plugin: build-kubectl-plugin install-plugin
+plugin: build-kubectl-rc install-plugin
 
 install-plugin:
 	./tools/install-plugin.sh
@@ -30,10 +30,10 @@ buildlinux-%: ${SOURCES}
 	CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo ${LDFLAGS} -o docker/$*/$* ./cmd/$*/main.go
 
 container-%: buildlinux-%
-	@cd docker/$* && docker build -t $(PREFIX)$*:$(TAG) .
+	docker build -t $(PREFIX)$*:$(TAG) -f Dockerfile.$* .
 
 container-redisnode: buildlinux-redisnode
-	@cd docker/redisnode && docker build -t $(PREFIX)redisnode:$(TAG) .
+	docker build -t $(PREFIX)redisnode:$(TAG) -f Dockerfile.redisnode .
 
 icm-build-push: build
 	@cd docker/redisnode && docker build -t us.icr.io/icm-docker-images/redisnode:$(VERSION) .

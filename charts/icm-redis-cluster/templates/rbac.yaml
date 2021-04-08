@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "icm-redis-cluster.fullname" . }}
+  labels: {{- include "icm-redis-cluster.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "services", "endpoints", "pods"]
+  verbs: ["list", "get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "icm-redis-cluster.fullname" . }}
+  labels: {{- include "icm-redis-cluster.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "icm-redis-cluster.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "icm-redis-cluster.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}

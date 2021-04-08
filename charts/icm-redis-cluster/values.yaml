@@ -1,0 +1,93 @@
+# Default values for icm-redis-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+numberOfMaster: 3
+replicationFactor: 1
+maxMemoryPolicy: noeviction
+logLevel: 2
+
+redis:
+  configuration:
+    # you can provide the path of a redis configuration file that will be added in a configMap and included
+    # in the redis-server configuration in each redis-cluster node.
+    # the file must be local of the helm chart (in the chart folder).
+    file: ""
+    # You can provide the redis config directly as a value instead through a file as shown below.
+    # If BOTH the "file" and "value" are defined, the value will be used, i.e. Treated as an overide value.
+    # value: |
+    #   bind 127.0.0.1
+    #   protected-mode yes
+    #   tcp-backlog 511
+    #   timeout 0
+    value: ""
+
+image:
+  repository: us.icr.io/icm-docker-images/icm-redis-redisnode
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+livenessProbe:
+  httpGet:
+    path: /live
+    port: http
+  initialDelaySeconds: 12
+  timeoutSeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 30
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 12
+  timeoutSeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

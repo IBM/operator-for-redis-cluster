@@ -1,0 +1,115 @@
+apiVersion: redisoperator.k8s.io/v1alpha1
+kind: RedisCluster
+metadata:
+  name: {{ include "icm-redis-cluster.fullname" . }}
+  labels: {{- include "icm-redis-cluster.labels" . | nindent 4 }}
+spec:
+  numberOfMaster: {{ .Values.numberOfMaster }}
+  replicationFactor: {{ .Values.replicationFactor }}
+  serviceName: {{ include "icm-redis-cluster.fullname" . }}
+  podTemplate:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "icm-redis-cluster.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "icm-redis-cluster.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [
+            "--v={{ .Values.logLevel }}",
+            "--c=/redis-conf/redis.conf",
+            "--logtostderr=true",
+            "--alsologtostderr=true",
+            "--rs={{ include "icm-redis-cluster.fullname" . }}",
+            "--t=10s",
+            "--d=10s",
+            "--ns=$(POD_NAMESPACE)",
+            "--ip=$(POD_IP)",
+            "--cluster-node-timeout=2000",
+            {{- if .Values.resources }}
+            "--max-memory=$(MEMORY_REQUEST)",
+            {{- end }}
+            {{- if .Values.maxMemoryPolicy }}
+            "--max-memory-policy={{ .Values.maxMemoryPolicy }}",
+            {{- end }}
+            {{- if include "icm-redis-cluster.hasextraconfig" . }}
+            "--config-file=/redis-extra-conf/redis.conf",
+            {{- end }}
+            ]
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- if .Values.resources }}
+            - name: MEMORY_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: {{ .Chart.Name }}
+                  resource: requests.memory
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+            - name: cluster
+              containerPort: 16379
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /redis-data
+            - name: conf
+              mountPath: /redis-conf
+            {{- if include "icm-redis-cluster.hasextraconfig" . }}
+            - name: extra-conf
+              mountPath: /redis-extra-conf
+            {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: conf
+          emptyDir: {}
+        {{- if include "icm-redis-cluster.hasextraconfig" . }}
+        - name: extra-conf
+          configMap:
+            name: {{ include "icm-redis-cluster.fullname" . }}
+        {{- end }}
