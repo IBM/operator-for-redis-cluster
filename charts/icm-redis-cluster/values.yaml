@@ -91,3 +91,23 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+metrics:
+  enabled: false
+  image:
+    host: docker.io
+    namespace: oliver006
+    name: redis_exporter
+    tag: v1.13.1
+    pullPolicy: IfNotPresent
+  port:
+    name: metrics
+    number: 9121
+  resources:
+    requests:
+      cpu: 100m
+      memory: 100Mi
+  servicemonitor:
+    enabled: false
+    path: /metrics
+    interval: 30s

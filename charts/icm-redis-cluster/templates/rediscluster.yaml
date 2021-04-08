@@ -24,6 +24,18 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
+        {{- if .Values.metrics.enabled }}
+        - name: redis-exporter
+          {{- with .Values.metrics.image }}
+          image: "{{ .host }}/{{ .namespace }}/{{ .name }}:{{ .tag }}"
+          imagePullPolicy: {{ .pullPolicy }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.metrics.resources | nindent 12 }}
+          ports:
+          - containerPort: {{ .Values.metrics.port.number }}
+            name: {{ .Values.metrics.port.name }}
+        {{- end }}
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}

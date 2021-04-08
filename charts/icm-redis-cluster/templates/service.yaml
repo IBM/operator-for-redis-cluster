@@ -1,0 +1,16 @@
+{{- if .Values.metrics.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "icm-redis-cluster.fullname" . }}-metrics
+  labels: {{- include "icm-redis-cluster.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.metrics.port.number }}
+      targetPort: {{ .Values.metrics.port.name }}
+      protocol: TCP
+      name: {{ .Values.metrics.port.name }}
+  selector:
+    {{- include "icm-redis-cluster.selectorLabels" . | nindent 4 }}
+{{- end }}
