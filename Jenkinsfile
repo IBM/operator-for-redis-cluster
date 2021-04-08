@@ -12,6 +12,7 @@ ibmCloud = [
 ]
 
 docker = [
+  artifactory: "wcp-icm-remote-docker-virtual.artifactory.swg-devops.com",
   registry: "us.icr.io",
   namespace: "icm-docker-images",
   operatorImageName: "icm-redis-operator",
@@ -38,7 +39,7 @@ podTemplate(
   containers: [
     containerTemplate(
       name: 'golang',
-      image: buildImage,
+      image: "${docker.artifactory}/${buildImage}",
       ttyEnabled: true,
       resourceRequestCpu: '500m',
       resourceLimitCpu: '2',
@@ -66,6 +67,7 @@ podTemplate(
     boolean isLatest = releaseBuild
 
     List<String> buildArgs = [
+      "DOCKER_PROXY_REGISTRY=$docker.artifactory/",
       "BUILDIMAGE=$buildImage",
       "BUILDTIME=$buildDateTime",
       "TAG=$buildTag",
@@ -83,6 +85,7 @@ podTemplate(
       }
     }
 
+    icmDockerLogin(docker.artifactory, artifactory.credentials)
     operatorLocalImage = icmDockerBuildStage(gitInfo, ['--build-arg': buildArgs,'--file': 'Dockerfile.operator'])
     redisnodeLocalImage = icmDockerBuildStage(gitInfo, ['--build-arg': buildArgs,'--file': 'Dockerfile.redisnode'])
 
