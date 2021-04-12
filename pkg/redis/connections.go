@@ -50,8 +50,8 @@ type AdminConnectionsInterface interface {
 	// ReplaceAll clear the map and re-populate it with new connections
 	// fail silently
 	ReplaceAll(ctx context.Context, addrs []string)
-	// ValidateResp check the redis resp, eventually reconnect on connection error
-	// in case of error, customize the error, log it and return it
+	// ValidateResp checks if the redis resp is empty and will attempt to reconnect on connection error.
+	// In case of error, customize the error, log it and return it.
 	ValidateResp(ctx context.Context, resp interface{}, err error, addr, errMessage string) error
 	// Reset close all connections and clear the connection map
 	Reset()
@@ -219,8 +219,8 @@ func (cnx *AdminConnections) Reset() {
 	cnx.clients = map[string]ClientInterface{}
 }
 
-// ValidateResp checks the redis resp and will attempt to reconnect on connection error
-// in case of error, customize the error, log it and return it
+// ValidateResp checks the redis resp is empty and will attempt to reconnect on connection error.
+// In case of error, customize the error, log it and return it.
 func (cnx *AdminConnections) ValidateResp(ctx context.Context, resp interface{}, err error, addr, errMessage string) error {
 	if resp == nil {
 		glog.Errorf("%s: Unable to connect to node %s", errMessage, addr)

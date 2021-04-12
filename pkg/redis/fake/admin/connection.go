@@ -71,8 +71,8 @@ func (cnx *Connections) ReplaceAll(ctx context.Context, addrs []string) {
 func (cnx *Connections) Reset() {
 }
 
-// ValidateResp check the redis resp, eventually reconnect on connection error
-// in case of error, customize the error, log it and return it
+// ValidateResp checks if the redis resp is empty and will attempt to reconnect on connection error.
+// In case of error, customize the error, log it and return it.
 func (cnx *Connections) ValidateResp(ctx context.Context, resp interface{}, err error, addr, errMessage string) error {
 	return nil
 }

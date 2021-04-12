@@ -86,10 +86,10 @@ func (s MigratingSlot) String() string {
 //       * slot range: ex: 42-52
 //       * migrating slot: ex: [42->-67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1]
 //       * importing slot: ex: [42-<-67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1]
-func DecodeSlotRange(str string) ([]Slot, *ImportingSlot, *MigratingSlot, error) {
+func DecodeSlotRange(str string) (SlotSlice, *ImportingSlot, *MigratingSlot, error) {
 	val := strings.Split(str, slotSeparator)
 	var min, max, slot Slot
-	slots := []Slot{}
+	slots := SlotSlice{}
 	var err error
 	if len(val) == 3 {
 		// migrating or importing slot
@@ -128,7 +128,7 @@ func DecodeSlotRange(str string) ([]Slot, *ImportingSlot, *MigratingSlot, error)
 }
 
 // SlotRangesFromSlots return a slice of slot ranges from a slice of slots
-func SlotRangesFromSlots(slots []Slot) []SlotRange {
+func SlotRangesFromSlots(slots SlotSlice) []SlotRange {
 	ranges := []SlotRange{}
 	min := Slot(0)
 	max := Slot(0)
@@ -155,7 +155,7 @@ func SlotRangesFromSlots(slots []Slot) []SlotRange {
 }
 
 // RemoveSlots return a new list of slot where a list of slots have been removed, doesn't work if duplicates
-func RemoveSlots(slots []Slot, removedSlots []Slot) []Slot {
+func RemoveSlots(slots SlotSlice, removedSlots SlotSlice) SlotSlice {
 	for i := 0; i < len(slots); i++ {
 		s := slots[i]
 		for _, r := range removedSlots {
@@ -171,7 +171,7 @@ func RemoveSlots(slots []Slot, removedSlots []Slot) []Slot {
 }
 
 // AddSlots return a new list of slots after adding some slots in it, duplicates are removed
-func AddSlots(slots []Slot, addedSlots []Slot) []Slot {
+func AddSlots(slots SlotSlice, addedSlots SlotSlice) SlotSlice {
 	for _, s := range addedSlots {
 		if !Contains(slots, s) {
 			slots = append(slots, s)
@@ -181,7 +181,7 @@ func AddSlots(slots []Slot, addedSlots []Slot) []Slot {
 }
 
 // Contains returns true if a node slice contains a node
-func Contains(s []Slot, e Slot) bool {
+func Contains(s SlotSlice, e Slot) bool {
 	for _, a := range s {
 		if a == e {
 			return true
@@ -191,8 +191,8 @@ func Contains(s []Slot, e Slot) bool {
 }
 
 // BuildSlotSlice return a slice of all slots between this range
-func BuildSlotSlice(min, max Slot) []Slot {
-	slots := []Slot{}
+func BuildSlotSlice(min, max Slot) SlotSlice {
+	slots := SlotSlice{}
 	for s := min; s <= max; s++ {
 		slots = append(slots, s)
 	}

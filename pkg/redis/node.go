@@ -54,7 +54,7 @@ type Node struct {
 	PingSent        int64
 	PongRecv        int64
 	ConfigEpoch     int64
-	Slots           []Slot
+	Slots           SlotSlice
 	MigratingSlots  map[Slot]string
 	ImportingSlots  map[Slot]string
 	ServerStartTime time.Time
@@ -78,7 +78,7 @@ func (n Nodes) String() string {
 func NewDefaultNode() *Node {
 	return &Node{
 		Port:           DefaultRedisPort,
-		Slots:          []Slot{},
+		Slots:          SlotSlice{},
 		MigratingSlots: map[Slot]string{},
 		ImportingSlots: map[Slot]string{},
 	}

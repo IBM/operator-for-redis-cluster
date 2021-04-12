@@ -9,12 +9,12 @@ import (
 func TestSlotRangeDecode(t *testing.T) {
 	testTable := []struct {
 		asString string
-		slots    []Slot
+		slots    SlotSlice
 		err      bool
 	}{
 		{"", nil, true},
 		{"1-9000", BuildSlotSlice(1, 9000), false},
-		{"1-1", []Slot{1}, false},
+		{"1-1", SlotSlice{1}, false},
 		{"-1-10", nil, true},
 		{"foo", nil, true},
 	}
@@ -89,7 +89,7 @@ func TestImporatingSlotDecode(t *testing.T) {
 }
 
 func TestSlotContains(t *testing.T) {
-	slice := []Slot{1, 2, 3}
+	slice := SlotSlice{1, 2, 3}
 	if !Contains(slice, 1) {
 		t.Error("1 should be in {1, 2, 3}")
 	}
@@ -100,14 +100,14 @@ func TestSlotContains(t *testing.T) {
 
 func TestSlotRangesFromSlots(t *testing.T) {
 	testTable := []struct {
-		sSlice  []Slot
+		sSlice  SlotSlice
 		sRanges []SlotRange
 	}{
-		{[]Slot{8, 3, 10, 5, 6, 7, 2, 9, 4}, []SlotRange{{Min: 2, Max: 10}}},
-		{[]Slot{2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 4}, []SlotRange{{Min: 2, Max: 10}}}, //overlap
-		{[]Slot{0}, []SlotRange{{Min: 0, Max: 0}}},                                 // one
+		{SlotSlice{8, 3, 10, 5, 6, 7, 2, 9, 4}, []SlotRange{{Min: 2, Max: 10}}},
+		{SlotSlice{2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 4}, []SlotRange{{Min: 2, Max: 10}}}, //overlap
+		{SlotSlice{0}, []SlotRange{{Min: 0, Max: 0}}},                                 // one
 		{nil, []SlotRange{}},                                                       // nil
-		{[]Slot{0, 1, 2, 5, 6, 7, 345}, []SlotRange{{Min: 0, Max: 2}, {Min: 5, Max: 7}, {Min: 345, Max: 345}}}, // several ranges
+		{SlotSlice{0, 1, 2, 5, 6, 7, 345}, []SlotRange{{Min: 0, Max: 2}, {Min: 5, Max: 7}, {Min: 345, Max: 345}}}, // several ranges
 	}
 
 	for i, tt := range testTable {
@@ -120,15 +120,15 @@ func TestSlotRangesFromSlots(t *testing.T) {
 
 func TestRemoveSlots(t *testing.T) {
 	testTable := []struct {
-		sSlice1  []Slot
-		sSlice2  []Slot
-		expected []Slot
+		sSlice1  SlotSlice
+		sSlice2  SlotSlice
+		expected SlotSlice
 	}{
-		{[]Slot{2, 3, 4, 5, 6, 7, 8, 9, 10}, []Slot{2, 10}, []Slot{3, 4, 5, 6, 7, 8, 9}},
-		{[]Slot{2, 5}, []Slot{2, 2, 3}, []Slot{5}},
-		{[]Slot{0, 1, 3, 4}, []Slot{0, 1, 3, 4}, []Slot{}},
-		{[]Slot{}, []Slot{2, 10}, []Slot{}},
-		{[]Slot{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, []Slot{5}, []Slot{0, 1, 2, 3, 4, 6, 7, 8, 9, 10}},
+		{SlotSlice{2, 3, 4, 5, 6, 7, 8, 9, 10}, SlotSlice{2, 10}, SlotSlice{3, 4, 5, 6, 7, 8, 9}},
+		{SlotSlice{2, 5}, SlotSlice{2, 2, 3}, SlotSlice{5}},
+		{SlotSlice{0, 1, 3, 4}, SlotSlice{0, 1, 3, 4}, SlotSlice{}},
+		{SlotSlice{}, SlotSlice{2, 10}, SlotSlice{}},
+		{SlotSlice{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, SlotSlice{5}, SlotSlice{0, 1, 2, 3, 4, 6, 7, 8, 9, 10}},
 	}
 
 	for i, tt := range testTable {
@@ -141,14 +141,14 @@ func TestRemoveSlots(t *testing.T) {
 
 func TestAddSlots(t *testing.T) {
 	testTable := []struct {
-		sSlice1  []Slot
-		sSlice2  []Slot
-		expected []Slot
+		sSlice1  SlotSlice
+		sSlice2  SlotSlice
+		expected SlotSlice
 	}{
-		{[]Slot{2, 3, 4, 5, 6, 7, 8, 9, 10}, []Slot{1, 11, 13}, []Slot{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13}},
-		{[]Slot{2, 5}, []Slot{2, 2, 3}, []Slot{2, 3, 5}},
-		{[]Slot{}, []Slot{0, 1, 2, 3, 4}, []Slot{0, 1, 2, 3, 4}},
-		{[]Slot{}, []Slot{2, 10}, []Slot{2, 10}},
+		{SlotSlice{2, 3, 4, 5, 6, 7, 8, 9, 10}, SlotSlice{1, 11, 13}, SlotSlice{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13}},
+		{SlotSlice{2, 5}, SlotSlice{2, 2, 3}, SlotSlice{2, 3, 5}},
+		{SlotSlice{}, SlotSlice{0, 1, 2, 3, 4}, SlotSlice{0, 1, 2, 3, 4}},
+		{SlotSlice{}, SlotSlice{2, 10}, SlotSlice{2, 10}},
 	}
 
 	for i, tt := range testTable {

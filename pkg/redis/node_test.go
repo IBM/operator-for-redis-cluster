@@ -26,7 +26,7 @@ func TestNode_ToAPINode(t *testing.T) {
 		ID             string
 		IP             string
 		MasterReferent string
-		Slots          []Slot
+		Slots          SlotSlice
 		Pod            *kapiv1.Pod
 	}
 	tests := []struct {
@@ -42,7 +42,7 @@ func TestNode_ToAPINode(t *testing.T) {
 				Pod: &kapiv1.Pod{
 					ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "NS1"},
 				},
-				Slots: []Slot{},
+				Slots: SlotSlice{},
 			},
 			want: v1.RedisClusterNode{
 				ID:      "id1",
@@ -60,7 +60,7 @@ func TestNode_ToAPINode(t *testing.T) {
 				Pod: &kapiv1.Pod{
 					ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "NS1"},
 				},
-				Slots: []Slot{Slot(1), Slot(2)},
+				Slots: SlotSlice{Slot(1), Slot(2)},
 			},
 			want: v1.RedisClusterNode{
 				ID:      "id1",
@@ -79,7 +79,7 @@ func TestNode_ToAPINode(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "NS1"},
 				},
 				MasterReferent: "idMaster",
-				Slots:          []Slot{},
+				Slots:          SlotSlice{},
 			},
 			want: v1.RedisClusterNode{
 				ID:      "id1",
@@ -299,11 +299,11 @@ func TestNodeSetReferentMasterNone(t *testing.T) {
 }
 func TestNodeWhereP(t *testing.T) {
 	var slice Nodes
-	nodeMaster := &Node{ID: "A", Role: redisMasterRole, Slots: []Slot{0, 1, 4, 10}}
+	nodeMaster := &Node{ID: "A", Role: redisMasterRole, Slots: SlotSlice{0, 1, 4, 10}}
 	slice = append(slice, nodeMaster)
-	nodeSlave := &Node{ID: "B", Role: redisSlaveRole, Slots: []Slot{}}
+	nodeSlave := &Node{ID: "B", Role: redisSlaveRole, Slots: SlotSlice{}}
 	slice = append(slice, nodeSlave)
-	nodeUnset := &Node{ID: "C", Role: redisMasterRole, Slots: []Slot{}}
+	nodeUnset := &Node{ID: "C", Role: redisMasterRole, Slots: SlotSlice{}}
 	slice = append(slice, nodeUnset)
 
 	masterSlice, err := slice.GetNodesByFunc(IsMasterWithSlot)
@@ -342,11 +342,11 @@ func TestNodeWhereP(t *testing.T) {
 
 func TestSearchNodeByID(t *testing.T) {
 	var slice Nodes
-	nodeMaster := &Node{ID: "A", Role: redisMasterRole, Slots: []Slot{0, 1, 4, 10}}
+	nodeMaster := &Node{ID: "A", Role: redisMasterRole, Slots: SlotSlice{0, 1, 4, 10}}
 	slice = append(slice, nodeMaster)
-	nodeSlave := &Node{ID: "B", Role: redisSlaveRole, Slots: []Slot{}}
+	nodeSlave := &Node{ID: "B", Role: redisSlaveRole, Slots: SlotSlice{}}
 	slice = append(slice, nodeSlave)
-	nodeUnset := &Node{ID: "C", Role: redisMasterRole, Slots: []Slot{}}
+	nodeUnset := &Node{ID: "C", Role: redisMasterRole, Slots: SlotSlice{}}
 	slice = append(slice, nodeUnset)
 
 	// empty list

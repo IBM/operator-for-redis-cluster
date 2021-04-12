@@ -3,6 +3,7 @@
 package sanitycheck
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"reflect"
@@ -30,8 +31,9 @@ func TestFixClusterSplit(t *testing.T) {
 	defer redisSrv3.Close()
 	addr3 := redisSrv3.GetHostPort()
 	host3, port3, _ := net.SplitHostPort(addr3)
+	ctx := context.Background()
 
-	admin := redis.NewAdmin([]string{addr1, addr2, addr3}, nil)
+	admin := redis.NewAdmin(ctx, []string{addr1, addr2, addr3}, nil)
 	cfg := &config.Redis{}
 	redisNodeID1 := "07c37dfeb235213a872192d90877d0cd55635b91"
 	redisNodeID2 := "7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca"
@@ -64,13 +66,13 @@ func TestFixClusterSplit(t *testing.T) {
 		t.Logf("response: [%s] [%v]", key, val)
 	}
 
-	infos, err := admin.GetClusterInfos()
+	infos, err := admin.GetClusterInfos(ctx)
 	if err == nil {
 		t.Errorf("admin.GetClusterInfos() should return an error")
 	}
 
 	// First run, should return an inconsitent error
-	if action, err := FixClusterSplit(admin, cfg, infos, false); err != nil && action {
+	if action, err := FixClusterSplit(ctx, admin, cfg, infos, false); err != nil && action {
 		t.Errorf("FixClusterSplit should not return an error and action==true. action[%v] error[%v]", action, err)
 	}
 }

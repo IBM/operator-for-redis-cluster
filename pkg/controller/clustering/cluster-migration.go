@@ -17,7 +17,7 @@ type migrationInfo struct {
 	To   *redis.Node
 }
 
-type mapSlotByMigInfo map[migrationInfo][]redis.Slot
+type mapSlotByMigInfo map[migrationInfo]redis.SlotSlice
 
 // DispatchMasters used to select nodes with master roles
 func DispatchMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32, admin redis.AdminInterface) (redis.Nodes, redis.Nodes, redis.Nodes, error) {
@@ -61,7 +61,7 @@ func DispatchSlotToNewMasters(ctx context.Context, cluster *redis.Cluster, admin
 		// There is a need for real error handling here, we must ensure we don't keep a slot in abnormal state
 		if nodesInfo.From == nil {
 			if glog.V(4) {
-				glog.Warning("1) Add slots that having probably been lost during scale down, destination: ", nodesInfo.To.ID, " total:", len(slots), " : ", redis.SlotSlice(slots))
+				glog.Warning("1) Add slots that having probably been lost during scale down, destination: ", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
 			}
 			err := admin.AddSlots(ctx, nodesInfo.To.IPPort(), slots)
 			if err != nil {
@@ -69,13 +69,13 @@ func DispatchSlotToNewMasters(ctx context.Context, cluster *redis.Cluster, admin
 				return err
 			}
 		} else {
-			glog.V(6).Info("1) Send SETSLOT IMPORTING command target:", nodesInfo.To.ID, " source-node:", nodesInfo.From.ID, " total:", len(slots), " : ", redis.SlotSlice(slots))
+			glog.V(6).Info("1) Send SETSLOT IMPORTING command target:", nodesInfo.To.ID, " source-node:", nodesInfo.From.ID, " total:", len(slots), " : ", slots)
 			err := admin.SetSlots(ctx, nodesInfo.To.IPPort(), "IMPORTING", slots, nodesInfo.From.ID)
 			if err != nil {
 				glog.Error("Error during IMPORTING:", err)
 				return err
 			}
-			glog.V(6).Info("2) Send SETSLOT MIGRATION command target:", nodesInfo.From.ID, " destination-node:", nodesInfo.To.ID, " total:", len(slots), " : ", redis.SlotSlice(slots))
+			glog.V(6).Info("2) Send SETSLOT MIGRATION command target:", nodesInfo.From.ID, " destination-node:", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
 			err = admin.SetSlots(ctx, nodesInfo.From.IPPort(), "MIGRATING", slots, nodesInfo.To.ID)
 			if err != nil {
 				glog.Error("Error during MIGRATING:", err)
@@ -120,7 +120,7 @@ func DispatchSlotToNewMasters(ctx context.Context, cluster *redis.Cluster, admin
 					// we ignore those nodes
 					continue
 				}
-				glog.V(6).Info("4) Send SETSLOT NODE command target:", master.ID, " new owner:", nodesInfo.To.ID, " total:", len(slots), " : ", redis.SlotSlice(slots))
+				glog.V(6).Info("4) Send SETSLOT NODE command target:", master.ID, " new owner:", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
 				err = admin.SetSlots(ctx, master.IPPort(), "NODE", slots, nodesInfo.To.ID)
 				if err != nil {
 					if glog.V(4) {
@@ -182,12 +182,14 @@ func feedMigInfo(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes, nbS
 
 // buildSlotsByNode get all slots that have to be migrated with retrieveSlotToMigrateFrom and retrieveSlotToMigrateFromRemovedNodes
 // and assign those slots to node that need them
-func buildSlotsByNode(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes, nbSlots int) map[string][]redis.Slot {
+func buildSlotsByNode(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes, nbSlots int) map[string]redis.SlotSlice {
 	var nbNode = len(newMasterNodes)
 	if nbNode == 0 {
-		return make(map[string][]redis.Slot)
+		return make(map[string]redis.SlotSlice)
 	}
+	glog.V(6).Infof("Number of slots: %v", nbSlots)
 	nbSlotByNode := int(math.Ceil(float64(nbSlots) / float64(nbNode)))
+	glog.V(6).Infof("Number of slots per node: %v", nbSlotByNode)
 	slotToMigrateByNode := retrieveSlotToMigrateFrom(oldMasterNodes, nbSlotByNode)
 	slotToMigrateByNodeFromDeleted := retrieveSlotToMigrateFromRemovedNodes(newMasterNodes, oldMasterNodes)
 	for id, slots := range slotToMigrateByNodeFromDeleted {
@@ -196,7 +198,7 @@ func buildSlotsByNode(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes
 
 	slotToMigrateByNode[""] = retrieveLostSlots(oldMasterNodes, nbSlots)
 	if len(slotToMigrateByNode[""]) != 0 {
-		glog.Errorf("Several slots have been lost: %v", redis.SlotSlice(slotToMigrateByNode[""]))
+		glog.Errorf("Several slots have been lost: %v", slotToMigrateByNode[""])
 	}
 	slotToAddByNode := buildSlotByNodeFromAvailableSlots(newMasterNodes, nbSlotByNode, slotToMigrateByNode)
 
@@ -228,12 +230,11 @@ func buildSlotsByNode(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes
 }
 
 // retrieveSlotToMigrateFrom list the number of slots that need to be migrated to reach nbSlotByNode per nodes
-func retrieveSlotToMigrateFrom(oldMasterNodes redis.Nodes, nbSlotByNode int) map[string][]redis.Slot {
-	slotToMigrateByNode := make(map[string][]redis.Slot)
+func retrieveSlotToMigrateFrom(oldMasterNodes redis.Nodes, nbSlotByNode int) map[string]redis.SlotSlice {
+	slotToMigrateByNode := make(map[string]redis.SlotSlice)
 	for _, node := range oldMasterNodes {
 		glog.V(6).Info("--- oldMasterNode:", node.ID)
-		nbSlot := node.TotalSlots()
-		if nbSlot >= nbSlotByNode {
+		if node.TotalSlots() >= nbSlotByNode {
 			if len(node.Slots[nbSlotByNode:]) > 0 {
 				slotToMigrateByNode[node.ID] = append(slotToMigrateByNode[node.ID], node.Slots[nbSlotByNode:]...)
 			}
@@ -245,8 +246,8 @@ func retrieveSlotToMigrateFrom(oldMasterNodes redis.Nodes, nbSlotByNode int) map
 
 // retrieveSlotToMigrateFromRemovedNodes given the list of node that will be masters with slots, and the list of nodes that were masters with slots
 // return the list of slots from previous nodes that will be moved, because this node will no longer hold slots
-func retrieveSlotToMigrateFromRemovedNodes(newMasterNodes, oldMasterNodes redis.Nodes) map[string][]redis.Slot {
-	slotToMigrateByNode := make(map[string][]redis.Slot)
+func retrieveSlotToMigrateFromRemovedNodes(newMasterNodes, oldMasterNodes redis.Nodes) map[string]redis.SlotSlice {
+	slotToMigrateByNode := make(map[string]redis.SlotSlice)
 	var removedNodes redis.Nodes
 	for _, old := range oldMasterNodes {
 		glog.V(6).Info("--- oldMasterNode:", old.ID)
@@ -270,14 +271,14 @@ func retrieveSlotToMigrateFromRemovedNodes(newMasterNodes, oldMasterNodes redis.
 }
 
 // retrieveLostSlots retrieve the list of slots that are not attributed to a node
-func retrieveLostSlots(oldMasterNodes redis.Nodes, nbSlots int) []redis.Slot {
-	currentFullRange := []redis.Slot{}
+func retrieveLostSlots(oldMasterNodes redis.Nodes, nbSlots int) redis.SlotSlice {
+	var currentFullRange redis.SlotSlice
 	for _, node := range oldMasterNodes {
 		// TODO a lot of perf improvement can be done here with better algorithm to add slot ranges
 		currentFullRange = append(currentFullRange, node.Slots...)
 	}
-	sort.Sort(redis.SlotSlice(currentFullRange))
-	lostSlots := []redis.Slot{}
+	sort.Sort(currentFullRange)
+	lostSlots := redis.SlotSlice{}
 	// building []slot of slots that are missing from currentFullRange to reach [0, nbSlots]
 	last := redis.Slot(0)
 	if len(currentFullRange) == 0 || currentFullRange[0] != 0 {
@@ -298,32 +299,37 @@ func retrieveLostSlots(oldMasterNodes redis.Nodes, nbSlots int) []redis.Slot {
 	return lostSlots
 }
 
-func buildSlotByNodeFromAvailableSlots(newMasterNodes redis.Nodes, nbSlotByNode int, slotToMigrateByNode map[string][]redis.Slot) map[string][]redis.Slot {
-	slotToAddByNode := make(map[string][]redis.Slot)
+func buildSlotByNodeFromAvailableSlots(newMasterNodes redis.Nodes, nbSlotByNode int, slotToMigrateByNode map[string]redis.SlotSlice) map[string]redis.SlotSlice{
+	slotToAddByNode := make(map[string]redis.SlotSlice)
 	var nbNode = len(newMasterNodes)
 	if nbNode == 0 {
 		return slotToAddByNode
 	}
-	var slotOfNode = make(map[int][]redis.Slot)
+	var slotOfNode = make(map[int]redis.SlotSlice)
 	for i, node := range newMasterNodes {
 		slotOfNode[i] = node.Slots
 	}
-	var idNode = 0
+	idNode := 0
 	for _, slotsFrom := range slotToMigrateByNode {
-		for _, slot := range slotsFrom {
-			var missingSlots = nbSlotByNode - len(slotOfNode[idNode])
+		slotIndex := 0
+		for slotIndex < len(slotsFrom) {
+			missingSlots := nbSlotByNode - len(slotOfNode[idNode])
 			if missingSlots > 0 {
-				slotOfNode[idNode] = append(slotOfNode[idNode], slot)
-				slotToAddByNode[newMasterNodes[idNode].ID] = append(slotToAddByNode[newMasterNodes[idNode].ID], slot)
+				// Node has missing slots, add the slot to current node and increment index
+				slotOfNode[idNode] = append(slotOfNode[idNode], slotsFrom[slotIndex])
+				slotToAddByNode[newMasterNodes[idNode].ID] = append(slotToAddByNode[newMasterNodes[idNode].ID], slotsFrom[slotIndex])
+				slotIndex++
 			} else {
+				// Node does not have any missing slots, go to the next node
 				idNode++
 				if idNode > (nbNode - 1) {
-					// all nodes have been filled
-					idNode--
+					// All nodes have been filled, go back to previous node and overfill it
 					glog.V(7).Infof("Some available slots have not been assigned, over-filling node %s", newMasterNodes[idNode].ID)
+					idNode--
+					slotOfNode[idNode] = append(slotOfNode[idNode], slotsFrom[slotIndex])
+					slotToAddByNode[newMasterNodes[idNode].ID] = append(slotToAddByNode[newMasterNodes[idNode].ID], slotsFrom[slotIndex])
+					slotIndex++
 				}
-				slotOfNode[idNode] = append(slotOfNode[idNode], slot)
-				slotToAddByNode[newMasterNodes[idNode].ID] = append(slotToAddByNode[newMasterNodes[idNode].ID], slot)
 			}
 		}
 	}

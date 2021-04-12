@@ -14,9 +14,9 @@ import (
 )
 
 func Test_searchAvailableSlaveForMasterID(t *testing.T) {
-	master1 := redis.Node{ID: "master1", Slots: []redis.Slot{1}, Role: "master"}
-	slave1 := redis.Node{ID: "slave1", Slots: []redis.Slot{}, Role: "slave", MasterReferent: "master1"}
-	futurslave := redis.Node{ID: "futurslave", Slots: []redis.Slot{}, Role: "master"}
+	master1 := redis.Node{ID: "master1", Slots: redis.SlotSlice{1}, Role: "master"}
+	slave1 := redis.Node{ID: "slave1", Slots: redis.SlotSlice{}, Role: "slave", MasterReferent: "master1"}
+	futurslave := redis.Node{ID: "futurslave", Slots: redis.SlotSlice{}, Role: "master"}
 
 	type args struct {
 		nodes          redis.Nodes
@@ -153,7 +153,7 @@ func newRedisSlaveNode(id, masterRef, podName, nodeName string) (rapi.RedisClust
 
 func newRedisMasterNode(id, podName, nodeName string, slots []string) (rapi.RedisClusterNode, redis.Node) {
 	role := "master"
-	slotsInt := []redis.Slot{}
+	slotsInt := redis.SlotSlice{}
 	for _, s := range slots {
 		i, _ := redis.DecodeSlot(s)
 		slotsInt = append(slotsInt, i)
@@ -180,7 +180,7 @@ func newPod(name, node string) *kapiv1.Pod {
 
 func Test_newRedisCluster(t *testing.T) {
 	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: []redis.Slot{1}}
+	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
 	ctx := context.Background()
 	nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
 	fakeAdmin := admin.NewFakeAdmin(nodesAddr)
@@ -255,9 +255,9 @@ func Test_newRedisCluster(t *testing.T) {
 
 func TestController_applyConfiguration(t *testing.T) {
 	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: []redis.Slot{1}}
-	redis3 := redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: []redis.Slot{}}
-	redis4 := redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: []redis.Slot{}}
+	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis3 := redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{}}
+	redis4 := redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: redis.SlotSlice{}}
 	ctx := context.Background()
 	nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
 
@@ -381,9 +381,9 @@ func TestController_applyConfiguration(t *testing.T) {
 
 func Test_getOldNodesToRemove(t *testing.T) {
 	redis1 := &redis.Node{ID: "redis1", Role: "slave", MasterReferent: "redis2", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
-	redis2 := &redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: []redis.Slot{1}}
-	redis3 := &redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: []redis.Slot{2}}
-	redis4 := &redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: []redis.Slot{3}}
+	redis2 := &redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis3 := &redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{2}}
+	redis4 := &redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: redis.SlotSlice{3}}
 	redis5 := &redis.Node{ID: "redis5", Role: "slave", MasterReferent: "redis3", IP: "10.0.0.5", Pod: newPod("pod5", "node5")}
 	redis6 := &redis.Node{ID: "redis6", Role: "slave", MasterReferent: "redis4", IP: "10.0.0.6", Pod: newPod("pod6", "node6")}
 

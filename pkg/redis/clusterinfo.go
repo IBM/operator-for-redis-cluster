@@ -139,7 +139,7 @@ func DecodeNodeInfos(input *string, addr string) *NodeInfos {
 // ComputeStatus check the ClusterInfos status based on the current data
 // the status ClusterInfosPartial is set while building the clusterinfos
 // if already set, do nothing
-// returns true if contistent or if another error
+// returns true if consistent or if another error
 func (c *ClusterInfos) ComputeStatus() bool {
 	if c.Status != ClusterInfosUnset {
 		return false
@@ -201,7 +201,7 @@ func getConfigSignature(nodes Nodes) ConfigSignature {
 	signature := ConfigSignature{}
 	for _, node := range nodes {
 		if node.Role == redisMasterRole {
-			signature[node.ID] = SlotSlice(node.Slots)
+			signature[node.ID] = node.Slots
 		}
 	}
 	return signature
@@ -234,7 +234,7 @@ func (ci ClusterInconsistencies) String() string {
 func (c *ClusterInfos) GetInconsistencies() *ClusterInconsistencies {
 	ci := ClusterInconsistencies{}
 	for addr, nodeinfo := range c.Infos {
-		allSlots := []Slot{}
+		allSlots := SlotSlice{}
 		for _, node := range append(nodeinfo.Friends, nodeinfo.Node) {
 			// owned slots
 			allSlots = append(allSlots, node.Slots...)

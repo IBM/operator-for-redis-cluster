@@ -8,13 +8,13 @@ import (
 )
 
 func TestPlaceMasters(t *testing.T) {
-	redisNode1 := &redis.Node{ID: "1", Role: "master", IP: "1.1.1.1", Port: "1234", Slots: []redis.Slot{}, Pod: newPod("pod1", "vm1")}
-	redisNode2 := &redis.Node{ID: "2", Role: "master", IP: "1.1.1.2", Port: "1234", Slots: []redis.Slot{}, Pod: newPod("pod2", "vm1")}
-	redisNode3 := &redis.Node{ID: "3", Role: "master", IP: "1.1.1.3", Port: "1234", Slots: []redis.Slot{}, Pod: newPod("pod3", "vm2")}
-	redisNode4 := &redis.Node{ID: "4", Role: "master", IP: "1.1.1.4", Port: "1234", Slots: []redis.Slot{}, Pod: newPod("pod4", "vm3")}
+	redisNode1 := &redis.Node{ID: "1", Role: "master", IP: "1.1.1.1", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod1", "vm1")}
+	redisNode2 := &redis.Node{ID: "2", Role: "master", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "vm1")}
+	redisNode3 := &redis.Node{ID: "3", Role: "master", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "vm2")}
+	redisNode4 := &redis.Node{ID: "4", Role: "master", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "vm3")}
 
-	redisNode2Vm2 := &redis.Node{ID: "2", Role: "master", IP: "1.1.1.2", Port: "1234", Slots: []redis.Slot{}, Pod: newPod("pod2", "vm2")}
-	redisNode4Vm2 := &redis.Node{ID: "4", Role: "master", IP: "1.1.1.4", Port: "1234", Slots: []redis.Slot{}, Pod: newPod("pod4", "vm2")}
+	redisNode2Vm2 := &redis.Node{ID: "2", Role: "master", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "vm2")}
+	redisNode4Vm2 := &redis.Node{ID: "4", Role: "master", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "vm2")}
 
 	type args struct {
 		cluster            *redis.Cluster

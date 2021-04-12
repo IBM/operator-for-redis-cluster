@@ -19,9 +19,9 @@ func TestDispatchSlotToMaster(t *testing.T) {
 	masterRole := "master"
 
 	redisNode1 := &redis.Node{ID: "1", Role: masterRole, IP: "1.1.1.1", Port: "1234", Slots: redis.BuildSlotSlice(0, simpleAdmin.GetHashMaxSlot()), Pod: pod1}
-	redisNode2 := &redis.Node{ID: "2", Role: masterRole, IP: "1.1.1.2", Port: "1234", Slots: []redis.Slot{}, Pod: pod2}
-	redisNode3 := &redis.Node{ID: "3", Role: masterRole, IP: "1.1.1.3", Port: "1234", Slots: []redis.Slot{}, Pod: pod3}
-	redisNode4 := &redis.Node{ID: "4", Role: masterRole, IP: "1.1.1.4", Port: "1234", Slots: []redis.Slot{}, Pod: pod4}
+	redisNode2 := &redis.Node{ID: "2", Role: masterRole, IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod2}
+	redisNode3 := &redis.Node{ID: "3", Role: masterRole, IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod3}
+	redisNode4 := &redis.Node{ID: "4", Role: masterRole, IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod4}
 
 	testCases := []struct {
 		cluster   *redis.Cluster
@@ -138,10 +138,10 @@ func Test_retrieveLostSlots(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []redis.Slot
+		want redis.SlotSlice
 	}{
 		{
-			name: "no losted slots",
+			name: "no lost slots",
 			args: args{
 				oldMasterNodes: redis.Nodes{
 					redis1,
@@ -149,10 +149,10 @@ func Test_retrieveLostSlots(t *testing.T) {
 				},
 				nbSlots: nbslots,
 			},
-			want: []redis.Slot{},
+			want: redis.SlotSlice{},
 		},
 		{
-			name: "one losted slot",
+			name: "one lost slot",
 			args: args{
 				oldMasterNodes: redis.Nodes{
 					redis1,
@@ -160,7 +160,7 @@ func Test_retrieveLostSlots(t *testing.T) {
 				},
 				nbSlots: nbslots,
 			},
-			want: []redis.Slot{16383},
+			want: redis.SlotSlice{16383},
 		},
 	}
 	for _, tt := range tests {
@@ -173,60 +173,60 @@ func Test_retrieveLostSlots(t *testing.T) {
 }
 
 func Test_buildSlotByNodeFromAvailableSlots(t *testing.T) {
-	redis1 := &redis.Node{ID: "redis1", Slots: []redis.Slot{1, 2, 3, 4, 5, 6, 7, 8, 9}}
-	redis2 := &redis.Node{ID: "redis2", Slots: []redis.Slot{}}
-	redis3 := &redis.Node{ID: "redis3", Slots: []redis.Slot{}}
+	redis1 := &redis.Node{ID: "redis1", Slots: redis.SlotSlice{1, 2, 3, 4, 5, 6, 7, 8, 9}}
+	redis2 := &redis.Node{ID: "redis2", Slots: redis.SlotSlice{}}
+	redis3 := &redis.Node{ID: "redis3", Slots: redis.SlotSlice{}}
 
 	type args struct {
 		newMasterNodes      redis.Nodes
 		nbSlotByNode        int
-		slotToMigrateByNode map[string][]redis.Slot
+		slotToMigrateByNode map[string]redis.SlotSlice
 	}
 	tests := []struct {
 		name string
 		args args
 		// we don't know on which nodes the slots will be assign (due to map ordering).
 		// the only think that we know is the repartition between nodes (nb slots by node)
-		want [][]redis.Slot
+		want []redis.SlotSlice
 	}{
 		{
 			name: "no nodes",
 			args: args{
 				newMasterNodes:      redis.Nodes{},
 				nbSlotByNode:        0,
-				slotToMigrateByNode: map[string][]redis.Slot{},
+				slotToMigrateByNode: map[string]redis.SlotSlice{},
 			},
-			want: [][]redis.Slot{},
+			want: []redis.SlotSlice{},
 		},
 		{
 			name: "no slot to dispatch",
 			args: args{
 				newMasterNodes: redis.Nodes{
-					&redis.Node{ID: "redis1", Slots: []redis.Slot{1, 2, 3}},
-					&redis.Node{ID: "redis2", Slots: []redis.Slot{4, 5, 6}},
-					&redis.Node{ID: "redis3", Slots: []redis.Slot{7, 8, 9}},
+					&redis.Node{ID: "redis1", Slots: redis.SlotSlice{1, 2, 3}},
+					&redis.Node{ID: "redis2", Slots: redis.SlotSlice{4, 5, 6}},
+					&redis.Node{ID: "redis3", Slots: redis.SlotSlice{7, 8, 9}},
 				},
 				nbSlotByNode: 3,
-				slotToMigrateByNode: map[string][]redis.Slot{
+				slotToMigrateByNode: map[string]redis.SlotSlice{
 					redis1.ID: {},
 					redis2.ID: {},
 					redis3.ID: {},
 				},
 			},
-			want: [][]redis.Slot{},
+			want: []redis.SlotSlice{},
 		},
 		{
 			name: "scale from 1 node to 3 nodes",
 			args: args{
 				newMasterNodes: redis.Nodes{redis1, redis2, redis3},
 				nbSlotByNode:   3,
-				slotToMigrateByNode: map[string][]redis.Slot{
+				slotToMigrateByNode: map[string]redis.SlotSlice{
 					redis1.ID: {4, 5, 6, 7, 8, 9},
 					redis2.ID: {},
 					redis3.ID: {},
 				},
 			},
-			want: [][]redis.Slot{
+			want: []redis.SlotSlice{
 				// we don't know on which nodes the slots will be assign (due to map ordering).
 				// the only think that we know is the repartition between nodes (nb slots by node)
 				{4, 5, 6},
@@ -237,7 +237,7 @@ func Test_buildSlotByNodeFromAvailableSlots(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildSlotByNodeFromAvailableSlots(tt.args.newMasterNodes, tt.args.nbSlotByNode, tt.args.slotToMigrateByNode)
-			gotslice := [][]redis.Slot{}
+			gotslice := []redis.SlotSlice{}
 			for _, slots := range got {
 				gotslice = append(gotslice, slots)
 			}
@@ -265,12 +265,12 @@ func Test_buildSlotByNodeFromAvailableSlots(t *testing.T) {
 }
 
 func Test_buildSlotsByNode(t *testing.T) {
-	redis1 := &redis.Node{ID: "redis1", Slots: []redis.Slot{0, 1, 2, 3, 4, 5, 6, 7, 8}}
-	redis2 := &redis.Node{ID: "redis2", Slots: []redis.Slot{}}
-	redis3 := &redis.Node{ID: "redis3", Slots: []redis.Slot{}}
+	redis1 := &redis.Node{ID: "redis1", Slots: redis.SlotSlice{0, 1, 2, 3, 4, 5, 6, 7, 8}}
+	redis2 := &redis.Node{ID: "redis2", Slots: redis.SlotSlice{}}
+	redis3 := &redis.Node{ID: "redis3", Slots: redis.SlotSlice{}}
 
-	redis4 := &redis.Node{ID: "redis4", Slots: []redis.Slot{0, 1, 2, 3, 4}}
-	redis5 := &redis.Node{ID: "redis5", Slots: []redis.Slot{5, 6, 7, 8}}
+	redis4 := &redis.Node{ID: "redis4", Slots: redis.SlotSlice{0, 1, 2, 3, 4}}
+	redis5 := &redis.Node{ID: "redis5", Slots: redis.SlotSlice{5, 6, 7, 8}}
 
 	type args struct {
 		newMasterNodes redis.Nodes
@@ -337,9 +337,9 @@ func Test_buildSlotsByNode(t *testing.T) {
 }
 
 func Test_feedMigInfo(t *testing.T) {
-	redis1 := &redis.Node{ID: "redis1", Slots: []redis.Slot{0, 1, 2, 3, 4, 5, 6, 7, 8}}
-	redis2 := &redis.Node{ID: "redis2", Slots: []redis.Slot{}}
-	redis3 := &redis.Node{ID: "redis3", Slots: []redis.Slot{}}
+	redis1 := &redis.Node{ID: "redis1", Slots: redis.SlotSlice{0, 1, 2, 3, 4, 5, 6, 7, 8}}
+	redis2 := &redis.Node{ID: "redis2", Slots: redis.SlotSlice{}}
+	redis3 := &redis.Node{ID: "redis3", Slots: redis.SlotSlice{}}
 
 	type args struct {
 		newMasterNodes redis.Nodes
@@ -361,8 +361,8 @@ func Test_feedMigInfo(t *testing.T) {
 				nbSlots:        9,
 			},
 			wantMapOut: mapSlotByMigInfo{
-				migrationInfo{From: redis1, To: redis2}: []redis.Slot{3, 4, 5},
-				migrationInfo{From: redis1, To: redis3}: []redis.Slot{6, 7, 8},
+				migrationInfo{From: redis1, To: redis2}: redis.SlotSlice{3, 4, 5},
+				migrationInfo{From: redis1, To: redis3}: redis.SlotSlice{6, 7, 8},
 			},
 		},
 	}

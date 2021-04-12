@@ -41,7 +41,7 @@ func NewRedisServer(t *testing.T) *RedisServer {
 	return srv
 }
 
-// Close possible ressources
+// Close possible resources
 func (r *RedisServer) Close() {
 	r.Ln.Close()
 }
