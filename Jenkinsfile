@@ -86,8 +86,8 @@ podTemplate(
     }
 
     icmDockerLogin(docker.artifactory, artifactory.credentials)
-    operatorLocalImage = icmDockerBuildStage(gitInfo, ['--build-arg': buildArgs,'--file': 'Dockerfile.operator'])
-    redisnodeLocalImage = icmDockerBuildStage(gitInfo, ['--build-arg': buildArgs,'--file': 'Dockerfile.redisnode'])
+    operatorLocalImage = icmDockerBuildStage(docker.operatorImageName, imageTag, ['--build-arg': buildArgs,'--file': 'Dockerfile.operator'])
+    redisnodeLocalImage = icmDockerBuildStage(docker.redisnodeImageName, imageTag, ['--build-arg': buildArgs,'--file': 'Dockerfile.redisnode'])
 
     if ( gitUtils.isTagBuild() || releaseBuild ) {
 
