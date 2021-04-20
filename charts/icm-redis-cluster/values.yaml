@@ -4,29 +4,12 @@
 
 numberOfMaster: 3
 replicationFactor: 1
-maxMemoryPolicy: noeviction
-logLevel: 2
-
-redis:
-  configuration:
-    # you can provide the path of a redis configuration file that will be added in a configMap and included
-    # in the redis-server configuration in each redis-cluster node.
-    # the file must be local of the helm chart (in the chart folder).
-    file: ""
-    # You can provide the redis config directly as a value instead through a file as shown below.
-    # If BOTH the "file" and "value" are defined, the value will be used, i.e. Treated as an overide value.
-    # value: |
-    #   bind 127.0.0.1
-    #   protected-mode yes
-    #   tcp-backlog 511
-    #   timeout 0
-    value: ""
 
 image:
   repository: us.icr.io/icm-docker-images/icm-redis-redisnode
-  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
+  pullPolicy: IfNotPresent
 
 imagePullSecrets: []
 nameOverride: ""
@@ -40,6 +23,41 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
+
+# The complete list of args extracted from a running redis-node.
+# Usage of /redisnode:
+#          --alsologtostderr                  log to standard error as well as files (default false)
+#          --bin string                       redis server binary file name (default "redis-server")
+#          --c string                         redis config file path (default "/redis-conf/redis.conf")
+#          --cluster-node-timeout int         redis node timeout (ms) (default 2000)
+#          --config-file stringArray          location of redis configuration file that will be include in the
+#          --d duration                       delay before that the redis-server is started (default 10s)
+#          --http-addr string                 the http server listen address (default "0.0.0.0:8080")
+#          --kubeconfig string                location of kubeconfig file for access to kubernetes master service
+#          --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
+#          --log_dir string                   if non-empty, write log files in this directory
+#          --logtostderr                      log to standard error instead of files (default false)
+#          --master string                    The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.
+#          --ns string                        redis-node k8s namespace
+#          --port string                      redis server listen port (default "6379")
+#          --rdt int                          redis dial timeout (ms) (default 2000)
+#          --rename-command-file string       name of the file where rename-commands option for redis are available, disabled if empty
+#          --rename-command-path string       path to the folder where rename-commands option for redis are available (default "/etc/secret-volume")
+#          --rs string                        redis-node k8s service name
+#          --stderrthreshold severity         logs at or above this threshold go to stderr (default 2)
+#          --t duration                       max time waiting for redis to start (default 10s)
+#          -v, --v Level                      log level for V logs (default 0)
+#          --vmodule moduleSpec               comma-separated list of pattern=N settings for file-filtered logging
+args:
+  logLevel: 1
+  logToStderr: "true"
+  alsoLogToStderr: "true"
+  maxStartWait: 10s
+  startDelay: 10s
+  clusterNodeTimeout: 2000
+
+# To add extra arguments, uncomment the line below and define them as shown.
+# extraArgs: ["--bin=redis-server", "--http-addr=0.0.0.0:8080"]
 
 podAnnotations: {}
 
@@ -111,3 +129,29 @@ metrics:
     enabled: false
     path: /metrics
     interval: 30s
+
+sysctl:
+  netCoreSomaxconn: 65000
+
+redis:
+  configuration:
+    # You can provide the path of a redis configuration file that will be added in a configMap and included
+    # in the redis-server configuration in each redis-cluster node.
+    # The file must be local to the helm chart (in the chart folder). Passing values is the preferred method as shown below!
+    file: ""
+    # You can provide the redis config directly as a value instead through a file as shown in the example below.
+    # If BOTH the "file" and "value" are defined, the value will be used, i.e. treated as an override value.
+    # Please see the redis.io docs for details on each of the fields below.
+    # memory-related --> https://redis.io/topics/lru-cache
+    # cluster-related --> https://redis.io/topics/cluster-tutorial
+    # value: |
+    #  maxmemory-policy volatile-lfu
+    #  maxmemory 26843545600
+    #  lazyfree-lazy-eviction yes
+    #  lazyfree-lazy-expire yes
+    #  lazyfree-lazy-server-del yes
+    #  replica-lazy-flush yes
+    #  cluster-enabled yes
+    #  cluster-require-full-coverage no
+    #  cluster-allow-reads-when-down yes
+    value: ""

@@ -69,7 +69,6 @@ func (c *Client) DoCmd(ctx context.Context, rcv interface{}, cmd string, args ..
 	return c.client.Do(ctx, radix.Cmd(rcv, c.getCommand(cmd), args...))
 }
 
-
 func (c *Client) delayLinear(i int, cmd string) {
 	delay := retryTimeout * time.Duration(i) * time.Second
 	glog.Warningf("%s attempt %d/%d. Retry in %s", cmd, i, retryAttempts, delay)

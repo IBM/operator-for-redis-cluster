@@ -42,6 +42,16 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+{{- define "icm-redis-cluster-metrics.labels" -}}
+app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}-metrics
+helm.sh/chart: {{ include "icm-redis-cluster.chart" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
 {{/*
 Selector labels
 */}}
@@ -60,6 +70,15 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Builds a list of extra arguments for the Redis cluster
+*/}}
+{{- define "redis-cluster.extraarglist" -}}
+{{- if .Values.extraArgs -}}
+{{- range (compact .Values.extraArgs) }}{{$arg := . | quote}}{{ print ","  $arg }}{{- end}}
+{{- end -}}
+{{- end -}}
 
 {{/*
 Tests to see if there is extra config

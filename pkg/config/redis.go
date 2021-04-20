@@ -40,7 +40,7 @@ type Redis struct {
 	ServerBin          string
 	ServerPort         string
 	ServerIP           string
-	MaxMemory          uint32
+	MaxMemory          uint64
 	MaxMemoryPolicy    string
 	ConfigFiles        []string
 }
@@ -52,7 +52,7 @@ func (r *Redis) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&r.ConfigFileName, "c", RedisConfigFileDefault, "redis config file path")
 	fs.StringVar(&r.renameCommandsPath, "rename-command-path", RedisRenameCommandsDefaultPath, "Path to the folder where rename-commands option for redis are available")
 	fs.StringVar(&r.renameCommandsFile, "rename-command-file", RedisRenameCommandsDefaultFile, "Name of the file where rename-commands option for redis are available, disabled if empty")
-	fs.Uint32Var(&r.MaxMemory, "max-memory", RedisMaxMemoryDefault, "redis max memory")
+	fs.Uint64Var(&r.MaxMemory, "max-memory", RedisMaxMemoryDefault, "redis max memory")
 	fs.StringVar(&r.MaxMemoryPolicy, "max-memory-policy", RedisMaxMemoryPolicyDefault, "redis max memory eviction policy")
 	fs.StringVar(&r.ServerBin, "bin", RedisServerBinDefault, "redis server binary file name")
 	fs.StringVar(&r.ServerPort, "port", RedisServerPortDefault, "redis server listen port")

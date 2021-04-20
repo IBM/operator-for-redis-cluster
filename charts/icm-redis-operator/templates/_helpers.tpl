@@ -60,3 +60,14 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Builds the argument list for the redis operator
+*/}}
+{{- define "redis-operator.arglist" -}}
+{{- $logLevel := (print "--v=" .Values.logLevel) -}}
+{{- $args := concat (prepend .Values.args $logLevel) .Values.extraArgs -}}
+{{- $argsList := list }}
+{{- range $args }}{{- $argAsStr := . | quote }}{{- $argsList = append $argsList $argAsStr}}{{- end}}
+{{- join "," (compact $argsList) }}
+{{- end -}}

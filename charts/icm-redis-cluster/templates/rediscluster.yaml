@@ -23,6 +23,19 @@ spec:
       serviceAccountName: {{ include "icm-redis-cluster.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: sysctl-init
+          image: alpine:3.13
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - >-
+              sysctl -w net.core.somaxconn={{ .Values.sysctl.netCoreSomaxconn }};
+          resources: {}
+          securityContext:
+            privileged: true
+            procMount: Default
       containers:
         {{- if .Values.metrics.enabled }}
         - name: redis-exporter
@@ -30,37 +43,29 @@ spec:
           image: "{{ .host }}/{{ .namespace }}/{{ .name }}:{{ .tag }}"
           imagePullPolicy: {{ .pullPolicy }}
           {{- end }}
-          resources:
-            {{- toYaml .Values.metrics.resources | nindent 12 }}
+          resources: {{- toYaml .Values.metrics.resources | nindent 12 }}
           ports:
           - containerPort: {{ .Values.metrics.port.number }}
             name: {{ .Values.metrics.port.name }}
         {{- end }}
-        - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+        - name: redis-node
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: [
-            "--v={{ .Values.logLevel }}",
+            "--v={{ .Values.args.logLevel }}",
             "--c=/redis-conf/redis.conf",
-            "--logtostderr=true",
-            "--alsologtostderr=true",
+            "--logtostderr={{ .Values.args.logToStderr }}",
+            "--alsologtostderr={{ .Values.args.alsoLogToStderr }}",
             "--rs={{ include "icm-redis-cluster.fullname" . }}",
-            "--t=10s",
-            "--d=10s",
+            "--t={{ .Values.args.maxStartWait }}",
+            "--d={{ .Values.args.startDelay }}",
             "--ns=$(POD_NAMESPACE)",
             "--ip=$(POD_IP)",
-            "--cluster-node-timeout=2000",
-            {{- if .Values.resources }}
-            "--max-memory=$(MEMORY_REQUEST)",
-            {{- end }}
-            {{- if .Values.maxMemoryPolicy }}
-            "--max-memory-policy={{ .Values.maxMemoryPolicy }}",
-            {{- end }}
+            "--cluster-node-timeout={{ .Values.args.clusterNodeTimeout }}",
             {{- if include "icm-redis-cluster.hasextraconfig" . }}
             "--config-file=/redis-extra-conf/redis.conf",
-            {{- end }}
+            {{- end }}{{- include "redis-cluster.extraarglist" . }}
             ]
           env:
             - name: POD_NAMESPACE
@@ -71,13 +76,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            {{- if .Values.resources }}
-            - name: MEMORY_REQUEST
-              valueFrom:
-                resourceFieldRef:
-                  containerName: {{ .Chart.Name }}
-                  resource: requests.memory
-            {{- end }}
           ports:
             - name: http
               containerPort: 8080
