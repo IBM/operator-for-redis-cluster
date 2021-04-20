@@ -90,8 +90,8 @@ func DispatchSlotToNewMasters(ctx context.Context, cluster *redis.Cluster, admin
 				glog.V(7).Infof("   Migrated %d Key", nbMigrated)
 			}
 
-			// we absolutly need to do setslot on the node owning the slot first, otherwise in case of manager crash, only the owner may think it is now owning the slot
-			// creating a cluster view discrepency
+			// we absolutely need to do setslot on the node owning the slot first, otherwise in case of manager crash, only the owner may think it is now owning the slot
+			// creating a cluster view discrepancy
 			err = admin.SetSlots(ctx, nodesInfo.To.IPPort(), "NODE", slots, nodesInfo.To.ID)
 			if err != nil {
 				if glog.V(4) {
@@ -299,7 +299,7 @@ func retrieveLostSlots(oldMasterNodes redis.Nodes, nbSlots int) redis.SlotSlice 
 	return lostSlots
 }
 
-func buildSlotByNodeFromAvailableSlots(newMasterNodes redis.Nodes, nbSlotByNode int, slotToMigrateByNode map[string]redis.SlotSlice) map[string]redis.SlotSlice{
+func buildSlotByNodeFromAvailableSlots(newMasterNodes redis.Nodes, nbSlotByNode int, slotToMigrateByNode map[string]redis.SlotSlice) map[string]redis.SlotSlice {
 	slotToAddByNode := make(map[string]redis.SlotSlice)
 	var nbNode = len(newMasterNodes)
 	if nbNode == 0 {

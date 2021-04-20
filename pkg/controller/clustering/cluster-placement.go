@@ -7,7 +7,7 @@ import (
 	"github.com/golang/glog"
 )
 
-const unknownVMName = "unknown" // <-- I hope nobody will ever name a VM "unknown" because this will impact the algorythm inside that package. Maybe you should generate a mangled name or amore complex name here to reduce probability.
+const unknownVMName = "unknown" // <-- I hope nobody will ever name a VM "unknown" because this will impact the algorithm inside that package. Maybe you should generate a mangled name or a more complex name here to reduce probability.
 
 // PlaceMasters used to select Redis Node knowing on which VM they are running in order to spread as possible
 // the masters on different VMs.
@@ -16,7 +16,7 @@ func PlaceMasters(cluster *redis.Cluster, currentMaster redis.Nodes, allPossible
 	selection := redis.Nodes{}
 	selection = append(selection, currentMaster...)
 
-	// in case of scale down the current number of master is supperior to
+	// in case of scale down the current number of master is superior to
 	// the number of needed master so we limit the size of the selection.
 	if len(selection) > int(nbMaster) {
 		selection = selection[0:nbMaster]

@@ -3,12 +3,12 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/mediocregopher/radix/v4"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/mediocregopher/radix/v4"
 )
 
 const (
@@ -128,7 +128,7 @@ func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 		}
 		var resp string
 		cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "MEET", ip, port)
-		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr,"Cannot attach node to cluster"); err != nil {
+		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Cannot attach node to cluster"); err != nil {
 			return err
 		}
 	}
@@ -339,7 +339,7 @@ func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSli
 	}
 	for _, slot := range slots {
 		if nodeID == "" {
-			c.PipeAppend(radix.Cmd(nil, "CLUSTER" , "SETSLOT", slot.String(), action))
+			c.PipeAppend(radix.Cmd(nil, "CLUSTER", "SETSLOT", slot.String(), action))
 		} else {
 			c.PipeAppend(radix.Cmd(nil, "CLUSTER", "SETSLOT", slot.String(), action, nodeID))
 		}
@@ -395,7 +395,7 @@ func (a *Admin) GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch
 
 	for {
 		var keys []string
-		cmdErr := c.DoCmd(ctx, &keys, "CLUSTER",  "GETKEYSINSLOT", slot.String(), strconv.Itoa(batch))
+		cmdErr := c.DoCmd(ctx, &keys, "CLUSTER", "GETKEYSINSLOT", slot.String(), strconv.Itoa(batch))
 		if err := a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "Unable to run command CLUSTER GETKEYSINSLOT"); err != nil {
 			return allKeys, err
 		}
@@ -427,6 +427,8 @@ func (a *Admin) CountKeysInSlot(ctx context.Context, addr string, slot Slot) (in
 // MigrateKeys use to migrate keys from slots to other slots. if replace is true, replace key on busy error
 // timeout is in milliseconds
 func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *Node, slots SlotSlice, batch int, timeout int, replace bool) (int, error) {
+	glog.Infof("MigrateKeys started for %d slots from %s to %+v", len(slots), addr, dest)
+	start := time.Now()
 	if len(slots) == 0 {
 		return 0, nil
 	}
@@ -457,13 +459,13 @@ func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *Node, slots 
 				args = append([]string{dest.IP, dest.Port, "", "0", timeoutStr, "KEYS"}, keys...)
 			}
 			var resp string
-			cmdErr = c.DoCmd(ctx, &resp, "MIGRATE", args...)
+			cmdErr = c.DoCmdWithRetries(ctx, &resp, "MIGRATE", args...)
 			if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to run command MIGRATE"); err != nil {
 				return keyCount, err
 			}
 		}
 	}
-
+	glog.Infof("MigrateKeys of %d slots from %s to %+v completed in %s", len(slots), addr, dest, time.Now().Sub(start))
 	return keyCount, nil
 }
 

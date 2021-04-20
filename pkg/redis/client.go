@@ -2,11 +2,14 @@ package redis
 
 import (
 	"context"
-	"github.com/mediocregopher/radix/v4"
+	"github.com/golang/glog"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/mediocregopher/radix/v4"
 )
+
 // ClientInterface redis client interface
 type ClientInterface interface {
 	// Close closes the connection.
@@ -14,6 +17,9 @@ type ClientInterface interface {
 
 	// DoCmd calls the given Redis command and retrieves a result.
 	DoCmd(ctx context.Context, rcv interface{}, cmd string, args ...string) error
+
+	// DoCmdWithRetries calls the given Redis command and retrieves a result with retires.
+	DoCmdWithRetries(ctx context.Context, rcv interface{}, cmd string, args ...string) error
 
 	// PipeAppend adds the given call to the pipeline queue.
 	PipeAppend(action radix.Action)
@@ -32,16 +38,21 @@ type Client struct {
 	pipeline        *radix.Pipeline
 }
 
+const (
+	retryAttempts = 3
+	retryTimeout  = 3
+)
+
 // NewClient build a client connection and connect to a redis address
 func NewClient(ctx context.Context, addr string, cnxTimeout time.Duration, commandsMapping map[string]string) (*Client, error) {
 	var err error
 	c := &Client{
 		commandsMapping: commandsMapping,
-		pipeline: radix.NewPipeline(),
+		pipeline:        radix.NewPipeline(),
 	}
 	dialer := &radix.Dialer{
 		NetDialer: &net.Dialer{
-			Timeout:       cnxTimeout,
+			Timeout: cnxTimeout,
 		},
 	}
 	c.client, err = dialer.Dial(ctx, "tcp", addr)
@@ -56,6 +67,29 @@ func (c *Client) Close() error {
 // DoCmd calls the given Redis command.
 func (c *Client) DoCmd(ctx context.Context, rcv interface{}, cmd string, args ...string) error {
 	return c.client.Do(ctx, radix.Cmd(rcv, c.getCommand(cmd), args...))
+}
+
+
+func (c *Client) delayLinear(i int, cmd string) {
+	delay := retryTimeout * time.Duration(i) * time.Second
+	glog.Warningf("%s attempt %d/%d. Retry in %s", cmd, i, retryAttempts, delay)
+	time.Sleep(delay)
+}
+
+func (c *Client) doCmdWithRetries(ctx context.Context, rcv interface{}, cmd string, i int, args ...string) error {
+	if err := c.DoCmd(ctx, &rcv, cmd, args...); err != nil {
+		if i = i + 1; i >= retryAttempts {
+			return err
+		}
+		c.delayLinear(i, cmd)
+		return c.doCmdWithRetries(ctx, &rcv, cmd, i, args...)
+	}
+	return nil
+}
+
+// DoCmdWithRetries calls the given Redis command.
+func (c *Client) DoCmdWithRetries(ctx context.Context, rcv interface{}, cmd string, args ...string) error {
+	return c.doCmdWithRetries(ctx, &rcv, cmd, 1, args...)
 }
 
 // PipeAppend adds the given call to the pipeline queue.
