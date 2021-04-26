@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "icm-redis-operator.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "icm-redis-operator.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
@@ -35,6 +36,11 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: NAMESPACE
+            value: {{ .Release.Namespace | quote }}
+          - name: LEADERELECTION_ENABLED
+            value: {{ if gt .Values.replicaCount 1.0 }}"true"{{ else }}"false"{{ end }}
           args: [{{- include "redis-operator.arglist" . | nindent 12 }}]
           {{- with .Values.securityContext }}
           securityContext:

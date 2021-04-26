@@ -2,6 +2,7 @@ package pod
 
 import (
 	"fmt"
+
 	"k8s.io/apimachinery/pkg/labels"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"

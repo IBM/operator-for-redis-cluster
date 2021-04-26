@@ -27,6 +27,8 @@ SOFTWARE.
 package v1
 
 import (
+	time "time"
+
 	redis_v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 	versioned "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/internalinterfaces"
@@ -35,7 +37,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
-	time "time"
 )
 
 // RedisClusterInformer provides access to a shared informer and lister for

@@ -8,7 +8,7 @@ type Cluster struct {
 	NodeService string
 }
 
-// AddFlags use to add the Redis-Cluster Config flags to the command line
+// AddFlags use to add the Redis-Cluster config flags to the command line
 func (c *Cluster) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.Namespace, "ns", "", "redis-node k8s namespace")
 	fs.StringVar(&c.NodeService, "rs", "", "redis-node k8s service name")

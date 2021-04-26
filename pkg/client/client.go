@@ -2,9 +2,10 @@ package client
 
 import (
 	"context"
-	"github.com/gogo/protobuf/proto"
 	"reflect"
 	"time"
+
+	"github.com/gogo/protobuf/proto"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"

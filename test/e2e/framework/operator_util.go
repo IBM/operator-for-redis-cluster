@@ -7,13 +7,13 @@ import (
 
 	"github.com/golang/glog"
 
-	gomega "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,7 @@ func NewRedisCluster(name, namespace, tag string, nbMaster, replication int32) *
 	return &rapi.RedisCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       rapi.ResourceKind,
-			APIVersion: redisk8soperatorio.GroupName + "/" + rapi.ResourceVersion,
+			APIVersion: redis.GroupName + "/" + rapi.ResourceVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -184,7 +184,7 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 		}
 
 		if cluster.Status.Cluster.Status != rapi.ClusterStatusOK {
-			return LogAndReturnErrorf("RedisCluster %s status not OK, current value:%s", cluster.Status.Cluster.Status)
+			return LogAndReturnErrorf("RedisCluster %s status not OK, current value:%s", cluster.Name, cluster.Status.Cluster.Status)
 		}
 
 		return nil

@@ -2,10 +2,11 @@ package redis
 
 import (
 	"context"
-	"github.com/golang/glog"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
 
 	"github.com/mediocregopher/radix/v4"
 )

@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 

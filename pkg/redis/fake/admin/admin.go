@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
@@ -123,7 +124,7 @@ func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 }
 
 // InitRedisCluster used to init a single node redis cluster
-func (a *Admin) InitRedisCluster(ctx context.Context, addr string) error{
+func (a *Admin) InitRedisCluster(ctx context.Context, addr string) error {
 	val, ok := a.InitRedisClusterRet[addr]
 	if !ok {
 		val = nil

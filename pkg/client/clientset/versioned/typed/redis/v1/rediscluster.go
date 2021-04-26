@@ -25,6 +25,7 @@ package v1
 
 import (
 	"context"
+
 	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 	scheme "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned/scheme"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

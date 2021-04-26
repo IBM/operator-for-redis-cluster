@@ -65,7 +65,6 @@ type Controller struct {
 
 // NewController builds and return new controller instance
 func NewController(cfg *Config, kubeClient clientset.Interface, redisClient rclient.Interface, kubeInformer kubeinformers.SharedInformerFactory, rInformer rinformers.SharedInformerFactory) *Controller {
-
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.CoreV1().RESTClient()).Events("")})
@@ -75,7 +74,7 @@ func NewController(cfg *Config, kubeClient clientset.Interface, redisClient rcli
 	redisInformer := rInformer.Redisoperator().V1().RedisClusters()
 	podDisruptionBudgetInformer := kubeInformer.Policy().V1beta1().PodDisruptionBudgets()
 
-	ctrl := &Controller{
+	controller := &Controller{
 		kubeClient:                 kubeClient,
 		redisClient:                redisClient,
 		redisClusterLister:         redisInformer.Lister(),
@@ -95,26 +94,25 @@ func NewController(cfg *Config, kubeClient clientset.Interface, redisClient rcli
 
 	redisInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctrl.onAddRedisCluster,
-			UpdateFunc: ctrl.onUpdateRedisCluster,
-			DeleteFunc: ctrl.onDeleteRedisCluster,
+			AddFunc:    controller.onAddRedisCluster,
+			UpdateFunc: controller.onUpdateRedisCluster,
+			DeleteFunc: controller.onDeleteRedisCluster,
 		},
 	)
 
 	podInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    ctrl.onAddPod,
-			UpdateFunc: ctrl.onUpdatePod,
-			DeleteFunc: ctrl.onDeletePod,
+			AddFunc:    controller.onAddPod,
+			UpdateFunc: controller.onUpdatePod,
+			DeleteFunc: controller.onDeletePod,
 		},
 	)
 
-	ctrl.updateHandler = ctrl.updateRedisCluster
-	ctrl.podControl = pod.NewRedisClusterControl(ctrl.podLister, ctrl.kubeClient, ctrl.recorder)
-	ctrl.serviceControl = NewServicesControl(ctrl.kubeClient, ctrl.recorder)
-	ctrl.podDisruptionBudgetControl = NewPodDisruptionBudgetsControl(ctrl.kubeClient, ctrl.recorder)
-
-	return ctrl
+	controller.updateHandler = controller.updateRedisCluster
+	controller.podControl = pod.NewRedisClusterControl(controller.podLister, controller.kubeClient, controller.recorder)
+	controller.serviceControl = NewServicesControl(controller.kubeClient, controller.recorder)
+	controller.podDisruptionBudgetControl = NewPodDisruptionBudgetsControl(controller.kubeClient, controller.recorder)
+	return controller
 }
 
 // Run executes the Controller

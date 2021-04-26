@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/mediocregopher/radix/v4"
+
+	"github.com/golang/glog"
 )
 
 const (

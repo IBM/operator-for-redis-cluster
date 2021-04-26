@@ -106,7 +106,7 @@ func TestSlotRangesFromSlots(t *testing.T) {
 		{SlotSlice{8, 3, 10, 5, 6, 7, 2, 9, 4}, []SlotRange{{Min: 2, Max: 10}}},
 		{SlotSlice{2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 4}, []SlotRange{{Min: 2, Max: 10}}}, //overlap
 		{SlotSlice{0}, []SlotRange{{Min: 0, Max: 0}}},                                 // one
-		{nil, []SlotRange{}},                                                       // nil
+		{nil, []SlotRange{}}, // nil
 		{SlotSlice{0, 1, 2, 5, 6, 7, 345}, []SlotRange{{Min: 0, Max: 2}, {Min: 5, Max: 7}, {Min: 345, Max: 345}}}, // several ranges
 	}
 

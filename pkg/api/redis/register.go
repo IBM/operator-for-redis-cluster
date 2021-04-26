@@ -1,4 +1,4 @@
-package redisk8soperatorio
+package redis
 
 const (
 	// GroupName is the API group for the RedisCluster

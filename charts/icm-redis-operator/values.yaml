@@ -70,11 +70,13 @@ livenessProbe:
   httpGet:
     path: /live
     port: http
+  initialDelaySeconds: 30
 
 readinessProbe:
   httpGet:
     path: /ready
     port: http
+  initialDelaySeconds: 5
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

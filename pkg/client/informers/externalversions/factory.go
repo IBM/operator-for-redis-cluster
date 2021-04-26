@@ -27,16 +27,17 @@ SOFTWARE.
 package externalversions
 
 import (
-	versioned "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/internalinterfaces"
+	"reflect"
+	"sync"
+	"time"
+
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/internalinterfaces"
 	redis "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/redis"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	runtime "k8s.io/apimachinery/pkg/runtime"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	cache "k8s.io/client-go/tools/cache"
-	reflect "reflect"
-	sync "sync"
-	time "time"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/cache"
 )
 
 type sharedInformerFactory struct {

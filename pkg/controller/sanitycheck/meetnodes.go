@@ -3,6 +3,7 @@ package sanitycheck
 import (
 	"context"
 	"fmt"
+
 	"github.com/golang/glog"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"

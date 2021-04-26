@@ -68,7 +68,7 @@ func (r *RedisNode) Run(stop <-chan struct{}) error {
 		return err
 	}
 
-	go r.runHTTPServer(stop)
+	go r.runHttpServer(stop)
 
 	node, err = r.run(node)
 	if err != nil {
@@ -260,7 +260,7 @@ func readinessCheck(ctx context.Context, addr string) error {
 	defer client.Close()
 
 	var resp radix.ClusterTopo
-	err := client.DoCmd(ctx, &resp,"CLUSTER", "SLOTS")
+	err := client.DoCmd(ctx, &resp, "CLUSTER", "SLOTS")
 	if err != nil {
 		return fmt.Errorf("Readiness failed, cluster slots response err: %v", err)
 	}
@@ -281,7 +281,7 @@ func livenessCheck(ctx context.Context, addr string) error {
 	return nil
 }
 
-func (r *RedisNode) runHTTPServer(stop <-chan struct{}) error {
+func (r *RedisNode) runHttpServer(stop <-chan struct{}) error {
 
 	go func() {
 		glog.Infof("Listening on http://%s\n", r.httpServer.Addr)

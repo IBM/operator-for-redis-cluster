@@ -45,7 +45,7 @@ type Redis struct {
 	ConfigFiles        []string
 }
 
-// AddFlags use to add the Redis Config flags to the command line
+// AddFlags use to add the Redis config flags to the command line
 func (r *Redis) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&r.DialTimeout, "rdt", DefaultRedisTimeout, "redis dial timeout (ms)")
 	fs.IntVar(&r.ClusterNodeTimeout, "cluster-node-timeout", DefaultClusterNodeTimeout, "redis node timeout (ms)")

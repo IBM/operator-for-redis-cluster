@@ -3,6 +3,7 @@ package fake
 import (
 	"context"
 	"fmt"
+
 	"github.com/mediocregopher/radix/v4"
 )
 
