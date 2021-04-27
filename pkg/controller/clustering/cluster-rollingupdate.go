@@ -30,11 +30,11 @@ func SelectMastersToReplace(currentOldMaster, currentNewMasters, newNoneNodes re
 	currentOldMasterSorted := currentOldMaster.SortNodes()
 	selectedMasters = append(selectedMasters, currentOldMasterSorted[:nbRemainingOldMaster]...)
 	if nbMasterReplaced != nbMasterToReplace {
-		return selectedMasters, newSelectedMasters, fmt.Errorf("unable to select enough new node for master replacement, wanted:%d, current:%d", nbMasterToReplace, nbMasterReplaced)
+		return selectedMasters, newSelectedMasters, fmt.Errorf("insufficient number of nodes for master replacement, wanted:%d, current:%d", nbMasterToReplace, nbMasterReplaced)
 	}
 
 	if len(selectedMasters) != int(nbMaster) {
-		return selectedMasters, newSelectedMasters, fmt.Errorf("unable to select enough Masters wanted:%d, current:%d", len(selectedMasters), nbMaster)
+		return selectedMasters, newSelectedMasters, fmt.Errorf("insufficient number of masters, wanted:%d, current:%d", len(selectedMasters), nbMaster)
 	}
 
 	return selectedMasters, newSelectedMasters, err

@@ -190,7 +190,7 @@ func Test_newRedisCluster(t *testing.T) {
 				redis1.ID: {Node: &redis1, Friends: redis.Nodes{&redis2}},
 				redis2.ID: {Node: &redis2, Friends: redis.Nodes{&redis1}},
 			},
-			Status: redis.ClusterInfosConsistent,
+			Status: redis.ClusterInfoConsistent,
 		},
 		Err: nil,
 	}
@@ -281,7 +281,7 @@ func TestController_applyConfiguration(t *testing.T) {
 								redis1.ID: {Node: &redis1, Friends: redis.Nodes{&redis2}},
 								redis2.ID: {Node: &redis2, Friends: redis.Nodes{&redis1}},
 							},
-							Status: redis.ClusterInfosConsistent,
+							Status: redis.ClusterInfoConsistent,
 						},
 						Err: nil,
 					}
@@ -325,7 +325,7 @@ func TestController_applyConfiguration(t *testing.T) {
 								redis3.ID: {Node: &redis3, Friends: redis.Nodes{&redis2, &redis1, &redis4}},
 								redis4.ID: {Node: &redis4, Friends: redis.Nodes{&redis1, &redis2, &redis3}},
 							},
-							Status: redis.ClusterInfosConsistent,
+							Status: redis.ClusterInfoConsistent,
 						},
 						Err: nil,
 					}

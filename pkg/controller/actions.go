@@ -167,26 +167,26 @@ func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminIn
 		}
 	}
 
-	if slavesOfSlave, ok := checkslaveOfSlave(cluster); !ok {
-		glog.V(6).Info("checkslaveOfSlave NOT OK")
-		// Currently the rest of algo didn't manage properly the fact that Redis is no able to attach a Slave to another slave.
-		// So we detach them. and another part of the controller will reasign properly the Slave to the master if needed.
+	if slavesOfSlave, ok := checkSlaveOfSlave(cluster); !ok {
+		glog.V(6).Info("checkSlaveOfSlave NOT OK")
+		// Currently the algorithm assumes redis is able to attach a slave to another slave.
+		// In practice, we detach the slaves and the controller reassigns the slave to a master if needed.
 		var errGlobal error
 		for _, slaves := range slavesOfSlave {
 			for _, slave := range slaves {
 				node, err := nodes.GetNodeByID(slave.ID)
 				if err != nil {
-					glog.Errorf("unable to found the Node with the ID: %s", slave.ID)
+					glog.Errorf("unable to find node with ID: %s", slave.ID)
 					errGlobal = err
 					continue
 				}
 				if err := admin.DetachSlave(ctx, node); err != nil {
-					glog.Errorf("unable to detach the Slave Node with the ID: %s", node.ID)
+					glog.Errorf("unable to detach slave node with ID: %s", node.ID)
 					errGlobal = err
 					continue
 				}
 				if err := c.podControl.DeletePod(cluster, slave.PodName); err != nil {
-					glog.Errorf("unable to delete the pod %s corresponding to the Slave Node with the ID: %s", slave.PodName, node.ID)
+					glog.Errorf("unable to delete pod %s corresponding to slave node with the ID: %s", slave.PodName, node.ID)
 					errGlobal = err
 					continue
 				}
@@ -204,7 +204,7 @@ func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminIn
 			newNumberOfMaster--
 		}
 
-		//First, we define the new masters
+		// First, we define the new masters
 		newMasters, curMasters, allMaster, err := clustering.DispatchMasters(rCluster, nodes, newNumberOfMaster, admin)
 		if err != nil {
 			glog.Errorf("Error while dispatching slots to masters, err: %v", err)
@@ -255,7 +255,7 @@ func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminIn
 					return false, fmt.Errorf("unable to attach slaves on Master %s: %s", idMaster, errorAppends)
 				}
 			} else if diff > 0 {
-				// TODO (IMP): this if can be remove since it should no happen.
+				// TODO (IMP): this if can be remove since it should not happen.
 				// too many slave on this master
 				// select on slave to be removed
 				podsToDeletion, err := selectSlavesToDelete(cluster, nodes, idMaster, slavesID, diff)
@@ -404,7 +404,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	}
 
 	if needRollingUpdate(cluster) {
-		if setRollingUpdategCondition(&cluster.Status, true) {
+		if setRollingUpdateCondition(&cluster.Status, true) {
 			if cluster, err = c.updateHandler(cluster); err != nil {
 				return false, err
 			}
@@ -413,7 +413,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		glog.Info("applyConfiguration needRollingUpdate")
 		return c.manageRollingUpdate(ctx, admin, cluster, rCluster, nodes)
 	}
-	if setRollingUpdategCondition(&cluster.Status, false) {
+	if setRollingUpdateCondition(&cluster.Status, false) {
 		if cluster, err = c.updateHandler(cluster); err != nil {
 			return false, err
 		}

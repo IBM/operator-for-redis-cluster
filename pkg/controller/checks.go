@@ -217,7 +217,7 @@ func needMorePods(cluster *rapi.RedisCluster) bool {
 	}
 	output := false
 	if cluster.Status.Cluster.NbPods < nbPodNeed {
-		glog.V(4).Infof("Not enough Pods running to apply the cluster [%s-%s] spec, current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NbPodsReady, nbPodNeed)
+		glog.V(4).Infof("Not enough pods running to apply the cluster [%s-%s] spec, current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NbPodsReady, nbPodNeed)
 		output = true
 	}
 
@@ -232,7 +232,7 @@ func needLessPods(cluster *rapi.RedisCluster) bool {
 	}
 	output := false
 	if cluster.Status.Cluster.NbPods > nbPodNeed {
-		glog.V(4).Infof("To many Pods running, needs to scale down the cluster [%s-%s], current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NbPods, nbPodNeed)
+		glog.V(4).Infof("Too many pods running, need to scale down the cluster [%s-%s], current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NbPods, nbPodNeed)
 		output = true
 	}
 	return output
@@ -276,7 +276,7 @@ func checkNumberOfMaster(cluster *rapi.RedisCluster) (int32, bool) {
 	return nbMasterStatus - nbMasterSpec, same
 }
 
-// checkPodsUseless use to detect if some pod can be remove (delete) without any impacts
+// checkPodsUseless use to detect if some pods can be removed without impacting the cluster
 func checkNoPodsUseless(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, bool) {
 	uselessNodes := []*rapi.RedisClusterNode{}
 	if !needLessPods(cluster) {
@@ -301,7 +301,7 @@ func checkNoPodsUseless(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, b
 	return uselessNodes, false
 }
 
-func checkslaveOfSlave(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {
+func checkSlaveOfSlave(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {
 	slavesBySlave := make(map[string][]*rapi.RedisClusterNode)
 
 	for i, nodeA := range cluster.Status.Cluster.Nodes {

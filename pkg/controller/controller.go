@@ -300,9 +300,9 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 
 	clusterInfos, errGetInfos := admin.GetClusterInfos(ctx)
 	if errGetInfos != nil {
-		glog.Errorf("Error when get cluster infos to rebuild bom : %v", errGetInfos)
-		if clusterInfos.Status == redis.ClusterInfosPartial {
-			return false, fmt.Errorf("partial Cluster infos")
+		glog.Errorf("Error when getting cluster infos to rebuild bom : %v", errGetInfos)
+		if clusterInfos.Status == redis.ClusterInfoPartial {
+			return false, fmt.Errorf("partial cluster info")
 		}
 	}
 
@@ -352,7 +352,7 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 	}
 
 	if setRebalancingCondition(&rediscluster.Status, false) ||
-		setRollingUpdategCondition(&rediscluster.Status, false) ||
+		setRollingUpdateCondition(&rediscluster.Status, false) ||
 		setScalingCondition(&rediscluster.Status, false) ||
 		setClusterStatusCondition(&rediscluster.Status, true) {
 		_, err = c.updateHandler(rediscluster)

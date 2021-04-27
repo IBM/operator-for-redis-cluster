@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	// ClusterInfosUnset status of the cluster info: no data set
-	ClusterInfosUnset = "Unset"
-	// ClusterInfosPartial status of the cluster info: data is not complete (some nodes didn't respond)
-	ClusterInfosPartial = "Partial"
-	// ClusterInfosInconsistent status of the cluster info: nodesinfos is not consistent between nodes
-	ClusterInfosInconsistent = "Inconsistent"
-	// ClusterInfosConsistent status of the cluster info: nodeinfos is complete and consistent between nodes
-	ClusterInfosConsistent = "Consistent"
+	// ClusterInfoUnset status of the cluster info: no data set
+	ClusterInfoUnset = "Unset"
+	// ClusterInfoPartial status of the cluster info: data is not complete (some nodes didn't respond)
+	ClusterInfoPartial = "Partial"
+	// ClusterInfoInconsistent status of the cluster info: nodesinfos is not consistent between nodes
+	ClusterInfoInconsistent = "Inconsistent"
+	// ClusterInfoConsistent status of the cluster info: nodeinfos is complete and consistent between nodes
+	ClusterInfoConsistent = "Consistent"
 )
 
 // NodeInfos representation of a node info, i.e. data returned by the CLUSTER NODE redis command
@@ -49,7 +49,7 @@ func NewNodeInfos() *NodeInfos {
 func NewClusterInfos() *ClusterInfos {
 	return &ClusterInfos{
 		Infos:  make(map[string]*NodeInfos),
-		Status: ClusterInfosUnset,
+		Status: ClusterInfoUnset,
 	}
 }
 
@@ -137,11 +137,11 @@ func DecodeNodeInfos(input *string, addr string) *NodeInfos {
 }
 
 // ComputeStatus check the ClusterInfos status based on the current data
-// the status ClusterInfosPartial is set while building the clusterinfos
+// the status ClusterInfoPartial is set while building the clusterinfos
 // if already set, do nothing
 // returns true if consistent or if another error
 func (c *ClusterInfos) ComputeStatus() bool {
-	if c.Status != ClusterInfosUnset {
+	if c.Status != ClusterInfoUnset {
 		return false
 	}
 
@@ -157,11 +157,11 @@ func (c *ClusterInfos) ComputeStatus() bool {
 		if !reflect.DeepEqual(consolidatedSignature, nodeSignature) {
 			glog.V(4).Info("Temporary inconsistency between nodes is possible. If the following inconsistency message persists for more than 20 mins, any cluster operation (scale, rolling update) should be avoided before the message is gone")
 			glog.V(4).Infof("Inconsistency from %s: \n%s\nVS\n%s", addr, consolidatedSignature, nodeSignature)
-			c.Status = ClusterInfosInconsistent
+			c.Status = ClusterInfoInconsistent
 		}
 	}
-	if c.Status == ClusterInfosUnset {
-		c.Status = ClusterInfosConsistent
+	if c.Status == ClusterInfoUnset {
+		c.Status = ClusterInfoConsistent
 		consistencyStatus = true
 	}
 	return consistencyStatus

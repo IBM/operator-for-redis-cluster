@@ -153,7 +153,7 @@ func (a *Admin) GetClusterInfos(ctx context.Context) (*ClusterInfos, error) {
 	for addr, c := range a.Connections().GetAll() {
 		nodeinfos, err := a.getInfos(ctx, c, addr)
 		if err != nil {
-			infos.Status = ClusterInfosPartial
+			infos.Status = ClusterInfoPartial
 			clusterErr.partial = true
 			clusterErr.errs[addr] = err
 			continue
@@ -168,7 +168,7 @@ func (a *Admin) GetClusterInfos(ctx context.Context) (*ClusterInfos, error) {
 	if len(clusterErr.errs) == 0 {
 		clusterErr.inconsistent = !infos.ComputeStatus()
 	}
-	if infos.Status == ClusterInfosConsistent {
+	if infos.Status == ClusterInfoConsistent {
 		return infos, nil
 	}
 	return infos, clusterErr
@@ -182,7 +182,7 @@ func (a *Admin) GetClusterInfosSelected(ctx context.Context, addrs []string) (*C
 	for addr, c := range a.Connections().GetSelected(addrs) {
 		nodeinfos, err := a.getInfos(ctx, c, addr)
 		if err != nil {
-			infos.Status = ClusterInfosPartial
+			infos.Status = ClusterInfoPartial
 			clusterErr.partial = true
 			clusterErr.errs[addr] = err
 			continue
@@ -197,7 +197,7 @@ func (a *Admin) GetClusterInfosSelected(ctx context.Context, addrs []string) (*C
 	if len(clusterErr.errs) == 0 {
 		clusterErr.inconsistent = !infos.ComputeStatus()
 	}
-	if infos.Status == ClusterInfosConsistent {
+	if infos.Status == ClusterInfoConsistent {
 		return infos, nil
 	}
 	return infos, clusterErr

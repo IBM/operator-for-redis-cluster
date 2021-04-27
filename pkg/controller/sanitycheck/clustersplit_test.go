@@ -90,11 +90,11 @@ func TestBuildClustersLists(t *testing.T) {
 		output []cluster
 	}{ //several partilly different cannot happen, so not tested
 		{ // empty
-			input:  &redis.ClusterInfos{Infos: map[string]*redis.NodeInfos{}, Status: redis.ClusterInfosConsistent},
+			input:  &redis.ClusterInfos{Infos: map[string]*redis.NodeInfos{}, Status: redis.ClusterInfoConsistent},
 			output: []cluster{},
 		},
 		{ // one node
-			input:  &redis.ClusterInfos{Infos: map[string]*redis.NodeInfos{"ip1:1234": {Node: &redis.Node{IP: "ip1", Port: "1234"}, Friends: redis.Nodes{}}}, Status: redis.ClusterInfosConsistent},
+			input:  &redis.ClusterInfos{Infos: map[string]*redis.NodeInfos{"ip1:1234": {Node: &redis.Node{IP: "ip1", Port: "1234"}, Friends: redis.Nodes{}}}, Status: redis.ClusterInfoConsistent},
 			output: []cluster{{"ip1:1234"}},
 		},
 		{ // no discrepency
@@ -103,7 +103,7 @@ func TestBuildClustersLists(t *testing.T) {
 					"ip1:1234": {Node: &redis.Node{IP: "ip1", Port: "1234"}, Friends: ip2},
 					"ip2:1234": {Node: &redis.Node{IP: "ip2", Port: "1234"}, Friends: ip1},
 				},
-				Status: redis.ClusterInfosConsistent,
+				Status: redis.ClusterInfoConsistent,
 			},
 			output: []cluster{{"ip1:1234", "ip2:1234"}},
 		},
@@ -117,7 +117,7 @@ func TestBuildClustersLists(t *testing.T) {
 					"ip5:1234": {Node: &redis.Node{IP: "ip5", Port: "1234"}, Friends: ip64},
 					"ip6:1234": {Node: &redis.Node{IP: "ip6", Port: "1234"}, Friends: ip54},
 				},
-				Status: redis.ClusterInfosInconsistent,
+				Status: redis.ClusterInfoInconsistent,
 			},
 			output: []cluster{{"ip1:1234", "ip2:1234"}, {"ip3:1234"}, {"ip4:1234", "ip5:1234", "ip6:1234"}},
 		},
@@ -128,7 +128,7 @@ func TestBuildClustersLists(t *testing.T) {
 					"ip2:1234": {Node: &redis.Node{IP: "ip2", Port: "1234"}, Friends: ip1},
 					"ip3:1234": nil,
 				},
-				Status: redis.ClusterInfosInconsistent,
+				Status: redis.ClusterInfoInconsistent,
 			},
 			output: []cluster{{"ip1:1234", "ip2:1234"}},
 		},

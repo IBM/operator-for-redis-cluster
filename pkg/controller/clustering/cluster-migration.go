@@ -323,9 +323,9 @@ func buildSlotByNodeFromAvailableSlots(newMasterNodes redis.Nodes, nbSlotByNode 
 				// Node does not have any missing slots, go to the next node
 				idNode++
 				if idNode > (nbNode - 1) {
-					// All nodes have been filled, go back to previous node and overfill it
-					glog.V(7).Infof("Some available slots have not been assigned, over-filling node %s", newMasterNodes[idNode].ID)
+					// All nodes have been filled, go to previous node and overfill it
 					idNode--
+					glog.V(7).Infof("Some available slots have not been assigned, over-filling node %s", newMasterNodes[idNode].ID)
 					slotOfNode[idNode] = append(slotOfNode[idNode], slotsFrom[slotIndex])
 					slotToAddByNode[newMasterNodes[idNode].ID] = append(slotToAddByNode[newMasterNodes[idNode].ID], slotsFrom[slotIndex])
 					slotIndex++

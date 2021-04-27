@@ -68,7 +68,7 @@ func setRebalancingCondition(clusterStatus *rapi.RedisClusterStatus, status bool
 	return setCondition(clusterStatus, rapi.RedisClusterRebalancing, statusCondition, metav1.Now(), "topology as changed", "reconfigure on-going after topology changed")
 }
 
-func setRollingUpdategCondition(clusterStatus *rapi.RedisClusterStatus, status bool) bool {
+func setRollingUpdateCondition(clusterStatus *rapi.RedisClusterStatus, status bool) bool {
 	statusCondition := apiv1.ConditionFalse
 	if status {
 		statusCondition = apiv1.ConditionTrue

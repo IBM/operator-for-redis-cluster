@@ -700,12 +700,12 @@ func Test_checkslaveOfSlave(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := checkslaveOfSlave(tt.args.cluster)
+			got, got1 := checkSlaveOfSlave(tt.args.cluster)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("checkslaveOfSlave() got = %v, want %v", got, tt.want)
+				t.Errorf("checkSlaveOfSlave() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("checkslaveOfSlave() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("checkSlaveOfSlave() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}

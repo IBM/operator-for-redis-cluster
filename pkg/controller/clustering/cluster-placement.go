@@ -47,12 +47,12 @@ func PlaceMasters(cluster *redis.Cluster, currentMaster redis.Nodes, allPossible
 			}
 		}
 		if bestEffort && !isProgress {
-			glog.Errorf("Nothing appends since last loop, it means no more master available")
+			glog.Errorf("nothing added since last loop, no more masters are available")
 			break
 		}
 		bestEffort = true
 		if glog.V(4) {
-			glog.Warning("the Pod are not spread enough on VMs to have only one Master by VM.")
+			glog.Warning("the pods are not sufficiently distributed to have only one master per VM.")
 		}
 	}
 	glog.Infof("- bestEffort %v", bestEffort)
@@ -62,7 +62,7 @@ func PlaceMasters(cluster *redis.Cluster, currentMaster redis.Nodes, allPossible
 	if len(selection) >= int(nbMaster) {
 		return selection, bestEffort, nil
 	}
-	return selection, bestEffort, fmt.Errorf("unable to found enough node for have the request number of master")
+	return selection, bestEffort, fmt.Errorf("insufficient number of nodes for the requested number of masters")
 }
 
 // PlaceSlaves used to select Redis Node knowing on which VM they are running in order to spread as possible
@@ -78,7 +78,7 @@ func PlaceSlaves(cluster *redis.Cluster, masters, oldSlaves, newSlaves redis.Nod
 				}
 				newSlaves.FilterByFunc(removeIDFunc)
 				if glog.V(4) {
-					glog.Warning("Remove oldSlave for newSlave, id:", newSlave.ID)
+					glog.Warning("remove oldSlave for newSlave, id:", newSlave.ID)
 				}
 			}
 		}
@@ -135,7 +135,7 @@ func PlaceSlaves(cluster *redis.Cluster, masters, oldSlaves, newSlaves redis.Nod
 				for _, currentSlave := range currentSlaves {
 					vmSlaveNode, err := cluster.GetNodeByID(currentSlave.ID)
 					if err != nil {
-						glog.Error("unable to find in the cluster the slave with id:", currentSlave.ID)
+						glog.Error("unable to find the slave with id:", currentSlave.ID)
 						continue
 					}
 					vmSlaveName := unknownVMName
@@ -166,7 +166,7 @@ func PlaceSlaves(cluster *redis.Cluster, masters, oldSlaves, newSlaves redis.Nod
 	if isSlaveNodeUsed {
 		bestEffort = true
 		if glog.V(4) {
-			glog.Warning("Unable to spread properly all the Slave on different VMs, we start best effort")
+			glog.Warning("unable to distribute slaves on different VMs, starting best effort")
 		}
 		for _, freeSlaves := range slavesByVMNotUsed {
 			for _, freeSlave := range freeSlaves {
@@ -205,7 +205,7 @@ func sortRedisNodeByVM(cluster *redis.Cluster, nodes redis.Nodes) map[string]red
 	for _, rnode := range nodes {
 		cnode, err := cluster.GetNodeByID(rnode.ID)
 		if err != nil {
-			glog.Errorf("[sortRedisNodeByVM] unable fo found the Cluster.Node with redis ID:%s", rnode.ID)
+			glog.Errorf("[sortRedisNodeByVM] unable to find the node with redis ID:%s", rnode.ID)
 			continue // if not then next line with cnode.Pod will cause a panic since cnode is nil
 		}
 		vmName := unknownVMName
