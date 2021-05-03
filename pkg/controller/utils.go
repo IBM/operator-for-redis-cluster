@@ -55,7 +55,7 @@ func IsPodReady(pod *apiv1.Pod) (bool, error) {
 	}
 
 	if !found {
-		return false, errors.New("Cound't find ready condition")
+		return false, errors.New("couldn't find ready condition")
 	}
 
 	if readycondition.Status != apiv1.ConditionTrue {

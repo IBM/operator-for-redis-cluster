@@ -27,7 +27,6 @@ func TestDispatchSlotToMaster(t *testing.T) {
 		cluster   *redis.Cluster
 		nodes     redis.Nodes
 		nbMasters int32
-		fakeAdmin redis.AdminInterface
 		err       bool
 	}{
 		// append force copy, because DispatchSlotToMaster updates the slic
@@ -48,7 +47,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 				redisNode3,
 				redisNode4,
 			},
-			nbMasters: 6, fakeAdmin: simpleAdmin, err: true,
+			nbMasters: 6, err: true,
 		},
 		// not enough master
 		{
@@ -68,7 +67,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 				redisNode3,
 				redisNode4,
 			},
-			nbMasters: 2, fakeAdmin: simpleAdmin, err: false,
+			nbMasters: 2, err: false,
 		}, // initial config
 
 		{
@@ -82,7 +81,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 			nodes: redis.Nodes{
 				redisNode1,
 			},
-			nbMasters: 1, fakeAdmin: simpleAdmin, err: false,
+			nbMasters: 1, err: false,
 		}, // only one node
 
 		{
@@ -96,20 +95,20 @@ func TestDispatchSlotToMaster(t *testing.T) {
 			nodes: redis.Nodes{
 				redisNode2,
 			},
-			nbMasters: 1, fakeAdmin: simpleAdmin, err: false,
+			nbMasters: 1,  err: false,
 		}, // only one node with no slots
 		{
 			cluster: &redis.Cluster{
 				Name:      "clustertest",
 				Namespace: "default",
 			},
-			nodes: redis.Nodes{}, nbMasters: 0, fakeAdmin: simpleAdmin, err: false,
+			nodes: redis.Nodes{}, nbMasters: 0, err: false,
 		}, // empty
 
 	}
 
 	for i, tc := range testCases {
-		_, _, _, err := DispatchMasters(tc.cluster, tc.nodes, tc.nbMasters, tc.fakeAdmin)
+		_, _, _, err := DispatchMasters(tc.cluster, tc.nodes, tc.nbMasters)
 		if (err != nil) != tc.err {
 			t.Errorf("[case: %d] Unexpected error status, expected error to be %t, got '%v'", i, tc.err, err)
 		}

@@ -72,18 +72,18 @@ func (p *RedisClusterControl) CreatePod(redisCluster *rapi.RedisCluster) (*kapiv
 // DeletePod used to delete a pod from its name
 func (p *RedisClusterControl) DeletePod(redisCluster *rapi.RedisCluster, podName string) error {
 	glog.V(6).Infof("DeletePod: %s/%s", redisCluster.Namespace, podName)
-	return p.deletePodGracefullperiode(redisCluster, podName, nil)
+	return p.deletePodGracePeriod(redisCluster, podName, nil)
 }
 
 // DeletePodNow used to delete now (force) a pod from its name
 func (p *RedisClusterControl) DeletePodNow(redisCluster *rapi.RedisCluster, podName string) error {
 	glog.V(6).Infof("DeletePod: %s/%s", redisCluster.Namespace, podName)
 	now := int64(0)
-	return p.deletePodGracefullperiode(redisCluster, podName, &now)
+	return p.deletePodGracePeriod(redisCluster, podName, &now)
 }
 
 // DeletePodNow used to delete now (force) a pod from its name
-func (p *RedisClusterControl) deletePodGracefullperiode(redisCluster *rapi.RedisCluster, podName string, period *int64) error {
+func (p *RedisClusterControl) deletePodGracePeriod(redisCluster *rapi.RedisCluster, podName string, period *int64) error {
 	return p.KubeClient.CoreV1().Pods(redisCluster.Namespace).Delete(context.Background(), podName, metav1.DeleteOptions{GracePeriodSeconds: period})
 }
 

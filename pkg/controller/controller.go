@@ -282,13 +282,13 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 		return forceRequeue, err
 	}
 
-	Pods, LostPods := filterLostNodes(redisClusterPods)
-	if len(LostPods) != 0 {
-		for _, p := range LostPods {
+	pods, lostPods := filterLostNodes(redisClusterPods)
+	if len(lostPods) != 0 {
+		for _, p := range lostPods {
 			err := c.podControl.DeletePodNow(rediscluster, p.Name)
 			glog.Errorf("Lost node with pod %s. Deleting... %v", p.Name, err)
 		}
-		redisClusterPods = Pods
+		redisClusterPods = pods
 	}
 
 	// RedisAdmin is used access the Redis process in the different pods.
@@ -307,28 +307,28 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 	}
 
 	// From the Redis cluster nodes connections, build the cluster status
-	clusterStatus, err := c.buildClusterStatus(admin, clusterInfos, redisClusterPods, rediscluster)
+	clusterStatus, err := c.buildClusterStatus(clusterInfos, redisClusterPods, rediscluster)
 	if err != nil {
 		glog.Errorf("unable to build the RedisClusterStatus, err:%v", err)
 		return forceRequeue, fmt.Errorf("unable to build clusterStatus, err:%v", err)
 	}
 
-	updated, err := c.updateClusterIfNeed(rediscluster, clusterStatus)
+	updated, err := c.updateClusterStatus(rediscluster, clusterStatus)
+	rediscluster.Status.Cluster.Nodes = clusterStatus.Nodes
 	if err != nil {
 		return forceRequeue, err
 	}
 	if updated {
-		// If the cluster status changes requeue the key. Because we want to apply Redis Cluster operation only on stable cluster,
-		// already stored in the API server.
+		// If the cluster status changes requeue the key. We want to apply the RedisCluster operation on a
+		// stable cluster already stored in the API server.
 		glog.V(3).Infof("cluster updated %s-%s", rediscluster.Namespace, rediscluster.Name)
-		forceRequeue = true
-		return forceRequeue, nil
+		return true, nil
 	}
 
-	allPodsNotReady := true
-	if (clusterStatus.NbPods - clusterStatus.NbRedisRunning) != 0 {
-		glog.V(3).Infof("All pods not ready wait to be ready, nbPods: %d, nbPodsReady: %d", clusterStatus.NbPods, clusterStatus.NbRedisRunning)
-		allPodsNotReady = false
+	allPodsReady := true
+	if (clusterStatus.NumberOfPods - clusterStatus.NumberOfRedisNodesRunning) != 0 {
+		glog.V(3).Infof("Not all redis nodes are running, numberOfPods: %d, numberOfRedisNodesRunning: %d", clusterStatus.NumberOfPods, clusterStatus.NumberOfRedisNodesRunning)
+		allPodsReady = false
 	}
 
 	// Now check if the Operator need to execute some operation the redis cluster. if yes run the clusterAction(...) method.
@@ -338,15 +338,13 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 		return false, err
 	}
 
-	if (allPodsNotReady && needClusterOperation(rediscluster)) || needSanitize {
-		var requeue bool
+	if allPodsReady && needClusterOperation(rediscluster) || needSanitize {
 		forceRequeue = false
-		requeue, err = c.clusterAction(ctx, admin, rediscluster, clusterInfos)
+		requeue, err := c.clusterAction(ctx, admin, rediscluster, clusterInfos)
 		if err != nil {
 			glog.Errorf("error during action on cluster: %s-%s, err: %v", rediscluster.Namespace, rediscluster.Name, err)
-		} else if requeue {
-			forceRequeue = true
 		}
+		forceRequeue = requeue
 		_, err = c.updateRedisCluster(rediscluster)
 		return forceRequeue, err
 	}
@@ -366,7 +364,7 @@ func (c *Controller) checkSanityCheck(ctx context.Context, cluster *rapi.RedisCl
 	return sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, true)
 }
 
-func (c *Controller) updateClusterIfNeed(cluster *rapi.RedisCluster, newStatus *rapi.RedisClusterState) (bool, error) {
+func (c *Controller) updateClusterStatus(cluster *rapi.RedisCluster, newStatus *rapi.RedisClusterState) (bool, error) {
 	if compareStatus(&cluster.Status.Cluster, newStatus) {
 		glog.V(3).Infof("Status changed for cluster: %s-%s", cluster.Namespace, cluster.Name)
 		// the status have been update, needs to update the RedisCluster
@@ -374,63 +372,97 @@ func (c *Controller) updateClusterIfNeed(cluster *rapi.RedisCluster, newStatus *
 		_, err := c.updateRedisCluster(cluster)
 		return true, err
 	}
-	// TODO improve this by checking properly the kapi.Pod informations inside each Node
-	cluster.Status.Cluster.Nodes = newStatus.Nodes
 	return false, nil
 }
 
-func (c *Controller) buildClusterStatus(admin redis.AdminInterface, clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod, cluster *rapi.RedisCluster) (*rapi.RedisClusterState, error) {
+func (c *Controller) buildClusterStatus(clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod, cluster *rapi.RedisCluster) (*rapi.RedisClusterState, error) {
+	clusterStatus := getRedisClusterStatus(clusterInfos, pods)
+
+	podLabels, err := pod.GetLabelsSet(cluster)
+	if err != nil {
+		glog.Errorf("Unable to get labelset. err: %v", err)
+	}
+	clusterStatus.LabelSelectorPath = podLabels.String()
+
+	min, max := getReplicationFactors(clusterStatus.NumberOfSlavesPerMaster)
+	clusterStatus.MinReplicationFactor = int32(min)
+	clusterStatus.MaxReplicationFactor = int32(max)
+
+	glog.V(3).Infof("Build Bom, current node list: %s ", clusterStatus.String())
+
+	return clusterStatus, nil
+}
+
+func getReplicationFactors(numberOfSlavesPerMaster map[string]int) (int, int) {
+	minReplicationFactor := math.MaxInt32
+	maxReplicationFactor := 0
+	for _, i := range numberOfSlavesPerMaster {
+		if i > maxReplicationFactor {
+			maxReplicationFactor = i
+		}
+		if i < minReplicationFactor {
+			minReplicationFactor = i
+		}
+	}
+	if len(numberOfSlavesPerMaster) == 0 {
+		minReplicationFactor = 0
+	}
+	return minReplicationFactor, maxReplicationFactor
+}
+
+func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod) *rapi.RedisClusterState {
 	clusterStatus := &rapi.RedisClusterState{}
-	clusterStatus.NbPodsReady = 0
-	clusterStatus.NbRedisRunning = 0
+	clusterStatus.NumberOfPodsReady = 0
+	clusterStatus.NumberOfRedisNodesRunning = 0
 	clusterStatus.MaxReplicationFactor = 0
 	clusterStatus.MinReplicationFactor = 0
+	clusterStatus.NumberOfPods = int32(len(pods))
+	clusterStatus.NumberOfSlavesPerMaster = map[string]int{}
 
-	clusterStatus.NbPods = int32(len(pods))
-	var nbRedisRunning, nbPodsReady int32
+	numberOfPodsReady := int32(0)
+	numberOfRedisNodesRunning := int32(0)
+	numberOfMasters := int32(0)
+	numberOfMastersReady := int32(0)
+	numberOfSlavesPerMaster := map[string]int{}
 
-	nbMaster := int32(0)
-	nbOfMastersReady := int32(0)
-	nbSlaveByMaster := map[string]int{}
-
-	for _, pod := range pods {
+	for _, p := range pods {
 		podReady := false
-		if podReady, _ = IsPodReady(pod); podReady {
-			nbPodsReady++
-		}
-
-		newNode := rapi.RedisClusterNode{
-			PodName: pod.Name,
-			IP:      pod.Status.PodIP,
-			Pod:     pod,
-			Slots:   []string{},
-		}
-		// find corresponding Redis node
-		redisNodes, err := clusterInfos.GetNodes().GetNodesByFunc(func(node *redis.Node) bool {
-			return node.IP == pod.Status.PodIP
-		})
-		if err != nil {
-			glog.Errorf("Unable to retrieve the associated Redis Node with the pod: %s, ip:%s, err:%v", pod.Name, pod.Status.PodIP, err)
+		if podReady, _ = IsPodReady(p); !podReady {
 			continue
 		}
+		numberOfPodsReady++
+		// find corresponding Redis node
+		redisNodes, err := clusterInfos.GetNodes().GetNodesByFunc(func(node *redis.Node) bool {
+			return node.IP == p.Status.PodIP
+		})
+		if err != nil {
+			glog.Errorf("unable to retrieve the associated Redis Node with the pod: %s, ip:%s, err:%v", p.Name, p.Status.PodIP, err)
+			continue
+		}
+		newNode := rapi.RedisClusterNode{
+			PodName: p.Name,
+			IP:      p.Status.PodIP,
+			Pod:     p,
+			Slots:   []string{},
+		}
+		// only one redis node with a role per pod
 		if len(redisNodes) == 1 {
 			redisNode := redisNodes[0]
 			if redis.IsMasterWithSlot(redisNode) {
-				if _, ok := nbSlaveByMaster[redisNode.ID]; !ok {
-					nbSlaveByMaster[redisNode.ID] = 0
+				if _, ok := numberOfSlavesPerMaster[redisNode.ID]; !ok {
+					numberOfSlavesPerMaster[redisNode.ID] = 0
 				}
-				nbMaster++
+				numberOfMasters++
 				if podReady {
-					nbOfMastersReady++
+					numberOfMastersReady++
 				}
 			}
 
 			newNode.ID = redisNode.ID
 			newNode.Role = redisNode.GetRole()
 			newNode.Port = redisNode.Port
-			newNode.Slots = []string{}
 			if redis.IsSlave(redisNode) && redisNode.MasterReferent != "" {
-				nbSlaveByMaster[redisNode.MasterReferent] = nbSlaveByMaster[redisNode.MasterReferent] + 1
+				numberOfSlavesPerMaster[redisNode.MasterReferent] = numberOfSlavesPerMaster[redisNode.MasterReferent] + 1
 				newNode.MasterRef = redisNode.MasterReferent
 			}
 			if len(redisNode.Slots) > 0 {
@@ -439,42 +471,19 @@ func (c *Controller) buildClusterStatus(admin redis.AdminInterface, clusterInfos
 					newNode.Slots = append(newNode.Slots, slot.String())
 				}
 			}
-			nbRedisRunning++
+			numberOfRedisNodesRunning++
 		}
 		clusterStatus.Nodes = append(clusterStatus.Nodes, newNode)
 	}
-	clusterStatus.NbRedisRunning = nbRedisRunning
-	clusterStatus.NumberOfMaster = nbMaster
-	clusterStatus.NbOfMastersReady = nbOfMastersReady
-	clusterStatus.NbPodsReady = nbPodsReady
+
+	clusterStatus.NumberOfRedisNodesRunning = numberOfRedisNodesRunning
+	clusterStatus.NumberOfMasters = numberOfMasters
+	clusterStatus.NumberOfMastersReady = numberOfMastersReady
+	clusterStatus.NumberOfPodsReady = numberOfPodsReady
+	clusterStatus.NumberOfSlavesPerMaster = numberOfSlavesPerMaster
 	clusterStatus.Status = rapi.ClusterStatusOK
 
-	podLabels, err := pod.GetLabelsSet(cluster)
-	if err != nil {
-		glog.Errorf("Unable to get labelset. err: %v", err)
-	}
-
-	clusterStatus.LabelSelectorPath = podLabels.String()
-
-	minReplicationFactor := math.MaxInt32
-	maxReplicationFactor := 0
-	for _, counter := range nbSlaveByMaster {
-		if counter > maxReplicationFactor {
-			maxReplicationFactor = counter
-		}
-		if counter < minReplicationFactor {
-			minReplicationFactor = counter
-		}
-	}
-	if len(nbSlaveByMaster) == 0 {
-		minReplicationFactor = 0
-	}
-	clusterStatus.MaxReplicationFactor = int32(maxReplicationFactor)
-	clusterStatus.MinReplicationFactor = int32(minReplicationFactor)
-
-	glog.V(3).Infof("Build Bom, current Node list : %s ", clusterStatus.String())
-
-	return clusterStatus, nil
+	return clusterStatus
 }
 
 // enqueue adds key in the controller queue

@@ -20,14 +20,14 @@ type migrationInfo struct {
 type mapSlotByMigInfo map[migrationInfo]redis.SlotSlice
 
 // DispatchMasters used to select nodes with master roles
-func DispatchMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32, admin redis.AdminInterface) (redis.Nodes, redis.Nodes, redis.Nodes, error) {
+func DispatchMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32) (redis.Nodes, redis.Nodes, redis.Nodes, error) {
 	glog.Info("Start dispatching slots to masters nb nodes: ", len(nodes))
 	var allMasterNodes redis.Nodes
-	// First loop get Master with already Slots assign on it
+	// Get masters with slots assigned
 	currentMasterNodes := nodes.FilterByFunc(redis.IsMasterWithSlot)
 	allMasterNodes = append(allMasterNodes, currentMasterNodes...)
 
-	// add also available Master without slot
+	// Also add available masters without slots
 	currentMasterWithNoSlot := nodes.FilterByFunc(redis.IsMasterWithNoSlot)
 	allMasterNodes = append(allMasterNodes, currentMasterWithNoSlot...)
 	glog.V(2).Info("Master with No slot:", len(currentMasterWithNoSlot))
@@ -51,7 +51,7 @@ func DispatchMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32, 
 	return newMasterNodesSmartSelection, currentMasterNodes, allMasterNodes, nil
 }
 
-// DispatchSlotToNewMasters used to dispatch Slot to the new master nodes
+// DispatchSlotToNewMasters used to dispatch slots to the new master nodes
 func DispatchSlotToNewMasters(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, newMasterNodes, currentMasterNodes, allMasterNodes redis.Nodes) error {
 	// Calculate the Migration slot information (which slots goes from where to where)
 	migrationSlotInfo, info := feedMigInfo(newMasterNodes, currentMasterNodes, allMasterNodes, int(admin.GetHashMaxSlot()+1))
@@ -187,9 +187,7 @@ func buildSlotsByNode(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes
 	if nbNode == 0 {
 		return make(map[string]redis.SlotSlice)
 	}
-	glog.V(6).Infof("Number of slots: %v", nbSlots)
 	nbSlotByNode := int(math.Ceil(float64(nbSlots) / float64(nbNode)))
-	glog.V(6).Infof("Number of slots per node: %v", nbSlotByNode)
 	slotToMigrateByNode := retrieveSlotToMigrateFrom(oldMasterNodes, nbSlotByNode)
 	slotToMigrateByNodeFromDeleted := retrieveSlotToMigrateFromRemovedNodes(newMasterNodes, oldMasterNodes)
 	for id, slots := range slotToMigrateByNodeFromDeleted {

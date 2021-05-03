@@ -147,10 +147,10 @@ func Test_compareStatus(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "NumberOfMaster changed",
+			name: "NumberOfMasters changed",
 			args: args{
 				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NumberOfMaster: 5},
+				new: &rapi.RedisClusterState{NumberOfMasters: 5},
 			},
 			want: true,
 		},
@@ -171,26 +171,26 @@ func Test_compareStatus(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "NbPods changed",
+			name: "NumberOfPods changed",
 			args: args{
 				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NbPods: 1},
+				new: &rapi.RedisClusterState{NumberOfPods: 1},
 			},
 			want: true,
 		},
 		{
-			name: "NbPodsReady changed",
+			name: "NumberOfPodsReady changed",
 			args: args{
 				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NbPodsReady: 1},
+				new: &rapi.RedisClusterState{NumberOfPodsReady: 1},
 			},
 			want: true,
 		},
 		{
-			name: "NbRedisRunning changed",
+			name: "NumberOfRedisNodesRunning changed",
 			args: args{
 				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NbRedisRunning: 5},
+				new: &rapi.RedisClusterState{NumberOfRedisNodesRunning: 5},
 			},
 			want: true,
 		},
@@ -323,7 +323,7 @@ func Test_needMorePods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 6, NbPodsReady: 6},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 6},
 					},
 				},
 			},
@@ -338,7 +338,7 @@ func Test_needMorePods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 6, NbPodsReady: 4},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 4},
 					},
 				},
 			},
@@ -353,7 +353,7 @@ func Test_needMorePods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 4, NbPodsReady: 3},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 3},
 					},
 				},
 			},
@@ -368,7 +368,7 @@ func Test_needMorePods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 4, NbPodsReady: 4},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 4},
 					},
 				},
 			},
@@ -383,7 +383,7 @@ func Test_needMorePods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 10, NbPodsReady: 10},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 10, NumberOfPodsReady: 10},
 					},
 				},
 			},
@@ -417,7 +417,7 @@ func Test_needLessPods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 6, NbPodsReady: 6},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 6},
 					},
 				},
 			},
@@ -432,7 +432,7 @@ func Test_needLessPods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 6, NbPodsReady: 4},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 4},
 					},
 				},
 			},
@@ -447,7 +447,7 @@ func Test_needLessPods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 4, NbPodsReady: 3},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 3},
 					},
 				},
 			},
@@ -462,7 +462,7 @@ func Test_needLessPods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 4, NbPodsReady: 4},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 4},
 					},
 				},
 			},
@@ -477,7 +477,7 @@ func Test_needLessPods(t *testing.T) {
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NbPods: 10, NbPodsReady: 10},
+						Cluster: rapi.RedisClusterState{NumberOfPods: 10, NumberOfPodsReady: 10},
 					},
 				},
 			},
@@ -512,7 +512,7 @@ func Test_checkNumberOfMaster(t *testing.T) {
 						NumberOfMaster: rapi.NewInt32(3),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NumberOfMaster: 3},
+						Cluster: rapi.RedisClusterState{NumberOfMasters: 3},
 					},
 				},
 			},
@@ -527,7 +527,7 @@ func Test_checkNumberOfMaster(t *testing.T) {
 						NumberOfMaster: rapi.NewInt32(3),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NumberOfMaster: 6},
+						Cluster: rapi.RedisClusterState{NumberOfMasters: 6},
 					},
 				},
 			},
@@ -542,7 +542,7 @@ func Test_checkNumberOfMaster(t *testing.T) {
 						NumberOfMaster: rapi.NewInt32(6),
 					},
 					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{NumberOfMaster: 3},
+						Cluster: rapi.RedisClusterState{NumberOfMasters: 3},
 					},
 				},
 			},
@@ -550,18 +550,18 @@ func Test_checkNumberOfMaster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := checkNumberOfMaster(tt.args.cluster)
+			got, got1 := checkNumberOfMasters(tt.args.cluster)
 			if got != tt.want {
-				t.Errorf("checkNumberOfMaster() got = %v, want %v", got, tt.want)
+				t.Errorf("checkNumberOfMasters() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("checkNumberOfMaster() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("checkNumberOfMasters() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}
 }
 
-func Test_checkNoPodsUseless(t *testing.T) {
+func Test_checkShouldDeletePods(t *testing.T) {
 
 	master1 := rapi.RedisClusterNode{ID: "master1", Slots: []string{"1"}, Role: rapi.RedisClusterNodeRoleMaster}
 	master2 := rapi.RedisClusterNode{ID: "master2", Slots: []string{"2"}, Role: rapi.RedisClusterNodeRoleMaster}
@@ -583,30 +583,6 @@ func Test_checkNoPodsUseless(t *testing.T) {
 		{
 			name:  "no useless pod",
 			want:  []*rapi.RedisClusterNode{},
-			want1: true,
-			args: args{
-				cluster: &rapi.RedisCluster{
-					Spec: rapi.RedisClusterSpec{
-						NumberOfMaster:    rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
-					},
-					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{
-							MinReplicationFactor: 1,
-							MaxReplicationFactor: 1,
-							NbPods:               6,
-							NbPodsReady:          6,
-							Nodes: []rapi.RedisClusterNode{
-								master1, master2, master3, slave1, slave2, slave3,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:  "useless master pod",
-			want:  []*rapi.RedisClusterNode{&master4},
 			want1: false,
 			args: args{
 				cluster: &rapi.RedisCluster{
@@ -618,9 +594,33 @@ func Test_checkNoPodsUseless(t *testing.T) {
 						Cluster: rapi.RedisClusterState{
 							MinReplicationFactor: 1,
 							MaxReplicationFactor: 1,
-							NumberOfMaster:       3,
-							NbPods:               7,
-							NbPodsReady:          7,
+							NumberOfPods:         6,
+							NumberOfPodsReady:    6,
+							Nodes: []rapi.RedisClusterNode{
+								master1, master2, master3, slave1, slave2, slave3,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "useless master pod",
+			want:  []*rapi.RedisClusterNode{&master4},
+			want1: true,
+			args: args{
+				cluster: &rapi.RedisCluster{
+					Spec: rapi.RedisClusterSpec{
+						NumberOfMaster:    rapi.NewInt32(3),
+						ReplicationFactor: rapi.NewInt32(1),
+					},
+					Status: rapi.RedisClusterStatus{
+						Cluster: rapi.RedisClusterState{
+							MinReplicationFactor: 1,
+							MaxReplicationFactor: 1,
+							NumberOfMasters:      3,
+							NumberOfPods:         7,
+							NumberOfPodsReady:    7,
 							Nodes: []rapi.RedisClusterNode{
 								master1, master2, master3, slave1, slave2, slave3, master4,
 							},
@@ -632,12 +632,12 @@ func Test_checkNoPodsUseless(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := checkNoPodsUseless(tt.args.cluster)
+			got, got1 := shouldDeleteNodes(tt.args.cluster)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("checkNoPodsUseless() got = %v, want %v", got, tt.want)
+				t.Errorf("canDeleteNodes() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("checkNoPodsUseless() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("canDeleteNodes() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}
@@ -700,12 +700,12 @@ func Test_checkslaveOfSlave(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := checkSlaveOfSlave(tt.args.cluster)
+			got, got1 := checkSlavesOfSlave(tt.args.cluster)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("checkSlaveOfSlave() got = %v, want %v", got, tt.want)
+				t.Errorf("checkSlavesOfSlave() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("checkSlaveOfSlave() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("checkSlavesOfSlave() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}
@@ -734,11 +734,11 @@ func Test_needClusterOperation(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
+							NumberOfMasters:      1,
 							MinReplicationFactor: 2,
 							MaxReplicationFactor: 2,
-							NbPods:               3,
-							NbPodsReady:          3,
+							NumberOfPods:         3,
+							NumberOfPodsReady:    3,
 							Nodes: []rapi.RedisClusterNode{
 								{ID: "Master1", Role: rapi.RedisClusterNodeRoleMaster},
 								{ID: "Slave1", Role: rapi.RedisClusterNodeRoleSlave, MasterRef: "Master1"},
@@ -765,11 +765,11 @@ func Test_needClusterOperation(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
+							NumberOfMasters:      1,
 							MinReplicationFactor: 2,
 							MaxReplicationFactor: 2,
-							NbPods:               3,
-							NbPodsReady:          3,
+							NumberOfPods:         3,
+							NumberOfPodsReady:    3,
 							Nodes: []rapi.RedisClusterNode{
 								{ID: "Master1", Role: rapi.RedisClusterNodeRoleMaster, Pod: newPodWithContainer("pod1", "vm1", map[string]string{"redis": "redis:4.0.0"})},
 								{ID: "Slave1", Role: rapi.RedisClusterNodeRoleSlave, MasterRef: "Master1", Pod: newPodWithContainer("pod2", "vm3", map[string]string{"redis": "redis:4.0.0"})},
@@ -794,11 +794,11 @@ func Test_needClusterOperation(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
+							NumberOfMasters:      1,
 							MinReplicationFactor: 2,
 							MaxReplicationFactor: 2,
-							NbPods:               3,
-							NbPodsReady:          3,
+							NumberOfPods:         3,
+							NumberOfPodsReady:    3,
 							Nodes: []rapi.RedisClusterNode{
 								{ID: "Master1", Role: rapi.RedisClusterNodeRoleMaster},
 								{ID: "Slave1", Role: rapi.RedisClusterNodeRoleSlave, MasterRef: "Master1"},
@@ -821,11 +821,11 @@ func Test_needClusterOperation(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
+							NumberOfMasters:      1,
 							MinReplicationFactor: 2,
 							MaxReplicationFactor: 2,
-							NbPods:               4,
-							NbPodsReady:          4,
+							NumberOfPods:         4,
+							NumberOfPodsReady:    4,
 							Nodes: []rapi.RedisClusterNode{
 								{ID: "Master1", Role: rapi.RedisClusterNodeRoleMaster},
 								{ID: "Slave1", Role: rapi.RedisClusterNodeRoleSlave, MasterRef: "Master1"},
@@ -848,11 +848,11 @@ func Test_needClusterOperation(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       0,
+							NumberOfMasters:      0,
 							MinReplicationFactor: 2,
 							MaxReplicationFactor: 2,
-							NbPods:               3,
-							NbPodsReady:          3,
+							NumberOfPods:         3,
+							NumberOfPodsReady:    3,
 							Nodes: []rapi.RedisClusterNode{
 								{ID: "Master1", Role: rapi.RedisClusterNodeRoleMaster},
 								{ID: "Slave1", Role: rapi.RedisClusterNodeRoleSlave, MasterRef: "Master1"},
@@ -875,11 +875,11 @@ func Test_needClusterOperation(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
+							NumberOfMasters:      1,
 							MinReplicationFactor: 1,
 							MaxReplicationFactor: 2,
-							NbPods:               3,
-							NbPodsReady:          3,
+							NumberOfPods:         3,
+							NumberOfPodsReady:    3,
 							Nodes: []rapi.RedisClusterNode{
 								{ID: "Master1", Role: rapi.RedisClusterNodeRoleMaster},
 								{ID: "Slave1", Role: rapi.RedisClusterNodeRoleSlave, MasterRef: "Master1"},
@@ -902,11 +902,11 @@ func Test_needClusterOperation(t *testing.T) {
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
+							NumberOfMasters:      1,
 							MinReplicationFactor: 2,
 							MaxReplicationFactor: 3,
-							NbPods:               3,
-							NbPodsReady:          3,
+							NumberOfPods:         3,
+							NumberOfPodsReady:    3,
 							Nodes: []rapi.RedisClusterNode{
 								{ID: "Master1", Role: rapi.RedisClusterNodeRoleMaster},
 								{ID: "Slave1", Role: rapi.RedisClusterNodeRoleSlave, MasterRef: "Master1"},

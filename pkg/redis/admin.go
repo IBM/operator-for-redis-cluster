@@ -279,11 +279,12 @@ func (a *Admin) ForgetNode(ctx context.Context, id string) error {
 	infos, _ := a.GetClusterInfos(ctx)
 	for nodeAddr, nodeinfos := range infos.Infos {
 		if nodeinfos.Node.ID == id {
+			a.Connections().Remove(nodeAddr)
 			continue
 		}
 		c, err := a.Connections().Get(ctx, nodeAddr)
 		if err != nil {
-			glog.Errorf("Cannot force a forget on node %s, for node %s: %v", nodeAddr, id, err)
+			glog.Errorf("Node %s cannot forget node %s: %v", nodeAddr, id, err)
 			continue
 		}
 
@@ -294,9 +295,10 @@ func (a *Admin) ForgetNode(ctx context.Context, id string) error {
 		var resp string
 		err = c.DoCmd(ctx, &resp, "CLUSTER", "FORGET", id)
 		_ = a.Connections().ValidateResp(ctx, &resp, err, nodeAddr, "Unable to execute FORGET command")
+		glog.V(6).Infof("Node %s forgot node %s:%s", nodeinfos.Node.ID, id, resp)
 	}
 
-	glog.Infof("Forget Node:%s ...done", id)
+	glog.Infof("Forget node %s complete", id)
 	return nil
 }
 

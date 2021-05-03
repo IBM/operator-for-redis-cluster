@@ -29,12 +29,12 @@ func DefaultRedisCluster(undefaultRedisCluster *RedisCluster) *RedisCluster {
 		rc.Spec.PodTemplate = &kapiv1.PodTemplateSpec{}
 	}
 
-	rc.Status.Cluster.NumberOfMaster = 0
+	rc.Status.Cluster.NumberOfMasters = 0
 	rc.Status.Cluster.MinReplicationFactor = 0
 	rc.Status.Cluster.MaxReplicationFactor = 0
-	rc.Status.Cluster.NbPods = 0
-	rc.Status.Cluster.NbPodsReady = 0
-	rc.Status.Cluster.NbRedisRunning = 0
+	rc.Status.Cluster.NumberOfPods = 0
+	rc.Status.Cluster.NumberOfPodsReady = 0
+	rc.Status.Cluster.NumberOfRedisNodesRunning = 0
 
 	return rc
 }

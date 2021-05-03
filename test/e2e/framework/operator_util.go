@@ -167,8 +167,8 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 			return err
 		}
 
-		if cluster.Status.Cluster.NumberOfMaster != *cluster.Spec.NumberOfMaster {
-			return LogAndReturnErrorf("RedisCluster %s wrong configuration number of master spec: %d, current:%d", cluster.Name, *cluster.Spec.NumberOfMaster, cluster.Status.Cluster.NumberOfMaster)
+		if cluster.Status.Cluster.NumberOfMasters != *cluster.Spec.NumberOfMaster {
+			return LogAndReturnErrorf("RedisCluster %s wrong configuration number of master spec: %d, current:%d", cluster.Name, *cluster.Spec.NumberOfMaster, cluster.Status.Cluster.NumberOfMasters)
 		}
 
 		if cluster.Spec.ReplicationFactor == nil {

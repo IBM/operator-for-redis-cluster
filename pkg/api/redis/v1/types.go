@@ -91,18 +91,19 @@ type RedisClusterCondition struct {
 
 // RedisClusterState represent the Redis Cluster status
 type RedisClusterState struct {
-	Status               ClusterStatus `json:"status"`
-	NumberOfMaster       int32         `json:"numberOfMaster,omitempty"`
-	NbOfMastersReady     int32         `json:"numberOfMastersReady,omitempty"`
-	MinReplicationFactor int32         `json:"minReplicationFactor,omitempty"`
-	MaxReplicationFactor int32         `json:"maxReplicationFactor,omitempty"`
+	Status                  ClusterStatus  `json:"status"`
+	NumberOfMasters         int32          `json:"numberOfMaster,omitempty"`
+	NumberOfMastersReady    int32          `json:"numberOfMastersReady,omitempty"`
+	NumberOfSlavesPerMaster map[string]int `json:"numberOfSlavesPerMaster,omitempty"`
+	MinReplicationFactor    int32          `json:"minReplicationFactor,omitempty"`
+	MaxReplicationFactor    int32          `json:"maxReplicationFactor,omitempty"`
 
 	NodesPlacement NodesPlacementInfo `json:"nodesPlacementInfo,omitempty"`
 
-	// In theory, we always have NbPods > NbRedisRunning > NbPodsReady
-	NbPods         int32 `json:"nbPods,omitempty"`
-	NbPodsReady    int32 `json:"nbPodsReady,omitempty"`
-	NbRedisRunning int32 `json:"nbRedisNodesRunning,omitempty"`
+	// In theory, we always have NumberOfPods > NumberOfRedisNodesRunning > NumberOfPodsReady
+	NumberOfPods              int32 `json:"numberOfPods,omitempty"`
+	NumberOfPodsReady         int32 `json:"numberOfPodsReady,omitempty"`
+	NumberOfRedisNodesRunning int32 `json:"numberOfRedisNodesRunning,omitempty"`
 
 	LabelSelectorPath string `json:"labelSelectorPath"`
 
@@ -112,13 +113,13 @@ type RedisClusterState struct {
 func (s RedisClusterState) String() string {
 	output := ""
 	output += fmt.Sprintf("status:%s\n", s.Status)
-	output += fmt.Sprintf("NumberOfMaster:%d\n", s.NumberOfMaster)
+	output += fmt.Sprintf("NumberOfMasters:%d\n", s.NumberOfMasters)
 	output += fmt.Sprintf("MinReplicationFactor:%d\n", s.MinReplicationFactor)
 	output += fmt.Sprintf("MaxReplicationFactor:%d\n", s.MaxReplicationFactor)
 	output += fmt.Sprintf("NodesPlacement:%s\n\n", s.NodesPlacement)
-	output += fmt.Sprintf("NbPods:%d\n", s.NbPods)
-	output += fmt.Sprintf("NbPodsReady:%d\n", s.NbPodsReady)
-	output += fmt.Sprintf("NbRedisRunning:%d\n\n", s.NbRedisRunning)
+	output += fmt.Sprintf("NumberOfPods:%d\n", s.NumberOfPods)
+	output += fmt.Sprintf("NumberOfPodsReady:%d\n", s.NumberOfPodsReady)
+	output += fmt.Sprintf("NumberOfRedisNodesRunning:%d\n\n", s.NumberOfRedisNodesRunning)
 
 	output += fmt.Sprintf("Nodes (%d): %s\n", len(s.Nodes), s.Nodes)
 

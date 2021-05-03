@@ -20,7 +20,6 @@ func Test_searchAvailableSlaveForMasterID(t *testing.T) {
 
 	type args struct {
 		nodes          redis.Nodes
-		idMaster       string
 		nbSlavedNeeded int32
 	}
 	tests := []struct {
@@ -32,7 +31,6 @@ func Test_searchAvailableSlaveForMasterID(t *testing.T) {
 		{
 			name: "no slave to search",
 			args: args{
-				idMaster:       "master1",
 				nbSlavedNeeded: 0,
 				nodes:          redis.Nodes{&master1},
 			},
@@ -42,7 +40,6 @@ func Test_searchAvailableSlaveForMasterID(t *testing.T) {
 		{
 			name: "search one slave",
 			args: args{
-				idMaster:       "master1",
 				nbSlavedNeeded: 1,
 				nodes:          redis.Nodes{&master1, &futurslave, &slave1},
 			},
@@ -52,13 +49,13 @@ func Test_searchAvailableSlaveForMasterID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := searchAvailableSlaveForMasterID(tt.args.nodes, tt.args.idMaster, tt.args.nbSlavedNeeded)
+			got, err := searchForSlaveNodes(tt.args.nodes, tt.args.nbSlavedNeeded)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("searchAvailableSlaveForMasterID() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("searchForSlaveNodes() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("searchAvailableSlaveForMasterID() = %v, want %v", got, tt.want)
+				t.Errorf("searchForSlaveNodes() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -299,13 +296,13 @@ func TestController_applyConfiguration(t *testing.T) {
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
-							MinReplicationFactor: 1,
-							MaxReplicationFactor: 1,
-							NbPods:               2,
-							NbPodsReady:          2,
-							NbRedisRunning:       2,
-							Nodes:                []rapi.RedisClusterNode{},
+							NumberOfMasters:           1,
+							MinReplicationFactor:      1,
+							MaxReplicationFactor:      1,
+							NumberOfPods:              2,
+							NumberOfPodsReady:         2,
+							NumberOfRedisNodesRunning: 2,
+							Nodes:                     []rapi.RedisClusterNode{},
 						},
 					},
 				},
@@ -343,13 +340,13 @@ func TestController_applyConfiguration(t *testing.T) {
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},
 						Cluster: rapi.RedisClusterState{
-							NumberOfMaster:       1,
-							MinReplicationFactor: 1,
-							MaxReplicationFactor: 1,
-							NbPods:               4,
-							NbPodsReady:          4,
-							NbRedisRunning:       4,
-							Nodes:                []rapi.RedisClusterNode{},
+							NumberOfMasters:           1,
+							MinReplicationFactor:      1,
+							MaxReplicationFactor:      1,
+							NumberOfPods:              4,
+							NumberOfPodsReady:         4,
+							NumberOfRedisNodesRunning: 4,
+							Nodes:                     []rapi.RedisClusterNode{},
 						},
 					},
 				},

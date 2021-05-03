@@ -15,16 +15,16 @@ func compareStatus(old, new *rapi.RedisClusterState) bool {
 	if compareStringValue("ClusterStatus", string(old.Status), string(new.Status)) {
 		return true
 	}
-	if compareInts("NbPods", old.NbPods, new.NbPods) {
+	if compareInts("NumberOfPods", old.NumberOfPods, new.NumberOfPods) {
 		return true
 	}
-	if compareInts("NbPodsReady", old.NbPodsReady, new.NbPodsReady) {
+	if compareInts("NumberOfPodsReady", old.NumberOfPodsReady, new.NumberOfPodsReady) {
 		return true
 	}
-	if compareInts("NbRedisRunning", old.NbRedisRunning, new.NbRedisRunning) {
+	if compareInts("NumberOfRedisNodesRunning", old.NumberOfRedisNodesRunning, new.NumberOfRedisNodesRunning) {
 		return true
 	}
-	if compareInts("NumberOfMaster", old.NumberOfMaster, new.NumberOfMaster) {
+	if compareInts("NumberOfMasters", old.NumberOfMasters, new.NumberOfMasters) {
 		return true
 	}
 	if compareInts("MinReplicationFactor", old.MinReplicationFactor, new.MinReplicationFactor) {
@@ -64,7 +64,7 @@ func compareStatus(old, new *rapi.RedisClusterState) bool {
 	return false
 }
 
-//Divide pods for lost and other
+// filterLostNodes divides pods into lost and other
 func filterLostNodes(pods []*kapi.Pod) (ok []*kapi.Pod, ko []*kapi.Pod) {
 	for _, pod := range pods {
 		if pod.Status.Reason == "NodeLost" {
@@ -161,8 +161,8 @@ func needClusterOperation(cluster *rapi.RedisCluster) bool {
 		return true
 	}
 
-	if compareIntValue("NumberOfMaster", &cluster.Status.Cluster.NumberOfMaster, cluster.Spec.NumberOfMaster) {
-		glog.V(6).Info("needClusterOperation---NumberOfMaster")
+	if compareIntValue("NumberOfMasters", &cluster.Status.Cluster.NumberOfMasters, cluster.Spec.NumberOfMaster) {
+		glog.V(6).Info("needClusterOperation---NumberOfMasters")
 		return true
 	}
 
@@ -212,12 +212,12 @@ func comparePodSpecMD5Hash(hash string, pod *kapi.Pod) bool {
 func needMorePods(cluster *rapi.RedisCluster) bool {
 	nbPodNeed := *cluster.Spec.NumberOfMaster * (1 + *cluster.Spec.ReplicationFactor)
 
-	if cluster.Status.Cluster.NbPods != cluster.Status.Cluster.NbPodsReady {
+	if cluster.Status.Cluster.NumberOfPods != cluster.Status.Cluster.NumberOfPodsReady {
 		return false
 	}
 	output := false
-	if cluster.Status.Cluster.NbPods < nbPodNeed {
-		glog.V(4).Infof("Not enough pods running to apply the cluster [%s-%s] spec, current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NbPodsReady, nbPodNeed)
+	if cluster.Status.Cluster.NumberOfPods < nbPodNeed {
+		glog.V(4).Infof("Not enough pods running to apply the cluster [%s-%s] spec, current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NumberOfPodsReady, nbPodNeed)
 		output = true
 	}
 
@@ -227,12 +227,12 @@ func needMorePods(cluster *rapi.RedisCluster) bool {
 func needLessPods(cluster *rapi.RedisCluster) bool {
 	nbPodNeed := *cluster.Spec.NumberOfMaster * (1 + *cluster.Spec.ReplicationFactor)
 
-	if cluster.Status.Cluster.NbPods != cluster.Status.Cluster.NbPodsReady {
+	if cluster.Status.Cluster.NumberOfPods != cluster.Status.Cluster.NumberOfPodsReady {
 		return false
 	}
 	output := false
-	if cluster.Status.Cluster.NbPods > nbPodNeed {
-		glog.V(4).Infof("Too many pods running, need to scale down the cluster [%s-%s], current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NbPods, nbPodNeed)
+	if cluster.Status.Cluster.NumberOfPods > nbPodNeed {
+		glog.V(4).Infof("Too many pods running, need to scale down the cluster [%s-%s], current %d, needed %d ", cluster.Namespace, cluster.Name, cluster.Status.Cluster.NumberOfPods, nbPodNeed)
 		output = true
 	}
 	return output
@@ -263,30 +263,27 @@ func checkReplicationFactor(cluster *rapi.RedisCluster) (map[string][]string, bo
 	return slavesByMaster, true
 }
 
-// checkNumberOfMaster return the difference between the number of master wanted and the current status.
-// also return true if the number of master status is equal to the spec
-func checkNumberOfMaster(cluster *rapi.RedisCluster) (int32, bool) {
+// checkNumberOfMasters returns the difference between the number of masters currently existing and the number of desired masters
+// also returns true if the number of master status is equal to the spec
+func checkNumberOfMasters(cluster *rapi.RedisCluster) (int32, bool) {
 	nbMasterSpec := *cluster.Spec.NumberOfMaster
-	nbMasterStatus := cluster.Status.Cluster.NumberOfMaster
-
-	same := true
-	if (nbMasterStatus) != nbMasterSpec {
-		same = false
-	}
+	nbMasterStatus := cluster.Status.Cluster.NumberOfMasters
+	same := (nbMasterStatus) == nbMasterSpec
 	return nbMasterStatus - nbMasterSpec, same
 }
 
-// checkPodsUseless use to detect if some pods can be removed without impacting the cluster
-func checkNoPodsUseless(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, bool) {
+// shouldDeleteNodes use to detect if some nodes can be removed without impacting the cluster
+// returns true if there are nodes to be deleted, false otherwise
+func shouldDeleteNodes(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, bool) {
 	uselessNodes := []*rapi.RedisClusterNode{}
 	if !needLessPods(cluster) {
-		return uselessNodes, true
+		return uselessNodes, false
 	}
 
-	_, masterOK := checkNumberOfMaster(cluster)
+	_, masterOK := checkNumberOfMasters(cluster)
 	_, slaveOK := checkReplicationFactor(cluster)
 	if !masterOK || !slaveOK {
-		return uselessNodes, true
+		return uselessNodes, false
 	}
 
 	for _, node := range cluster.Status.Cluster.Nodes {
@@ -298,11 +295,11 @@ func checkNoPodsUseless(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, b
 		}
 	}
 
-	return uselessNodes, false
+	return uselessNodes, true
 }
 
-func checkSlaveOfSlave(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {
-	slavesBySlave := make(map[string][]*rapi.RedisClusterNode)
+func checkSlavesOfSlave(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {
+	slaveOfSlaveList := make(map[string][]*rapi.RedisClusterNode)
 
 	for i, nodeA := range cluster.Status.Cluster.Nodes {
 		if nodeA.Role != rapi.RedisClusterNodeRoleSlave {
@@ -317,10 +314,10 @@ func checkSlaveOfSlave(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClus
 				}
 			}
 			if isSlave {
-				slavesBySlave[nodeA.MasterRef] = append(slavesBySlave[nodeA.MasterRef], &cluster.Status.Cluster.Nodes[i])
+				slaveOfSlaveList[nodeA.MasterRef] = append(slaveOfSlaveList[nodeA.MasterRef], &cluster.Status.Cluster.Nodes[i])
 			}
 		}
 
 	}
-	return slavesBySlave, len(slavesBySlave) == 0
+	return slaveOfSlaveList, len(slaveOfSlaveList) == 0
 }
