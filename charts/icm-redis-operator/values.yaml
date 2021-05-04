@@ -52,6 +52,7 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 80
+  metricsPort: 2112
 
 ingress:
   enabled: false
@@ -102,3 +103,17 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+metrics:
+  grafanaDashboard:
+    enabled: false
+    namespace: ""
+    labels:
+      grafana_dashboard: "1"
+    datasourceName: ""
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    labels:
+      operator: redis-operator
+    scrapeInterval: 30s

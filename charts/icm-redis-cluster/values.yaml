@@ -129,6 +129,14 @@ metrics:
     enabled: false
     path: /metrics
     interval: 30s
+    namespace: ""
+    labels: {}
+  grafanaDashboard:
+    enabled: false
+    datasourceName: ""
+    namespace: ""
+    labels:
+      grafana_dashboard: "1"
 
 sysctl:
   netCoreSomaxconn: 65000

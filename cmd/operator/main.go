@@ -43,6 +43,7 @@ func main() {
 
 	glog.Infof("Leader election enabled: %v", config.LeaderElectionEnabled)
 	go op.RunHttpServer(ctx.Done())
+	go op.RunMetricsServer(ctx.Done())
 	if config.LeaderElectionEnabled {
 		runLeaderElection(ctx, op, config)
 	} else {

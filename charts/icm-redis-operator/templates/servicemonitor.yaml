@@ -1,0 +1,20 @@
+{{ if .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "icm-redis-operator.fullname" . }}-metrics
+  namespace: {{ if .Values.metrics.serviceMonitor.namespace }} {{ .Values.metrics.serviceMonitor.namespace }} {{ else }} {{ .Release.Namespace }} {{ end }}
+  labels:
+    {{- include "icm-redis-operator.labels" . | nindent 4 }}
+    {{- toYaml .Values.metrics.serviceMonitor.labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "icm-redis-operator.labels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames: [{{ .Release.Namespace }}]
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.scrapeInterval }}
+{{ end }}

@@ -13,6 +13,7 @@ type Config struct {
 	KubeConfigFile        string
 	Master                string
 	ListenAddr            string
+	MetricsAddr           string
 	Redis                 config.Redis
 }
 
@@ -34,5 +35,6 @@ func (c *Config) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.KubeConfigFile, "kubeconfig", c.KubeConfigFile, "Location of kubeconfig file for access to kubernetes master service")
 	fs.StringVar(&c.Master, "master", c.Master, "Address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	fs.StringVar(&c.ListenAddr, "addr", "0.0.0.0:8086", "Listen address of the http server which serves kubernetes probes and prometheus endpoints")
+	fs.StringVar(&c.MetricsAddr, "metricsAddr", "0.0.0.0:2112", "Listen address of the metrics server which serves controller metrics")
 	c.Redis.AddFlags(fs)
 }

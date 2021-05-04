@@ -44,6 +44,12 @@ spec:
           imagePullPolicy: {{ .pullPolicy }}
           {{- end }}
           resources: {{- toYaml .Values.metrics.resources | nindent 12 }}
+          env:
+            - name: REDIS_EXPORTER_SCRIPT
+              value: /redis-metrics/metrics.lua
+          volumeMounts:
+            - name: redis-exporter-lua-metrics
+              mountPath: /redis-metrics
           ports:
           - containerPort: {{ .Values.metrics.port.number }}
             name: {{ .Values.metrics.port.name }}
@@ -114,6 +120,11 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if .Values.metrics.enabled }}
+        - name: redis-exporter-lua-metrics
+          configMap:
+            name: {{ include "icm-redis-cluster.fullname" . }}-lua-metrics
+        {{- end }}
         - name: data
           emptyDir: {}
         - name: conf

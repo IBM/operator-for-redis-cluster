@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/metrics"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/google/uuid"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -175,5 +179,27 @@ func (op *RedisOperator) RunHttpServer(stop <-chan struct{}) error {
 
 	<-stop
 	glog.Info("Shutting down the http server...")
+	return op.httpServer.Shutdown(context.Background())
+}
+
+func (op *RedisOperator) RunMetricsServer(stop <-chan struct{}) error {
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(metrics.ReconcileErrors)
+	registry.MustRegister(metrics.ReconcileTotal)
+	registry.MustRegister(metrics.ReconcileTime)
+
+	metricsServer := &http.Server{
+		Addr:    op.config.MetricsAddr,
+		Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+	}
+	go func() {
+		glog.Infof("Listening on http://%s\n", op.httpServer.Addr)
+		if err := metricsServer.ListenAndServe(); err != nil {
+			glog.Errorf("Can't start metrics server: %v", err)
+		}
+	}()
+
+	<-stop
+	glog.Info("Shutting down the metrics server...")
 	return op.httpServer.Shutdown(context.Background())
 }

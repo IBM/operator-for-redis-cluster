@@ -30,6 +30,7 @@ import (
 	rlisters "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/listers/redis/v1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/sanitycheck"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/metrics"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
@@ -161,10 +162,23 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 }
 
 func (c *Controller) sync(ctx context.Context, key string) (bool, error) {
+	var forceRequeue bool
+	var err error
 	glog.V(2).Infof("sync() key:%s", key)
 	startTime := metav1.Now()
 	defer func() {
-		glog.V(2).Infof("Finished syncing RedisCluster %q (%v", key, time.Since(startTime.Time))
+		if err != nil {
+			metrics.ReconcileErrors.WithLabelValues(metrics.RedisOperatorController).Inc()
+			metrics.ReconcileTotal.WithLabelValues(metrics.RedisOperatorController, metrics.LabelError).Inc()
+		} else if forceRequeue {
+			metrics.ReconcileTotal.WithLabelValues(metrics.RedisOperatorController, metrics.LabelRequeue).Inc()
+		} else {
+			metrics.ReconcileTotal.WithLabelValues(metrics.RedisOperatorController, metrics.LabelSuccess).Inc()
+		}
+		reconcileTime := time.Since(startTime.Time)
+		metrics.ReconcileTime.WithLabelValues(metrics.RedisOperatorController).Observe(reconcileTime.Seconds())
+
+		glog.V(2).Infof("Finished syncing RedisCluster %q (%v)", key, reconcileTime)
 	}()
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -206,7 +220,9 @@ func (c *Controller) sync(ctx context.Context, key string) (bool, error) {
 		glog.V(4).Infof("RedisCluster %s/%s: startTime updated", namespace, name)
 		return false, nil
 	}
-	return c.syncCluster(ctx, rediscluster)
+
+	forceRequeue, err = c.syncCluster(ctx, rediscluster)
+	return forceRequeue, err
 }
 
 func (c *Controller) getRedisClusterService(redisCluster *rapi.RedisCluster) (*apiv1.Service, error) {

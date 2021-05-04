@@ -50,6 +50,9 @@ spec:
             - name: http
               containerPort: 8086
               protocol: TCP
+            - name: metrics
+              containerPort: 2112
+              protocol: TCP
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:

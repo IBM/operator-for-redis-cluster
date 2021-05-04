@@ -3,7 +3,10 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "icm-redis-cluster.fullname" . }}-metrics
-  labels: {{- include "icm-redis-cluster-metrics.labels" . | nindent 4 }}
+  namespace: {{ if .Values.metrics.servicemonitor.namespace }} {{ .Values.metrics.servicemonitor.namespace }} {{ else }} {{ .Release.Namespace }} {{ end }}
+  labels:
+    {{- include "icm-redis-cluster-metrics.labels" . | nindent 4 }}
+    {{- toYaml .Values.metrics.servicemonitor.labels | nindent 4 }}
 spec:
   jobLabel: {{ include "icm-redis-cluster.fullname" . }}
   selector:
