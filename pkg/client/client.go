@@ -7,7 +7,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,30 +18,38 @@ import (
 
 	"github.com/golang/glog"
 
-	redis "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
 	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 )
 
 // DefineRedisClusterResource defines a RedisClusterResource as a k8s CR
-func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiextensionsv1beta1.CustomResourceDefinition, error) {
+func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiextensionsv1.CustomResourceDefinition, error) {
 	redisClusterResourceName := v1.ResourcePlural + "." + redis.GroupName
-	crd := &apiextensionsv1beta1.CustomResourceDefinition{
+	crd := &apiextensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: redisClusterResourceName,
 		},
-		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-			Group:   redis.GroupName,
-			Version: v1.SchemeGroupVersion.Version,
-			Scope:   apiextensionsv1beta1.NamespaceScoped,
-			Subresources: &apiextensionsv1beta1.CustomResourceSubresources{
-				Scale: &apiextensionsv1beta1.CustomResourceSubresourceScale{
-					LabelSelectorPath:  proto.String(".status.cluster.labelSelectorPath"),
-					SpecReplicasPath:   ".spec.numberOfMaster",
-					StatusReplicasPath: ".status.cluster.numberOfMastersReady",
+		Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+			Group: redis.GroupName,
+			Versions: []apiextensionsv1.CustomResourceDefinitionVersion{{
+				Name:    v1.SchemeGroupVersion.Version,
+				Served:  true,
+				Storage: true,
+				Subresources: &apiextensionsv1.CustomResourceSubresources{
+					Scale: &apiextensionsv1.CustomResourceSubresourceScale{
+						LabelSelectorPath:  proto.String(".status.cluster.labelSelectorPath"),
+						SpecReplicasPath:   ".spec.numberOfMaster",
+						StatusReplicasPath: ".status.cluster.numberOfMastersReady",
+					},
 				},
-			},
-			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+				Schema: &apiextensionsv1.CustomResourceValidation{OpenAPIV3Schema: &apiextensionsv1.JSONSchemaProps{
+					XPreserveUnknownFields: proto.Bool(true),
+					Type: "object",
+				}},
+			}},
+			Scope: apiextensionsv1.NamespaceScoped,
+			Names: apiextensionsv1.CustomResourceDefinitionNames{
 				Plural:     v1.ResourcePlural,
 				Singular:   v1.ResourceSingular,
 				Kind:       reflect.TypeOf(v1.RedisCluster{}).Name(),
@@ -49,25 +57,25 @@ func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiex
 			},
 		},
 	}
-	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.Background(), crd, metav1.CreateOptions{})
+	_, err := clientset.ApiextensionsV1().CustomResourceDefinitions().Create(context.Background(), crd, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// wait for CRD being established
 	err = wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
-		crd, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.Background(), redisClusterResourceName, metav1.GetOptions{})
+		crd, err = clientset.ApiextensionsV1().CustomResourceDefinitions().Get(context.Background(), redisClusterResourceName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
 		for _, cond := range crd.Status.Conditions {
 			switch cond.Type {
-			case apiextensionsv1beta1.Established:
-				if cond.Status == apiextensionsv1beta1.ConditionTrue {
+			case apiextensionsv1.Established:
+				if cond.Status == apiextensionsv1.ConditionTrue {
 					return true, err
 				}
-			case apiextensionsv1beta1.NamesAccepted:
-				if cond.Status == apiextensionsv1beta1.ConditionFalse {
+			case apiextensionsv1.NamesAccepted:
+				if cond.Status == apiextensionsv1.ConditionFalse {
 					glog.Errorf("Name conflict: %v\n", cond.Reason)
 				}
 			}
@@ -75,7 +83,7 @@ func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiex
 		return false, err
 	})
 	if err != nil {
-		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(context.Background(), redisClusterResourceName, metav1.DeleteOptions{})
+		deleteErr := clientset.ApiextensionsV1().CustomResourceDefinitions().Delete(context.Background(), redisClusterResourceName, metav1.DeleteOptions{})
 		if deleteErr != nil {
 			return nil, errors.NewAggregate([]error{err, deleteErr})
 		}

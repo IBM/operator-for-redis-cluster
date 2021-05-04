@@ -39,9 +39,9 @@ type FakeRedisClusters struct {
 	ns   string
 }
 
-var redisclustersResource = schema.GroupVersionResource{Group: "redisoperator.k8s.io", Version: "v1", Resource: "redisclusters"}
+var redisclustersResource = schema.GroupVersionResource{Group: "db.ibm.com", Version: "v1", Resource: "redisclusters"}
 
-var redisclustersKind = schema.GroupVersionKind{Group: "redisoperator.k8s.io", Version: "v1", Kind: "RedisCluster"}
+var redisclustersKind = schema.GroupVersionKind{Group: "db.ibm.com", Version: "v1", Kind: "RedisCluster"}
 
 // Get takes name of the redisCluster, and returns the corresponding redisCluster object, and an error if there is any.
 func (c *FakeRedisClusters) Get(name string, options v1.GetOptions) (result *redis_v1.RedisCluster, err error) {

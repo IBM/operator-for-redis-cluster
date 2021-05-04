@@ -95,7 +95,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 			nodes: redis.Nodes{
 				redisNode2,
 			},
-			nbMasters: 1,  err: false,
+			nbMasters: 1, err: false,
 		}, // only one node with no slots
 		{
 			cluster: &redis.Cluster{

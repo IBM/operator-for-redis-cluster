@@ -35,7 +35,7 @@ type RedisoperatorV1Interface interface {
 	RedisClustersGetter
 }
 
-// RedisoperatorV1Client is used to interact with features provided by the redisoperator.k8s.io group.
+// RedisoperatorV1Client is used to interact with features provided by the db.ibm.com group.
 type RedisoperatorV1Client struct {
 	restClient rest.Interface
 }

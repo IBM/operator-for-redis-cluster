@@ -1,6 +1,6 @@
 package redis
 
 const (
-	// GroupName is the API group for the RedisCluster
-	GroupName = "redisoperator.k8s.io"
+	// GroupName is the API group for the Redis database
+	GroupName = "db.ibm.com"
 )

@@ -1,4 +1,4 @@
-apiVersion: redisoperator.k8s.io/v1alpha1
+apiVersion: db.ibm.com/v1alpha1
 kind: RedisCluster
 metadata:
   name: {{ include "icm-redis-cluster.fullname" . }}

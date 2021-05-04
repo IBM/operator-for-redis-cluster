@@ -60,7 +60,7 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=redisoperator.k8s.io, Version=v1
+	// Group=db.ibm.com, Version=v1
 	case v1.SchemeGroupVersion.WithResource("redisclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Redisoperator().V1().RedisClusters().Informer()}, nil
 
