@@ -8,7 +8,6 @@ metadata:
     {{- include "icm-redis-cluster-metrics.labels" . | nindent 4 }}
     {{- toYaml .Values.metrics.servicemonitor.labels | nindent 4 }}
 spec:
-  jobLabel: {{ include "icm-redis-cluster.fullname" . }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}-metrics
