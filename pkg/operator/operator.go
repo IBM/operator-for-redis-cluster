@@ -171,7 +171,7 @@ func (op *RedisOperator) configureHealthChecks() {
 
 func (op *RedisOperator) RunHttpServer(stop <-chan struct{}) error {
 	go func() {
-		glog.Infof("Listening on http://%s\n", op.httpServer.Addr)
+		glog.Infof("Operator server listening on http://%s\n", op.httpServer.Addr)
 		if err := op.httpServer.ListenAndServe(); err != nil {
 			glog.Error("Http server error: ", err)
 		}
@@ -193,7 +193,7 @@ func (op *RedisOperator) RunMetricsServer(stop <-chan struct{}) error {
 		Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	}
 	go func() {
-		glog.Infof("Listening on http://%s\n", op.httpServer.Addr)
+		glog.Infof("Metrics server listening on http://%s\n", metricsServer.Addr)
 		if err := metricsServer.ListenAndServe(); err != nil {
 			glog.Errorf("Can't start metrics server: %v", err)
 		}
