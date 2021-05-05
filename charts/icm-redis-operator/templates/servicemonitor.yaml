@@ -3,10 +3,11 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "icm-redis-operator.fullname" . }}-metrics
-  namespace: {{ if .Values.metrics.serviceMonitor.namespace }} {{ .Values.metrics.serviceMonitor.namespace }} {{ else }} {{ .Release.Namespace }} {{ end }}
-  labels:
-    {{- include "icm-redis-operator.labels" . | nindent 4 }}
-    {{- toYaml .Values.metrics.serviceMonitor.labels | nindent 4 }}
+  namespace: {{ with .Values.metrics.serviceMonitor.namespace }}{{ . }}{{ else }}{{ $.Release.Namespace }}{{ end }}
+  labels: {{- include "icm-redis-operator.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- . | toYaml | nindent 4 }}
+    {{- end }}
 spec:
   selector:
     matchLabels:

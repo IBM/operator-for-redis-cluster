@@ -125,7 +125,7 @@ metrics:
     requests:
       cpu: 100m
       memory: 100Mi
-  servicemonitor:
+  serviceMonitor:
     enabled: false
     path: /metrics
     interval: 30s
