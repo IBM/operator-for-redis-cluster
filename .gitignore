@@ -27,12 +27,14 @@ profile.out
 
 .DS_Store
 
+/docker
 /.vscode
 /redis-operator
 /coverage.txt
 /bin
 /dist
 /test/e2e/e2e.test
+/docs/*.tgz
 /.envrc
 /CHANGELOG.md.bak
 
