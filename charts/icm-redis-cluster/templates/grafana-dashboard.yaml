@@ -868,7 +868,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(redis_expired_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m])) by (instance)",
+              "expr": "sum(rate(redis_expired_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m]))",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -880,7 +880,7 @@ data:
               "target": ""
             },
             {
-              "expr": "sum(rate(redis_evicted_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m])) by (instance)",
+              "expr": "sum(rate(redis_evicted_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m]))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -939,7 +939,7 @@ data:
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
           "editable": true,
           "error": false,
-          "fill": 8,
+          "fill": 0,
           "grid": {},
           "gridPos": {
             "h": 7,
@@ -968,11 +968,11 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" } [1m]))",
+              "expr": "topk(5, sum by (cmd) (irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" } [1m])))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1186,7 +1186,7 @@ data:
             "pieType": "pie",
             "reduceOptions": {
               "calcs": [
-                "lastNotNull"
+                "last"
               ],
               "fields": "",
               "values": false
