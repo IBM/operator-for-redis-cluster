@@ -31,14 +31,12 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	deleteRedisCluster(redisClient, rediscluster)
+	//deleteRedisCluster(redisClient, rediscluster)
 })
 
 var _ = Describe("RedisCluster CRUD", func() {
 	It("should create a RedisCluster", func() {
-
 		rediscluster = framework.NewRedisCluster(clusterName, clusterNs, framework.FrameworkContext.ImageTag, 3, 1)
-
 		Eventually(framework.HOCreateRedisNodeServiceAccount(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(framework.HOCreateRedisCluster(redisClient, rediscluster, clusterNs), "5s", "1s").ShouldNot(HaveOccurred())
@@ -46,9 +44,7 @@ var _ = Describe("RedisCluster CRUD", func() {
 		Eventually(framework.HOIsRedisClusterPodDisruptionBudgetCreated(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "5m", "5s").ShouldNot(HaveOccurred())
-
 	})
-
 	Context("when the Redis Cluster is created properly", func() {
 		It("should scale up a RedisCluster", func() {
 			nbMaster := int32(4)
@@ -80,14 +76,14 @@ var _ = Describe("RedisCluster CRUD", func() {
 			})
 		})
 		It("should update the RedisCluster", func() {
-			newTag := "4.0"
+			newTag := "new"
 			rediscluster = framework.NewRedisCluster(clusterName, clusterNs, newTag, 3, 1)
 
 			Eventually(framework.HOUpdateRedisCluster(redisClient, rediscluster, clusterNs), "5s", "1s").ShouldNot(HaveOccurred())
 
-			Eventually(framework.HOIsPodSpecUpdated(kubeClient, rediscluster, newTag), "7m", "5s").ShouldNot(HaveOccurred())
+			Eventually(framework.HOIsPodSpecUpdated(kubeClient, rediscluster, newTag), "5m", "5s").ShouldNot(HaveOccurred())
 
-			Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "7m", "5s").ShouldNot(HaveOccurred())
+			Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "5m", "5s").ShouldNot(HaveOccurred())
 		})
 	})
 

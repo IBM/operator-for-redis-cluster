@@ -1,0 +1,180 @@
+name: Pull Request Workflow
+
+on: 
+  pull_request:
+    branches:
+      - main
+
+env:
+  GO_VERSION: 1.15
+  HELM_VERSION: v3.5.4
+  PYTHON_VERSION: 3.7 # required for helm tester
+
+jobs:
+
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Run integration tests
+        run: make test
+
+
+  build-operator:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build operator image
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.operator
+          tags: icm-redis-operator:local
+          outputs: type=docker,dest=icm-redis-operator.tar
+
+      - name: Upload operator image artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: icm-redis-operator
+          path: icm-redis-operator.tar
+          retention-days: 1
+
+
+  build-cluster-node:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build cluster-node image
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.redisnode
+          tags: icm-redis-cluster-node:local
+          outputs: type=docker,dest=icm-redis-cluster-node.tar
+
+      - name: Upload cluster-node image artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: icm-redis-cluster-node
+          path: icm-redis-cluster-node.tar
+          retention-days: 1
+
+
+  validate-helm-charts:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # ct needs history to compare
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup chart-testing
+        uses: helm/chart-testing-action@v2.0.1
+
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        run: |
+          changed=$(ct list-changed --target-branch=main)
+          if [[ -n "$changed" ]]; then
+            echo "::set-output name=changed::true"
+          fi
+
+      - name: Run chart-testing (lint)
+        run: ct lint --target-branch=main --check-version-increment=false
+
+
+  run-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [build-operator, build-cluster-node, validate-helm-charts]
+    strategy:
+      fail-fast: false
+      matrix:
+        kubernetes-version: ["1.20", "1.19", "1.18"]
+        include:
+          - kubernetes-version: "1.20"
+            kind-node: kindest/node:v1.20.2@sha256:8f7ea6e7642c0da54f04a7ee10431549c0257315b3a634f6ef2fecaaedb19bab
+          - kubernetes-version: "1.19"
+            kind-node: kindest/node:v1.19.7@sha256:a70639454e97a4b733f9d9b67e12c01f6b0297449d5b9cbbef87473458e26dca
+          - kubernetes-version: "1.18"
+            kind-node: kindest/node:v1.18.15@sha256:5c1b980c4d0e0e8e7eb9f36f7df525d079a96169c8a8f20d8bd108c0d0889cc4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Download operator image artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: icm-redis-operator
+      
+      - name: Download cluster-node image artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: icm-redis-cluster-node
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: kind create cluster
+        uses: helm/kind-action@v1.1.0
+        with:
+          version: v0.10.0
+          cluster_name: kind
+          node_image: ${{ matrix.kind-node }}
+            
+      - name: Load Images to KIND
+        run: |
+          kind load image-archive icm-redis-operator.tar icm-redis-operator:local
+          kind load image-archive icm-redis-cluster-node.tar icm-redis-cluster-node:local
+          kind load image-archive icm-redis-cluster-node.tar icm-redis-cluster-node:new
+    
+      - name: Install icm-redis-operator with Helm
+        run: helm install icm-redis-operator charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local
+      
+      - name: Run e2e tests
+        id: e2e
+        run: go test ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
+
+      - name: Capture logs if e2e failed
+        if: steps.e2e.outcome == 'failure'
+        run: |
+          mkdir ./kind-logs
+          kind export logs ./kind-logs
+          tar -cvf kind-e2e-logs-${{ matrix.kubernetes-version }}.tar ./kind-logs
+      
+      - name: Upload logs artifact
+        if: steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v2
+        with:
+          name: kind-e2e-logs-${{ matrix.kubernetes-version }}.tar
+          path: kind-e2e-logs-${{ matrix.kubernetes-version }}.tar
+          retention-days: 7

@@ -1,0 +1,122 @@
+name: Release Workflow
+
+on:
+  release:
+    types:
+      - published
+
+env:
+  HELM_VERSION: v3.5.4
+  ICR_REGISTRY: us.icr.io
+  ICR_USERNAME: iamapikey
+  ICR_PASSWORD: ${{ secrets.IBMCLOUD_API_KEY }}
+  HELM_REPO_USER: ${{ secrets.ARTIFACTORY_USER }}
+  HELM_REPO_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+  HELM_REPO: ${{ secrets.ARTIFACTORY_HELM_REPO }}
+
+jobs:
+  operator:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare image metadata
+        uses: docker/metadata-action@v3
+        id: meta
+        with:
+          images: us.icr.io/icm-docker-images/icm-redis-operator
+          tags: type=ref,event=tag
+      
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to IBM Cloud Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.ICR_REGISTRY }}
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Build and push operator image
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.operator
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+
+  cluster-node:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare image metadata
+        uses: docker/metadata-action@v3
+        id: meta
+        with:
+          images: us.icr.io/icm-docker-images/icm-redis-cluster-node
+          tags: type=ref,event=tag
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to IBM Cloud Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.ICR_REGISTRY }}
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Build and push cluster-node image
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.redisnode
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+
+  helm-release:
+    runs-on: ubuntu-latest
+    needs: [operator, cluster-node]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Package icm-redis-operator chart
+        env:
+          VERSION: ${{ needs.operator.outputs.version }}
+        run: helm package charts/icm-redis-operator --version=$VERSION --app-version=$VERSION
+
+      - name: Package icm-redis-cluster chart
+        env:
+          VERSION: ${{ needs.cluster-node.outputs.version }}
+        run: helm package charts/icm-redis-cluster --version=$VERSION --app-version=$VERSION
+
+      - name: Publish icm-redis-operator chart
+        env:
+          VERSION: ${{ needs.operator.outputs.version }}
+        run: |
+          md5sum_var=$(md5sum ./icm-redis-operator-$VERSION.tgz | awk '{ print $1 }')
+          sha1sum_var=$(sha1sum ./icm-redis-operator-$VERSION.tgz | awk '{ print $1 }')
+          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-operator-$VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-operator-$VERSION.tgz
+
+      - name: Publish icm-redis-cluster chart
+        env:
+          VERSION: ${{ needs.cluster-node.outputs.version }}
+        run: |
+          md5sum_var=$(md5sum ./icm-redis-cluster-$VERSION.tgz | awk '{ print $1 }')
+          sha1sum_var=$(sha1sum ./icm-redis-cluster-$VERSION.tgz | awk '{ print $1 }')
+          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-cluster-$VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-cluster-$VERSION.tgz

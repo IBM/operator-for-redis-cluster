@@ -52,7 +52,7 @@ func NewRedisCluster(name, namespace, tag string, nbMaster, replication int32) *
 					Containers: []v1.Container{
 						{
 							Name:            "redis",
-							Image:           fmt.Sprintf("redisoperator/redisnode:%s", tag),
+							Image:           fmt.Sprintf("icm-redis-cluster-node:%s", tag),
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Args: []string{
 								"--v=6",
@@ -176,11 +176,11 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 		}
 
 		if cluster.Status.Cluster.MinReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s wrong configuration  min replication factor: %v, current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MinReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s wrong configuration replication factor: %v, current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MinReplicationFactor)
 		}
 
 		if cluster.Status.Cluster.MaxReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s wrong configuration  number of master spec: %d, wanted: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s wrong configuration number of master spec: %d, wanted: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
 		}
 
 		if cluster.Status.Cluster.Status != rapi.ClusterStatusOK {
@@ -224,8 +224,7 @@ func HOIsPodSpecUpdated(client clientset.Interface, rediscluster *rapi.RedisClus
 		labelSet[rapi.ClusterNameLabelKey] = rediscluster.Name
 		podList, err := client.CoreV1().Pods(rediscluster.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSet.AsSelector().String()})
 		if err != nil {
-			Logf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
-			return err
+			LogAndReturnErrorf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 		}
 
 		for _, pod := range podList.Items {
@@ -235,15 +234,15 @@ func HOIsPodSpecUpdated(client clientset.Interface, rediscluster *rapi.RedisClus
 					found = true
 					splitString := strings.Split(container.Image, ":")
 					if len(splitString) != 2 {
-						return fmt.Errorf("unable to get the tag from the container.Image:%s", container.Image)
+						LogAndReturnErrorf("unable to get the tag from the container.Image:%s", container.Image)
 					}
 					if splitString[1] != imageTag {
-						return fmt.Errorf("current container.Image have a wrong tag:%s, want:%s", splitString[1], imageTag)
+						LogAndReturnErrorf("current container.Image have a wrong tag:%s, want:%s", splitString[1], imageTag)
 					}
 				}
 			}
 			if !found {
-				return fmt.Errorf("unable to found the container with name: redis")
+				LogAndReturnErrorf("unable to found the container with name: redis")
 			}
 		}
 

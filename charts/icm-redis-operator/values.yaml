@@ -6,7 +6,7 @@ replicaCount: 1
 
 image:
   repository: us.icr.io/icm-docker-images/icm-redis-operator
-  # Overrides the image tag whose default is the chart appVersion.
+  # Overrides the image tag whose default is the chart appVersion
   tag: ""
   pullPolicy: IfNotPresent
 
@@ -16,8 +16,8 @@ strategy:
 
 # Default args passed to the operator
 args: [
-    "--logtostderr=true",
-    "--alsologtostderr"
+  "--logtostderr=true",
+  "--alsologtostderr"
 ]
 
 # Extra args to be passed to the operator
