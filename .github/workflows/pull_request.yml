@@ -165,14 +165,14 @@ jobs:
         run: go test ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
 
       - name: Capture logs if e2e failed
-        if: steps.e2e.outcome == 'failure'
+        if: ${{ always() && steps.e2e.outcome == 'failure' }}
         run: |
           mkdir ./kind-logs
           kind export logs ./kind-logs
           tar -cvf kind-e2e-logs-${{ matrix.kubernetes-version }}.tar ./kind-logs
       
       - name: Upload logs artifact
-        if: steps.e2e.outcome == 'failure'
+        if: ${{ always() && steps.e2e.outcome == 'failure' }}
         uses: actions/upload-artifact@v2
         with:
           name: kind-e2e-logs-${{ matrix.kubernetes-version }}.tar
