@@ -161,7 +161,7 @@ func (a *Admin) GetClusterInfos(ctx context.Context) (*ClusterInfos, error) {
 		if nodeinfos.Node != nil && nodeinfos.Node.IPPort() == addr {
 			infos.Infos[addr] = nodeinfos
 		} else {
-			glog.Warningf("Bad node info retreived from %s", addr)
+			glog.Warningf("Bad node info retrieved from %s", addr)
 		}
 	}
 
@@ -267,7 +267,7 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 
 		glog.Info("waiting failover to be complete...")
 		time.Sleep(time.Second) // TODO: implement back-off like logic
-		// we should wait that all slots have been moved to the new master
+		// we should wait until all slots have been moved to the new master
 		// this is the only way to know that we can stop this master with no impact on the cluster
 	}
 
@@ -354,7 +354,7 @@ func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSli
 	return nil
 }
 
-// AddSlots use to ADDSLOT commands on several slots
+// AddSlots uses the ADDSLOTS command to add several slots
 func (a *Admin) AddSlots(ctx context.Context, addr string, slots SlotSlice) error {
 	if len(slots) == 0 {
 		return nil
@@ -370,7 +370,7 @@ func (a *Admin) AddSlots(ctx context.Context, addr string, slots SlotSlice) erro
 	return a.Connections().ValidateResp(ctx, &resp, err, addr, "Unable to run CLUSTER ADDSLOTS")
 }
 
-// DelSlots exec the redis command to del slots in a pipeline
+// DelSlots uses the DELSLOTS command to delete several slots
 func (a *Admin) DelSlots(ctx context.Context, addr string, slots SlotSlice) error {
 	if len(slots) == 0 {
 		return nil
@@ -490,7 +490,7 @@ func (a *Admin) AttachSlaveToMaster(ctx context.Context, slave *Node, master *No
 	return nil
 }
 
-// DetachSlave use to detach a slave to a master
+// DetachSlave use to detach a slave from a master
 func (a *Admin) DetachSlave(ctx context.Context, slave *Node) error {
 	c, err := a.Connections().Get(ctx, slave.IPPort())
 	if err != nil {
@@ -504,7 +504,7 @@ func (a *Admin) DetachSlave(ctx context.Context, slave *Node) error {
 	}
 
 	if err = a.AttachNodeToCluster(ctx, slave.IPPort()); err != nil {
-		glog.Errorf("[DetachSlave] unable to AttachNodeToCluster the Slave id: %s addr:%s", slave.ID, slave.IPPort())
+		glog.Errorf("[DetachSlave] unable to AttachNodeToCluster for slave with id: %s addr:%s", slave.ID, slave.IPPort())
 		return err
 	}
 
@@ -574,7 +574,7 @@ func (a *Admin) getInfos(ctx context.Context, c ClientInterface, addr string) (*
 	return nodeInfos, nil
 }
 
-// RebuildConnectionMap rebuild the connection map according to the given addresse
+// RebuildConnectionMap rebuild the connection map according to the given addresses
 func (a *Admin) RebuildConnectionMap(ctx context.Context, addrs []string, options *AdminOptions) {
 	a.cnx.Reset()
 	a.cnx = NewAdminConnections(ctx, addrs, options)

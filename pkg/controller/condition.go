@@ -65,7 +65,7 @@ func setRebalancingCondition(clusterStatus *rapi.RedisClusterStatus, status bool
 	if status {
 		statusCondition = apiv1.ConditionTrue
 	}
-	return setCondition(clusterStatus, rapi.RedisClusterRebalancing, statusCondition, metav1.Now(), "topology as changed", "reconfigure on-going after topology changed")
+	return setCondition(clusterStatus, rapi.RedisClusterRebalancing, statusCondition, metav1.Now(), "topology has changed", "topology has changed")
 }
 
 func setRollingUpdateCondition(clusterStatus *rapi.RedisClusterStatus, status bool) bool {
@@ -73,7 +73,7 @@ func setRollingUpdateCondition(clusterStatus *rapi.RedisClusterStatus, status bo
 	if status {
 		statusCondition = apiv1.ConditionTrue
 	}
-	return setCondition(clusterStatus, rapi.RedisClusterRollingUpdate, statusCondition, metav1.Now(), "Rolling update ongoing", "a Rolling update is ongoing")
+	return setCondition(clusterStatus, rapi.RedisClusterRollingUpdate, statusCondition, metav1.Now(), "rolling update in progress", "rolling update in progress")
 }
 
 func setClusterStatusCondition(clusterStatus *rapi.RedisClusterStatus, status bool) bool {
@@ -81,5 +81,5 @@ func setClusterStatusCondition(clusterStatus *rapi.RedisClusterStatus, status bo
 	if status {
 		statusCondition = apiv1.ConditionTrue
 	}
-	return setCondition(clusterStatus, rapi.RedisClusterOK, statusCondition, metav1.Now(), "redis-cluster is correctly configure", "redis-cluster is correctly configure")
+	return setCondition(clusterStatus, rapi.RedisClusterOK, statusCondition, metav1.Now(), "cluster is correctly configured", "cluster is correctly configured")
 }

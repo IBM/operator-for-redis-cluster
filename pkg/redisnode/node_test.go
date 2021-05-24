@@ -20,7 +20,7 @@ func TestUpdateNodeConfigFile(t *testing.T) {
 	defer os.RemoveAll(temp)
 	configfile.Close()
 
-	a := admin.NewFakeAdmin([]string{})
+	a := admin.NewFakeAdmin()
 	c := Config{
 		Redis: config.Redis{
 			ServerPort:         "1234",
@@ -59,7 +59,7 @@ include bar.cfg
 }
 
 func TestAdminCommands(t *testing.T) {
-	a := admin.NewFakeAdmin([]string{})
+	a := admin.NewFakeAdmin()
 	ctx := context.Background()
 	c := Config{
 		Redis: config.Redis{ServerPort: "1234"},

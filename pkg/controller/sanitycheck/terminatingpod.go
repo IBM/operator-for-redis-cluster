@@ -13,7 +13,7 @@ import (
 
 // FixTerminatingPods used to for the deletion of pod blocked in terminating status.
 // in it append the this method will for the deletion of the Pod.
-func FixTerminatingPods(cluster *rapi.RedisCluster, podControl pod.RedisClusterControlInteface, maxDuration time.Duration, dryRun bool) (bool, error) {
+func FixTerminatingPods(cluster *rapi.RedisCluster, podControl pod.RedisClusterControlInterface, maxDuration time.Duration, dryRun bool) (bool, error) {
 	var errs []error
 	var actionDone bool
 

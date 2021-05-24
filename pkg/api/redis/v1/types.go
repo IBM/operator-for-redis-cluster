@@ -43,12 +43,18 @@ type RedisClusterSpec struct {
 	NumberOfMaster    *int32 `json:"numberOfMaster,omitempty"`
 	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
 
-	// ServiceName name used to create the Kubernetes Service that reference the Redis Cluster nodes.
-	// if ServiceName is empty, the RedisCluster.Name will be use for creating the service.
+	// ServiceName name used to create the kubernetes service that fronts the RedisCluster nodes.
+	// If ServiceName is empty, the RedisCluster name will be used for creating the service.
 	ServiceName string `json:"serviceName,omitempty"`
 
-	// PodTemplate contains the pod specificaton that should run the redis-server process
+	// PodTemplate contains the pod specification that should run the redis-server process
 	PodTemplate *kapiv1.PodTemplateSpec `json:"podTemplate,omitempty"`
+
+	// NodeSelector determines which kubernetes nodes to use when scheduling pods
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// ZoneAwareReplication spreads master and slave nodes across all available zones
+	ZoneAwareReplication ZoneAwareReplication `json:"zoneAwareReplication,omitempty"`
 
 	// Labels for created redis-cluster (deployment, rs, pod) (if any)
 	AdditionalLabels map[string]string `json:"AdditionalLabels,omitempty"`
@@ -129,12 +135,16 @@ func (s RedisClusterState) String() string {
 // NodesPlacementInfo Redis Nodes placement mode information
 type NodesPlacementInfo string
 
+type ZoneAwareReplication struct {
+	Enabled bool `json:"enabled"`
+}
+
 const (
 	// NodesPlacementInfoBestEffort the cluster nodes placement is in best effort,
-	// it means you can have 2 masters (or more) on the same VM.
+	// it means you can have 2 (or more) masters on the same kubernetes node
 	NodesPlacementInfoBestEffort NodesPlacementInfo = "BestEffort"
 	// NodesPlacementInfoOptimal the cluster nodes placement is optimal,
-	// it means on master by VM
+	// it means one master per kubernetes node
 	NodesPlacementInfoOptimal NodesPlacementInfo = "Optimal"
 )
 
@@ -163,11 +173,11 @@ type RedisClusterConditionType string
 const (
 	// RedisClusterOK means the RedisCluster is in a good shape
 	RedisClusterOK RedisClusterConditionType = "ClusterOK"
-	// RedisClusterScaling means the RedisCluster is currenlty in a scaling stage
+	// RedisClusterScaling means the RedisCluster is currently in a scaling stage
 	RedisClusterScaling RedisClusterConditionType = "Scaling"
-	// RedisClusterRebalancing means the RedisCluster is currenlty rebalancing slots and keys
+	// RedisClusterRebalancing means the RedisCluster is currently rebalancing slots and keys
 	RedisClusterRebalancing RedisClusterConditionType = "Rebalancing"
-	// RedisClusterRollingUpdate means the RedisCluster is currenlty performing a rolling update of its nodes
+	// RedisClusterRollingUpdate means the RedisCluster is currently performing a rolling update of its nodes
 	RedisClusterRollingUpdate RedisClusterConditionType = "RollingUpdate"
 )
 

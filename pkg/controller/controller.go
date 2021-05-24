@@ -51,7 +51,7 @@ type Controller struct {
 	podDisruptionBudgetLister  policyv1listers.PodDisruptionBudgetLister
 	PodDiscruptionBudgetSynced cache.InformerSynced
 
-	podControl                 pod.RedisClusterControlInteface
+	podControl                 pod.RedisClusterControlInterface
 	serviceControl             ServicesControlInterface
 	podDisruptionBudgetControl PodDisruptionBudgetsControlInterface
 

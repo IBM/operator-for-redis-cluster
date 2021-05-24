@@ -17,15 +17,15 @@ const (
 	ClusterInfoUnset = "Unset"
 	// ClusterInfoPartial status of the cluster info: data is not complete (some nodes didn't respond)
 	ClusterInfoPartial = "Partial"
-	// ClusterInfoInconsistent status of the cluster info: nodesinfos is not consistent between nodes
+	// ClusterInfoInconsistent status of the cluster info: nodeinfos is not consistent between nodes
 	ClusterInfoInconsistent = "Inconsistent"
 	// ClusterInfoConsistent status of the cluster info: nodeinfos is complete and consistent between nodes
 	ClusterInfoConsistent = "Consistent"
 )
 
-// NodeInfos representation of a node info, i.e. data returned by the CLUSTER NODE redis command
-// Node is the information of the targetted node
-// Friends are the view of the other nodes from the targetted node
+// NodeInfos representation of a node info, i.e. data returned by the CLUSTER NODES redis command
+// Node is the information of the targeted node
+// Friends are the view of the other nodes from the targeted node
 type NodeInfos struct {
 	Node    *Node
 	Friends Nodes
@@ -136,10 +136,9 @@ func DecodeNodeInfos(input *string, addr string) *NodeInfos {
 	return infos
 }
 
-// ComputeStatus check the ClusterInfos status based on the current data
-// the status ClusterInfoPartial is set while building the clusterinfos
-// if already set, do nothing
-// returns true if consistent or if another error
+// ComputeStatus checks the ClusterInfos status based on the current data.
+// The status ClusterInfoPartial is set while building the ClusterInfos.
+// If already set, do nothing. Returns true if consistent or on error.
 func (c *ClusterInfos) ComputeStatus() bool {
 	if c.Status != ClusterInfoUnset {
 		return false

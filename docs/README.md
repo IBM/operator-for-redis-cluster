@@ -65,16 +65,16 @@ TODO: document RBAC support.
 
 #### Create your "Redis-Cluster"
 
-Thanks to the helm chart `chart/redis-cluster` you can create a `RedisCluster` Custom Resource which will be processed by the `redis-operator`.
+Thanks to the helm chart `charts/icm-redis-cluster` you can create a `RedisCluster` Custom Resource which will be processed by the `redis-operator`.
 
 You can configure the Topology of the cluster by providing your own `values.yml` file to helm, or settings the value with the `--set` parameters when you execute `helm install`
 
 ```console
-helm install --name mycluster charts/redis-cluster --set numberOfMaster=3 --set replicationFactor=1
+helm install --name mycluster charts/icm-redis-cluster --set numberOfMaster=3 --set replicationFactor=1
 ...
 ```
 
-#### Install the kubctl redis-cluster plugin
+#### Install the kubectl redis-cluster plugin
 
 docs available [here](kubectl-plugin.md).
 

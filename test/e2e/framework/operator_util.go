@@ -251,7 +251,7 @@ func HOIsPodSpecUpdated(client clientset.Interface, rediscluster *rapi.RedisClus
 	}
 }
 
-// HOCreateRedisNodeServiceAccount  is an higher order func that returns the func to create the serviceaccount assiated to the redis-node pod.
+// HOCreateRedisNodeServiceAccount  is an higher order func that returns the func to create the serviceaccount associated with the redis-node pod.
 func HOCreateRedisNodeServiceAccount(client clientset.Interface, rediscluster *rapi.RedisCluster) func() error {
 	return func() error {
 		_, err := client.CoreV1().ServiceAccounts(rediscluster.Namespace).Get(context.Background(), "redis-node", metav1.GetOptions{})

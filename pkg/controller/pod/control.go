@@ -19,8 +19,8 @@ import (
 	"github.com/golang/glog"
 )
 
-// RedisClusterControlInteface interface for the RedisClusterPodControl
-type RedisClusterControlInteface interface {
+// RedisClusterControlInterface interface for the RedisClusterPodControl
+type RedisClusterControlInterface interface {
 	// GetRedisClusterPods return list of Pod attached to a RedisCluster
 	GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]*kapiv1.Pod, error)
 	// CreatePod used to create a Pod from the RedisCluster pod template
@@ -31,7 +31,7 @@ type RedisClusterControlInteface interface {
 	DeletePodNow(redisCluster *rapi.RedisCluster, podName string) error
 }
 
-var _ RedisClusterControlInteface = &RedisClusterControl{}
+var _ RedisClusterControlInterface = &RedisClusterControl{}
 
 // RedisClusterControl contains requires accessor to managing the RedisCluster pods
 type RedisClusterControl struct {

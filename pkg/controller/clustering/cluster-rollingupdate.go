@@ -6,16 +6,16 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-// SelectMastersToReplace used to replace currentMaster with new Nodes
-func SelectMastersToReplace(currentOldMaster, currentNewMasters, newNoneNodes redis.Nodes, nbMaster, nbMasterToReplace int32) (selectedMasters redis.Nodes, newSelectedMasters redis.Nodes, err error) {
+// SelectMastersToReplace used to replace currentMasters with new redis nodes
+func SelectMastersToReplace(oldMasters, newMasters, newNodesNoRole redis.Nodes, nbMaster, nbMasterToReplace int32) (selectedMasters redis.Nodes, newSelectedMasters redis.Nodes, err error) {
 	newSelectedMasters = redis.Nodes{}
-	if len(currentNewMasters) == int(nbMaster) {
-		return currentNewMasters, newSelectedMasters, nil
+	if len(newMasters) == int(nbMaster) {
+		return newMasters, newSelectedMasters, nil
 	}
 
-	selectedMasters = append(selectedMasters, currentNewMasters...)
+	selectedMasters = append(selectedMasters, newMasters...)
 	nbMasterReplaced := int32(0)
-	for _, newNode := range newNoneNodes {
+	for _, newNode := range newNodesNoRole {
 		if nbMasterReplaced == nbMasterToReplace {
 			break
 		}
@@ -24,10 +24,10 @@ func SelectMastersToReplace(currentOldMaster, currentNewMasters, newNoneNodes re
 		newSelectedMasters = append(newSelectedMasters, newNode)
 	}
 	nbRemainingOldMaster := int(nbMaster) - len(selectedMasters)
-	if nbRemainingOldMaster > len(currentOldMaster) {
-		nbRemainingOldMaster = len(currentOldMaster)
+	if nbRemainingOldMaster > len(oldMasters) {
+		nbRemainingOldMaster = len(oldMasters)
 	}
-	currentOldMasterSorted := currentOldMaster.SortNodes()
+	currentOldMasterSorted := oldMasters.SortNodes()
 	selectedMasters = append(selectedMasters, currentOldMasterSorted[:nbRemainingOldMaster]...)
 	if nbMasterReplaced != nbMasterToReplace {
 		return selectedMasters, newSelectedMasters, fmt.Errorf("insufficient number of nodes for master replacement, wanted:%d, current:%d", nbMasterToReplace, nbMasterReplaced)

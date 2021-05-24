@@ -24,7 +24,7 @@ func TestFixGhostMasterNodes(t *testing.T) {
 
 	type args struct {
 		adminFunc  func() redis.AdminInterface
-		podControl pod.RedisClusterControlInteface
+		podControl pod.RedisClusterControlInterface
 		cluster    *rapi.RedisCluster
 		info       *redis.ClusterInfos
 	}
@@ -39,8 +39,7 @@ func TestFixGhostMasterNodes(t *testing.T) {
 			name: "no gost",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
-					nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-					fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+					fakeAdmin := admin.NewFakeAdmin()
 
 					return fakeAdmin
 				},
@@ -63,8 +62,7 @@ func TestFixGhostMasterNodes(t *testing.T) {
 			name: "gost redis3",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
-					nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-					fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+					fakeAdmin := admin.NewFakeAdmin()
 
 					return fakeAdmin
 				},

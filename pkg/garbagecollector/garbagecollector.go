@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	// Interval represent the interval to run Garabge Collection
+	// Interval represent the interval to run Garbage Collection
 	Interval time.Duration = 5 * time.Second
 )
 

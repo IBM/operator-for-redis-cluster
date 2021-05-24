@@ -14,7 +14,7 @@ import (
 
 // RunSanityChecks function used to run all the sanity check on the current cluster
 // Return actionDone = true if a modification has been made on the cluster
-func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *config.Redis, podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (actionDone bool, err error) {
+func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *config.Redis, podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (actionDone bool, err error) {
 	// * fix failed nodes: in some cases (cluster without enough master after crash or scale down), some nodes may still know about fail nodes
 	if actionDone, err = FixFailedNodes(ctx, admin, cluster, infos, dryRun); err != nil {
 		return actionDone, err

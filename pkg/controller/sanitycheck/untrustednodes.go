@@ -15,7 +15,7 @@ import (
 
 // FixUntrustedNodes used to remove Nodes that are not trusted by other nodes. It can append when a node
 // are removed from the cluster (with the "forget nodes" command) but try to rejoins the cluster.
-func FixUntrustedNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
+func FixUntrustedNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
 	untrustedNode := listUntrustedNodes(infos)
 	var errs []error
 	doneAnAction := false

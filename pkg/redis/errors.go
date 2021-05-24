@@ -63,7 +63,7 @@ func IsPartialError(err error) bool {
 	return ok && e.Partial()
 }
 
-// IsInconsistentError eturns true if the error is due to cluster inconsistencies
+// IsInconsistentError returns true if the error is due to cluster inconsistencies
 func IsInconsistentError(err error) bool {
 	e, ok := err.(ClusterInfosError)
 	return ok && e.Inconsistent()

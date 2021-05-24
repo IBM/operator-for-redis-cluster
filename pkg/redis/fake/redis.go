@@ -190,7 +190,6 @@ func writeBytesHelper(w io.Writer, b []byte, lastWritten int64, lastErr error) (
 // noArrayHeader means don't write out the headers to any arrays, just
 // inline all the elements in the array
 func writeTo(w io.Writer, buf []byte, m interface{}, noArrayHeader bool) (int64, error) {
-	//fmt.Printf("%T\n", m)
 	switch mt := m.(type) {
 	case []byte:
 		return writeStr(w, buf, mt)

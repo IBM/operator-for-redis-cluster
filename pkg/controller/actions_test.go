@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -11,14 +10,20 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 	kapiv1 "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
-func Test_searchAvailableSlaveForMasterID(t *testing.T) {
-	master1 := redis.Node{ID: "master1", Slots: redis.SlotSlice{1}, Role: "master"}
-	slave1 := redis.Node{ID: "slave1", Slots: redis.SlotSlice{}, Role: "slave", MasterReferent: "master1"}
-	futurslave := redis.Node{ID: "futurslave", Slots: redis.SlotSlice{}, Role: "master"}
+func Test_getNewSlaves(t *testing.T) {
+	_, redisMaster1 := newRedisMasterNode("master1", "zone1", "pod1", "node1", []string{"1"})
+	_, redisSlave1 := newRedisSlaveNode("slave1", "zone2", redisMaster1.ID, "pod2", "node2")
+	_, futureSlave := newRedisMasterNode("futureSlave", "zone1", "pod3", "node1", []string{})
+
+	node1 := newNode("node1", "zone1")
+	node2 := newNode("node2", "zone2")
 
 	type args struct {
+		cluster        *redis.Cluster
 		nodes          redis.Nodes
 		nbSlavedNeeded int32
 	}
@@ -31,8 +36,15 @@ func Test_searchAvailableSlaveForMasterID(t *testing.T) {
 		{
 			name: "no slave to search",
 			args: args{
+				cluster: &redis.Cluster{
+					Nodes: map[string]*redis.Node{
+						"master1": &redisMaster1,
+						"slave1":  &redisSlave1,
+					},
+					KubeNodes: []kapiv1.Node{*node1, *node2},
+				},
 				nbSlavedNeeded: 0,
-				nodes:          redis.Nodes{&master1},
+				nodes:          redis.Nodes{&redisMaster1, &redisMaster1},
 			},
 			want:    redis.Nodes{},
 			wantErr: false,
@@ -40,43 +52,56 @@ func Test_searchAvailableSlaveForMasterID(t *testing.T) {
 		{
 			name: "search one slave",
 			args: args{
+				cluster: &redis.Cluster{
+					Nodes: map[string]*redis.Node{
+						"master1":     &redisMaster1,
+						"slave1":      &redisSlave1,
+						"futureSlave": &futureSlave,
+					},
+					KubeNodes: []kapiv1.Node{*node1, *node2},
+				},
 				nbSlavedNeeded: 1,
-				nodes:          redis.Nodes{&master1, &futurslave, &slave1},
+				nodes:          redis.Nodes{&redisMaster1, &redisMaster1, &futureSlave},
 			},
-			want:    redis.Nodes{&futurslave},
+			want:    redis.Nodes{&futureSlave},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := searchForSlaveNodes(tt.args.nodes, tt.args.nbSlavedNeeded)
+			got, err := getNewSlaves(tt.args.cluster, tt.args.nodes, tt.args.nbSlavedNeeded)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("searchForSlaveNodes() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("getNewSlaves() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("searchForSlaveNodes() = %v, want %v", got, tt.want)
+				t.Errorf("getNewSlaves() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func Test_selectSlavesToDelete(t *testing.T) {
-	master1, redisMaster1 := newRedisMasterNode("1", "pod1", "node1", []string{"1"})
-	master2, redisMaster2 := newRedisMasterNode("2", "pod2", "node2", []string{"2"})
-	master3, redisMaster3 := newRedisMasterNode("3", "pod3", "node3", []string{"3"})
+	_, redisMaster1 := newRedisMasterNode("master1", "zone1", "pod1", "node1", []string{"1"})
+	_, redisMaster2 := newRedisMasterNode("master2", "zone2", "pod2", "node2", []string{"2"})
+	_, redisMaster3 := newRedisMasterNode("master3", "zone3", "pod3", "node3", []string{"3"})
 
-	slave1, redisSlave1 := newRedisSlaveNode("1", master1.ID, "pod4", "node2")
-	slave2, redisSlave2 := newRedisSlaveNode("2", master2.ID, "pod5", "node3")
-	slave3, redisSlave3 := newRedisSlaveNode("3", master3.ID, "pod6", "node1")
+	_, redisSlave1 := newRedisSlaveNode("slave1", "zone2", redisMaster1.ID, "pod4", "node2")
+	_, redisSlave2 := newRedisSlaveNode("slave2", "zone3", redisMaster2.ID, "pod5", "node3")
+	_, redisSlave3 := newRedisSlaveNode("slave3", "zone1", redisMaster3.ID, "pod6", "node1")
+	_, redisSlave4 := newRedisSlaveNode("slave4", "zone1", redisMaster2.ID, "pod7", "node1")
+	_, redisSlave5 := newRedisSlaveNode("slave5", "zone3", redisMaster3.ID, "pod8", "node2")
+	_, redisSlave6 := newRedisSlaveNode("slave6", "zone2", redisMaster3.ID, "pod9", "node3")
 
-	slave1bis, redisSlave1bis := newRedisSlaveNode("4", master1.ID, "pod7", "node1")
+	node1 := newNode("node1", "zone1")
+	node2 := newNode("node2", "zone2")
+	node3 := newNode("node3", "zone3")
 
 	type args struct {
-		cluster          *rapi.RedisCluster
-		nodes            redis.Nodes
-		idMaster         string
-		slavesID         []string
+		cluster          *redis.Cluster
+		masterID         string
+		masterSlaves     redis.Nodes
+		slaves           redis.Nodes
 		nbSlavesToDelete int32
 	}
 	tests := []struct {
@@ -86,40 +111,92 @@ func Test_selectSlavesToDelete(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "one slave to delete",
-			want:    redis.Nodes{&redisSlave1bis},
+			name:    "one slave to delete in same zone as master",
+			want:    redis.Nodes{&redisSlave5},
 			wantErr: false,
 			args: args{
-				cluster: &rapi.RedisCluster{
-					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{
-							Nodes: []rapi.RedisClusterNode{
-								master1, master2, master3, slave1, slave2, slave3, slave1bis,
-							},
-						},
+				cluster: &redis.Cluster{
+					Nodes: map[string]*redis.Node{
+						"master1": &redisMaster1,
+						"master2": &redisMaster2,
+						"master3": &redisMaster3,
+						"slave1":  &redisSlave1,
+						"slave2":  &redisSlave2,
+						"slave3":  &redisSlave3,
+						"slave4":  &redisSlave4,
 					},
+					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
-				nodes:            redis.Nodes{&redisMaster1, &redisMaster2, &redisMaster3, &redisSlave1, &redisSlave2, &redisSlave3, &redisSlave1bis},
-				idMaster:         master1.ID,
-				slavesID:         []string{slave1.ID, slave1bis.ID},
+				masterID:         redisMaster3.ID,
+				masterSlaves:     redis.Nodes{&redisSlave3, &redisSlave5},
 				nbSlavesToDelete: 1,
+			},
+		},
+		{
+			name:    "one slave to delete in largest zone cluster-wide",
+			want:    redis.Nodes{&redisSlave4},
+			wantErr: false,
+			args: args{
+				cluster: &redis.Cluster{
+					Nodes: map[string]*redis.Node{
+						"master1": &redisMaster1,
+						"master2": &redisMaster2,
+						"master3": &redisMaster3,
+						"slave1":  &redisSlave1,
+						"slave2":  &redisSlave2,
+						"slave3":  &redisSlave3,
+						"slave4":  &redisSlave4,
+					},
+					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
+				},
+				masterID:         redisMaster2.ID,
+				masterSlaves:     redis.Nodes{&redisSlave2, &redisSlave4},
+				slaves:           redis.Nodes{&redisSlave1, &redisSlave2, &redisSlave3, &redisSlave4},
+				nbSlavesToDelete: 1,
+			},
+		},
+		{
+			name:    "multiple slaves to delete",
+			want:    redis.Nodes{&redisSlave5, &redisSlave3},
+			wantErr: false,
+			args: args{
+				cluster: &redis.Cluster{
+					Nodes: map[string]*redis.Node{
+						"master1": &redisMaster1,
+						"master2": &redisMaster2,
+						"master3": &redisMaster3,
+						"slave1":  &redisSlave1,
+						"slave2":  &redisSlave2,
+						"slave3":  &redisSlave3,
+						"slave4":  &redisSlave4,
+						"slave5":  &redisSlave5,
+						"slave6":  &redisSlave6,
+					},
+					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
+				},
+				masterID:         redisMaster3.ID,
+				masterSlaves:     redis.Nodes{&redisSlave3, &redisSlave5, &redisSlave6},
+				slaves:           redis.Nodes{&redisSlave1, &redisSlave2, &redisSlave3, &redisSlave4, &redisSlave5, &redisSlave6},
+				nbSlavesToDelete: 2,
 			},
 		},
 		{
 			name: "no slave to delete",
 			args: args{
-				cluster: &rapi.RedisCluster{
-					Status: rapi.RedisClusterStatus{
-						Cluster: rapi.RedisClusterState{
-							Nodes: []rapi.RedisClusterNode{
-								master1, master2, master3, slave1, slave2, slave3, slave1bis,
-							},
-						},
+				cluster: &redis.Cluster{
+					Nodes: map[string]*redis.Node{
+						"master1": &redisMaster1,
+						"master2": &redisMaster2,
+						"master3": &redisMaster3,
+						"slave1":  &redisSlave1,
+						"slave2":  &redisSlave2,
+						"slave3":  &redisSlave3,
 					},
+					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
-				nodes:            redis.Nodes{&redisMaster1, &redisMaster2, &redisMaster3, &redisSlave1, &redisSlave2, &redisSlave3, &redisSlave1bis},
-				idMaster:         master1.ID,
-				slavesID:         []string{slave1.ID, redisSlave1bis.ID},
+				masterID:         redisMaster2.ID,
+				masterSlaves:     redis.Nodes{&redisSlave2, &redisSlave4},
+				slaves:           redis.Nodes{&redisSlave1, &redisSlave2, &redisSlave3},
 				nbSlavesToDelete: 0,
 			},
 			want:    redis.Nodes{},
@@ -128,7 +205,7 @@ func Test_selectSlavesToDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := selectSlavesToDelete(tt.args.cluster, tt.args.nodes, tt.args.idMaster, tt.args.slavesID, tt.args.nbSlavesToDelete)
+			got, err := selectSlavesToDelete(tt.args.cluster, tt.args.masterID, tt.args.masterSlaves, tt.args.slaves, tt.args.nbSlavesToDelete)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("selectSlavesToDelete() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -140,15 +217,15 @@ func Test_selectSlavesToDelete(t *testing.T) {
 	}
 }
 
-func newRedisSlaveNode(id, masterRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
+func newRedisSlaveNode(id, zone, masterRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
 	node := newRedisNode(rapi.RedisClusterNodeRoleSlave, id, podName, nodeName, nil)
 	node.MasterRef = masterRef
-	role := "Slave"
-	redisNode := redis.Node{ID: fmt.Sprintf("%s%s", role, id), MasterReferent: masterRef, Role: role, Pod: node.Pod}
+	role := "slave"
+	redisNode := redis.Node{ID: id, MasterReferent: masterRef, Zone: zone, Role: role, Pod: node.Pod}
 	return node, redisNode
 }
 
-func newRedisMasterNode(id, podName, nodeName string, slots []string) (rapi.RedisClusterNode, redis.Node) {
+func newRedisMasterNode(id, zone, podName, nodeName string, slots []string) (rapi.RedisClusterNode, redis.Node) {
 	role := "master"
 	slotsInt := redis.SlotSlice{}
 	for _, s := range slots {
@@ -156,14 +233,14 @@ func newRedisMasterNode(id, podName, nodeName string, slots []string) (rapi.Redi
 		slotsInt = append(slotsInt, i)
 	}
 	node := newRedisNode(rapi.RedisClusterNodeRoleMaster, id, podName, nodeName, slots)
-	redisNode := redis.Node{ID: fmt.Sprintf("%s%s", role, id), Slots: slotsInt, Role: role, Pod: node.Pod}
+	redisNode := redis.Node{ID: id, Zone: zone, Slots: slotsInt, Role: role, Pod: node.Pod}
 	return node, redisNode
 }
 
 func newRedisNode(role rapi.RedisClusterNodeRole, id, podName, nodeName string, slots []string) rapi.RedisClusterNode {
 	pod := newPod(podName, nodeName)
 
-	return rapi.RedisClusterNode{ID: fmt.Sprintf("%s%s", string(role), id), Slots: slots, Role: role, Pod: pod}
+	return rapi.RedisClusterNode{ID: id, Slots: slots, Role: role, Pod: pod}
 }
 
 func newPod(name, node string) *kapiv1.Pod {
@@ -175,12 +252,28 @@ func newPod(name, node string) *kapiv1.Pod {
 	}
 }
 
+func newNode(name, zone string) *kapiv1.Node {
+	return &kapiv1.Node{
+		ObjectMeta: kmetav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				kapiv1.LabelTopologyZone: zone,
+			},
+		},
+	}
+}
+
 func Test_newRedisCluster(t *testing.T) {
-	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
+	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	node1 := newNode("node1", "zone1")
+	node2 := newNode("node2", "zone2")
 	ctx := context.Background()
-	nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-	fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+	nodes := &kapiv1.NodeList{
+		Items: []kapiv1.Node{*node1, *node2},
+	}
+	fakeKubeClient := fake.NewSimpleClientset(nodes)
+	fakeAdmin := admin.NewFakeAdmin()
 	fakeAdmin.GetClusterInfosRet = admin.ClusterInfosRetType{
 		ClusterInfos: &redis.ClusterInfos{
 			Infos: map[string]*redis.NodeInfos{
@@ -193,8 +286,9 @@ func Test_newRedisCluster(t *testing.T) {
 	}
 
 	type args struct {
-		admin   redis.AdminInterface
-		cluster *rapi.RedisCluster
+		kubeClient kubernetes.Interface
+		admin      redis.AdminInterface
+		cluster    *rapi.RedisCluster
 	}
 	tests := []struct {
 		name    string
@@ -206,7 +300,8 @@ func Test_newRedisCluster(t *testing.T) {
 		{
 			name: "create redis cluster",
 			args: args{
-				admin: fakeAdmin,
+				kubeClient: fakeKubeClient,
+				admin:      fakeAdmin,
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: kmetav1.ObjectMeta{
 						Name:      "myCluster",
@@ -226,6 +321,7 @@ func Test_newRedisCluster(t *testing.T) {
 					redis1.ID: &redis1,
 					redis2.ID: &redis2,
 				},
+				KubeNodes: []kapiv1.Node{*node1, *node2},
 			},
 			want1:   redis.Nodes{&redis1, &redis2},
 			wantErr: false,
@@ -233,7 +329,7 @@ func Test_newRedisCluster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := newRedisCluster(ctx, tt.args.admin, tt.args.cluster)
+			got, got1, err := newRedisCluster(ctx, tt.args.admin, tt.args.cluster, tt.args.kubeClient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newRedisCluster() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -251,12 +347,18 @@ func Test_newRedisCluster(t *testing.T) {
 }
 
 func TestController_applyConfiguration(t *testing.T) {
-	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
-	redis3 := redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{}}
-	redis4 := redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: redis.SlotSlice{}}
+	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis3 := redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Zone: "zone3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{}}
+	redis4 := redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Zone: "zone1", Pod: newPod("pod4", "node1"), Slots: redis.SlotSlice{}}
+	redis1 := redis.Node{ID: "redis1", Role: "slave", MasterReferent: redis2.ID, IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
+	node1 := newNode("node1", "zone1")
+	node2 := newNode("node2", "zone2")
+	node3 := newNode("node3", "zone3")
 	ctx := context.Background()
-	nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
+	nodes := &kapiv1.NodeList{
+		Items: []kapiv1.Node{*node1, *node2, *node3},
+	}
+	fakeKubeClient := fake.NewSimpleClientset(nodes)
 
 	type args struct {
 		cluster             *rapi.RedisCluster
@@ -360,8 +462,9 @@ func TestController_applyConfiguration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Controller{
 				updateHandler: func(rc *rapi.RedisCluster) (*rapi.RedisCluster, error) { return rc, nil },
+				kubeClient:    fakeKubeClient,
 			}
-			fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+			fakeAdmin := admin.NewFakeAdmin()
 			tt.args.updateFakeAdminFunc(fakeAdmin)
 
 			got, err := c.applyConfiguration(ctx, fakeAdmin, tt.args.cluster)

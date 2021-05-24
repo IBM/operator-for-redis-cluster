@@ -9,26 +9,26 @@ import (
 )
 
 // GetLabelsSet return labels associated to the redis-node pods
-func GetLabelsSet(rediscluster *rapi.RedisCluster) (labels.Set, error) {
+func GetLabelsSet(rc *rapi.RedisCluster) (labels.Set, error) {
 	desiredLabels := labels.Set{}
-	if rediscluster == nil {
+	if rc == nil {
 		return desiredLabels, fmt.Errorf("redisluster nil pointer")
 	}
-	if rediscluster.Spec.AdditionalLabels != nil {
-		desiredLabels = rediscluster.Spec.AdditionalLabels
+	if rc.Spec.AdditionalLabels != nil {
+		desiredLabels = rc.Spec.AdditionalLabels
 	}
-	if rediscluster.Spec.PodTemplate != nil {
-		for k, v := range rediscluster.Spec.PodTemplate.Labels {
+	if rc.Spec.PodTemplate != nil {
+		for k, v := range rc.Spec.PodTemplate.Labels {
 			desiredLabels[k] = v
 		}
 	}
-	desiredLabels[rapi.ClusterNameLabelKey] = rediscluster.Name // add rediscluster name to the Pod labels
+	desiredLabels[rapi.ClusterNameLabelKey] = rc.Name // add redis cluster name to the Pod labels
 	return desiredLabels, nil
 }
 
-// CreateRedisClusterLabelSelector creates label selector to select the jobs related to a rediscluster, stepName
-func CreateRedisClusterLabelSelector(rediscluster *rapi.RedisCluster) (labels.Selector, error) {
-	set, err := GetLabelsSet(rediscluster)
+// CreateRedisClusterLabelSelector creates label selector to select the jobs related to a redis cluster
+func CreateRedisClusterLabelSelector(rc *rapi.RedisCluster) (labels.Selector, error) {
+	set, err := GetLabelsSet(rc)
 	if err != nil {
 		return nil, err
 	}
@@ -36,9 +36,9 @@ func CreateRedisClusterLabelSelector(rediscluster *rapi.RedisCluster) (labels.Se
 }
 
 // GetAnnotationsSet return a labels.Set of annotation from the RedisCluster
-func GetAnnotationsSet(rediscluster *rapi.RedisCluster) (labels.Set, error) {
+func GetAnnotationsSet(rc *rapi.RedisCluster) (labels.Set, error) {
 	desiredAnnotations := make(labels.Set)
-	for k, v := range rediscluster.Annotations {
+	for k, v := range rc.Annotations {
 		desiredAnnotations[k] = v
 	}
 

@@ -12,8 +12,8 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-// FixGhostMasterNodes used to removed gost redis nodes
-func FixGhostMasterNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, info *redis.ClusterInfos) (bool, error) {
+// FixGhostMasterNodes used to remove ghost redis nodes
+func FixGhostMasterNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, info *redis.ClusterInfos) (bool, error) {
 	ghosts := listGhostMasterNodes(podControl, cluster, info)
 	var errs []error
 	doneAnAction := false
@@ -29,7 +29,7 @@ func FixGhostMasterNodes(ctx context.Context, admin redis.AdminInterface, podCon
 	return doneAnAction, errors.NewAggregate(errs)
 }
 
-func listGhostMasterNodes(podControl pod.RedisClusterControlInteface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) []string {
+func listGhostMasterNodes(podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) []string {
 	if infos == nil || infos.Infos == nil {
 		return []string{}
 	}

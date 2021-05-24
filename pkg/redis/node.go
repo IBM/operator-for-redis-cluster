@@ -48,6 +48,7 @@ type Node struct {
 	IP              string
 	Port            string
 	Role            string
+	Zone            string
 	LinkState       string
 	MasterReferent  string
 	FailStatus      []string
@@ -114,7 +115,7 @@ func (n *Node) SetRole(flags string) error {
 	return nil
 }
 
-// GetRole return the Redis Cluster Node GetRole
+// GetRole returns the Redis Cluster Node's role
 func (n *Node) GetRole() v1.RedisClusterNodeRole {
 	switch n.Role {
 	case redisMasterRole:
@@ -173,7 +174,7 @@ func (n *Node) ToAPINode() v1.RedisClusterNode {
 	return apiNode
 }
 
-// Clear used to clear possible ressources attach to the current Node
+// Clear used to clear possible resources attach to the current Node
 func (n *Node) Clear() {
 
 }

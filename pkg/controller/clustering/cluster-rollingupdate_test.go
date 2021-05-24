@@ -15,9 +15,9 @@ func TestReplaceMasters(t *testing.T) {
 	newNode1 := &redis.Node{ID: "newNode1"}
 
 	type args struct {
-		currentOldMaster  redis.Nodes
-		currentNewMasters redis.Nodes
-		newNoneNodes      redis.Nodes
+		oldMasters        redis.Nodes
+		newMasters        redis.Nodes
+		newNodesNoRole    redis.Nodes
 		nbMaster          int32
 		nbMasterToReplace int32
 	}
@@ -31,9 +31,9 @@ func TestReplaceMasters(t *testing.T) {
 		{
 			name: "empty slices",
 			args: args{
-				currentOldMaster:  redis.Nodes{},
-				currentNewMasters: redis.Nodes{},
-				newNoneNodes:      redis.Nodes{},
+				oldMasters:        redis.Nodes{},
+				newMasters:        redis.Nodes{},
+				newNodesNoRole:    redis.Nodes{},
 				nbMaster:          0,
 				nbMasterToReplace: 0,
 			},
@@ -44,9 +44,9 @@ func TestReplaceMasters(t *testing.T) {
 		{
 			name: "no master to replace",
 			args: args{
-				currentOldMaster:  redis.Nodes{node1, node2, node3},
-				currentNewMasters: redis.Nodes{},
-				newNoneNodes:      redis.Nodes{},
+				oldMasters:        redis.Nodes{node1, node2, node3},
+				newMasters:        redis.Nodes{},
+				newNodesNoRole:    redis.Nodes{},
 				nbMaster:          3,
 				nbMasterToReplace: 0,
 			},
@@ -57,9 +57,9 @@ func TestReplaceMasters(t *testing.T) {
 		{
 			name: "one master to replace",
 			args: args{
-				currentOldMaster:  redis.Nodes{node1, node2, node3},
-				currentNewMasters: redis.Nodes{},
-				newNoneNodes:      redis.Nodes{newNode1},
+				oldMasters:        redis.Nodes{node1, node2, node3},
+				newMasters:        redis.Nodes{},
+				newNodesNoRole:    redis.Nodes{newNode1},
 				nbMaster:          3,
 				nbMasterToReplace: 1,
 			},
@@ -70,9 +70,9 @@ func TestReplaceMasters(t *testing.T) {
 		{
 			name: "one master to replace, current Master as already one master migrated",
 			args: args{
-				currentOldMaster:  redis.Nodes{node1, node2},
-				currentNewMasters: redis.Nodes{node3},
-				newNoneNodes:      redis.Nodes{newNode1},
+				oldMasters:        redis.Nodes{node1, node2},
+				newMasters:        redis.Nodes{node3},
+				newNodesNoRole:    redis.Nodes{newNode1},
 				nbMaster:          3,
 				nbMasterToReplace: 1,
 			},
@@ -83,9 +83,9 @@ func TestReplaceMasters(t *testing.T) {
 		{
 			name: "not enough new nodes",
 			args: args{
-				currentOldMaster:  redis.Nodes{node1, node2, node3},
-				currentNewMasters: redis.Nodes{},
-				newNoneNodes:      redis.Nodes{newNode1},
+				oldMasters:        redis.Nodes{node1, node2, node3},
+				newMasters:        redis.Nodes{},
+				newNodesNoRole:    redis.Nodes{newNode1},
 				nbMaster:          3,
 				nbMasterToReplace: 2,
 			},
@@ -96,9 +96,9 @@ func TestReplaceMasters(t *testing.T) {
 		{
 			name: "not enough masters",
 			args: args{
-				currentOldMaster:  redis.Nodes{node1, node2, node3},
-				currentNewMasters: redis.Nodes{},
-				newNoneNodes:      redis.Nodes{newNode1},
+				oldMasters:        redis.Nodes{node1, node2, node3},
+				newMasters:        redis.Nodes{},
+				newNodesNoRole:    redis.Nodes{newNode1},
 				nbMaster:          5,
 				nbMasterToReplace: 1,
 			},
@@ -109,7 +109,7 @@ func TestReplaceMasters(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got2, err := SelectMastersToReplace(tt.args.currentOldMaster, tt.args.currentNewMasters, tt.args.newNoneNodes, tt.args.nbMaster, tt.args.nbMasterToReplace)
+			got, got2, err := SelectMastersToReplace(tt.args.oldMasters, tt.args.newMasters, tt.args.newNodesNoRole, tt.args.nbMaster, tt.args.nbMasterToReplace)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReplaceMasters() error = %v, wantErr %v", err, tt.wantErr)
 				return

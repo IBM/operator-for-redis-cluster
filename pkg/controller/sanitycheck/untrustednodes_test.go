@@ -41,8 +41,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 			name: "clean cluster",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
-					nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-					fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+					fakeAdmin := admin.NewFakeAdmin()
 
 					return fakeAdmin
 				},
@@ -67,8 +66,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 			name: "one node untrusted",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
-					nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-					fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+					fakeAdmin := admin.NewFakeAdmin()
 
 					return fakeAdmin
 				},
@@ -93,8 +91,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 			name: "pod ip reused",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
-					nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-					fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+					fakeAdmin := admin.NewFakeAdmin()
 
 					return fakeAdmin
 				},
@@ -121,8 +118,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 			name: "same ip reused different name",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
-					nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-					fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+					fakeAdmin := admin.NewFakeAdmin()
 
 					return fakeAdmin
 				},
@@ -145,8 +141,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 			name: "same ip reused different name",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
-					nodesAddr := []string{redis1.IPPort(), redis2.IPPort()}
-					fakeAdmin := admin.NewFakeAdmin(nodesAddr)
+					fakeAdmin := admin.NewFakeAdmin()
 
 					return fakeAdmin
 				},

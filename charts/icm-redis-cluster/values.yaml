@@ -110,6 +110,11 @@ tolerations: []
 
 affinity: {}
 
+# When enabled, spreads primary and replica nodes across all available zones.
+# Kubernetes nodes are selected according to the nodeSelector field above.
+zoneAwareReplication:
+  enabled: true
+
 metrics:
   enabled: false
   image:

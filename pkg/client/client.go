@@ -45,7 +45,7 @@ func DefineRedisClusterResource(clientset apiextensionsclient.Interface) (*apiex
 				},
 				Schema: &apiextensionsv1.CustomResourceValidation{OpenAPIV3Schema: &apiextensionsv1.JSONSchemaProps{
 					XPreserveUnknownFields: proto.Bool(true),
-					Type: "object",
+					Type:                   "object",
 				}},
 			}},
 			Scope: apiextensionsv1.NamespaceScoped,

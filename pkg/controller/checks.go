@@ -243,24 +243,24 @@ func needLessPods(cluster *rapi.RedisCluster) bool {
 // The second returned value is a boolean. True if replicationFactor is correct for each master,
 // otherwise it returns false
 func checkReplicationFactor(cluster *rapi.RedisCluster) (map[string][]string, bool) {
-	slavesByMaster := make(map[string][]string)
+	masterToSlaves := make(map[string][]string)
 	for _, node := range cluster.Status.Cluster.Nodes {
 		switch node.Role {
 		case rapi.RedisClusterNodeRoleMaster:
-			if _, ok := slavesByMaster[node.ID]; !ok {
-				slavesByMaster[node.ID] = []string{}
+			if _, ok := masterToSlaves[node.ID]; !ok {
+				masterToSlaves[node.ID] = []string{}
 			}
 		case rapi.RedisClusterNodeRoleSlave:
 			if node.MasterRef != "" {
-				slavesByMaster[node.MasterRef] = append(slavesByMaster[node.MasterRef], node.ID)
+				masterToSlaves[node.MasterRef] = append(masterToSlaves[node.MasterRef], node.ID)
 			}
 		}
 	}
 	if (cluster.Status.Cluster.MaxReplicationFactor != cluster.Status.Cluster.MinReplicationFactor) || (*cluster.Spec.ReplicationFactor != cluster.Status.Cluster.MaxReplicationFactor) {
-		return slavesByMaster, false
+		return masterToSlaves, false
 	}
 
-	return slavesByMaster, true
+	return masterToSlaves, true
 }
 
 // checkNumberOfMasters returns the difference between the number of masters currently existing and the number of desired masters

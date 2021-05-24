@@ -19,8 +19,8 @@ type migrationInfo struct {
 
 type mapSlotByMigInfo map[migrationInfo]redis.SlotSlice
 
-// DispatchMasters used to select nodes with master roles
-func DispatchMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32) (redis.Nodes, redis.Nodes, redis.Nodes, error) {
+// SelectMasters used to select redis nodes with master roles
+func SelectMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32) (redis.Nodes, redis.Nodes, redis.Nodes, error) {
 	glog.Info("Start dispatching slots to masters nb nodes: ", len(nodes))
 	var allMasterNodes redis.Nodes
 	// Get masters with slots assigned
@@ -32,27 +32,27 @@ func DispatchMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32) 
 	allMasterNodes = append(allMasterNodes, currentMasterWithNoSlot...)
 	glog.V(2).Info("Master with No slot:", len(currentMasterWithNoSlot))
 
-	newMasterNodesSmartSelection, besteffort, err := PlaceMasters(cluster, currentMasterNodes, currentMasterWithNoSlot, nbMaster)
+	newMasterNodes, bestEffort, err := PlaceMasters(cluster, currentMasterNodes, currentMasterWithNoSlot, nbMaster)
 
-	glog.V(2).Infof("Total masters: %d - target %d - selected: %d", len(allMasterNodes), nbMaster, len(newMasterNodesSmartSelection))
+	glog.V(2).Infof("Total masters: %d - target %d - selected: %d", len(allMasterNodes), nbMaster, len(newMasterNodes))
 	if err != nil {
 		return redis.Nodes{}, redis.Nodes{}, redis.Nodes{}, fmt.Errorf("Not Enough Master available current:%d target:%d, err:%v", len(allMasterNodes), nbMaster, err)
 	}
 
-	newMasterNodesSmartSelection = newMasterNodesSmartSelection.SortByFunc(func(a, b *redis.Node) bool { return a.ID < b.ID })
+	newMasterNodes = newMasterNodes.SortByFunc(func(a, b *redis.Node) bool { return a.ID < b.ID })
 
 	cluster.Status = v1.ClusterStatusCalculatingRebalancing
-	if besteffort {
+	if bestEffort {
 		cluster.NodesPlacement = v1.NodesPlacementInfoBestEffort
 	} else {
 		cluster.NodesPlacement = v1.NodesPlacementInfoOptimal
 	}
 
-	return newMasterNodesSmartSelection, currentMasterNodes, allMasterNodes, nil
+	return newMasterNodes, currentMasterNodes, allMasterNodes, nil
 }
 
-// DispatchSlotToNewMasters used to dispatch slots to the new master nodes
-func DispatchSlotToNewMasters(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, newMasterNodes, currentMasterNodes, allMasterNodes redis.Nodes) error {
+// DispatchSlotsToNewMasters used to dispatch slots to the new master nodes
+func DispatchSlotsToNewMasters(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, newMasterNodes, currentMasterNodes, allMasterNodes redis.Nodes) error {
 	// Calculate the Migration slot information (which slots goes from where to where)
 	migrationSlotInfo, info := feedMigInfo(newMasterNodes, currentMasterNodes, allMasterNodes, int(admin.GetHashMaxSlot()+1))
 	cluster.ActionsInfo = info
@@ -159,7 +159,7 @@ func feedMigInfo(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes, nbS
 					mapOut[migrationInfo{From: oldNode, To: newNode}] = append(mapOut[migrationInfo{From: oldNode, To: newNode}], s)
 					found = true
 					// increment slots counter
-					info.NbslotsToMigrate++
+					info.NbSlotsToMigrate++
 					break
 				}
 			}
@@ -173,7 +173,7 @@ func feedMigInfo(newMasterNodes, oldMasterNodes, allMasterNodes redis.Nodes, nbS
 				mapOut[migrationInfo{From: nil, To: newNode}] = append(mapOut[migrationInfo{From: nil, To: newNode}], s)
 
 				// increment slots counter
-				info.NbslotsToMigrate++
+				info.NbSlotsToMigrate++
 			}
 		}
 	}

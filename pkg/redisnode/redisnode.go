@@ -18,7 +18,7 @@ import (
 
 	"github.com/mediocregopher/radix/v4"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -91,10 +91,10 @@ func initKubeConfig(c *Config) (*rest.Config, error) {
 
 func (r *RedisNode) init() (*Node, error) {
 	// Too fast restart of redis-server can result in slots lost
-	// This is due to a possible bug in Redis. Redis don't check that the node id behind an IP is still the same after a deconnection/reconnection.
-	// And so the the slave reconnect and sync to an empty node in our case
+	// This is due to a possible bug in Redis. Redis doesn't check that the node ID behind an IP is still the same after a disconnection/reconnection.
+	// And so the the slave reconnects and syncs to an empty node.
 	// Therefore, we need to wait for the possible failover to finish.
-	// 2*nodetimeout for failed state detection, 2*nodetimeout for voting, 2*nodetimeout for safety
+	// 2 * nodetimeout for failed state detection, voting, and safety
 	time.Sleep(r.config.RedisStartDelay)
 	ctx := context.Background()
 	nodesAddr, err := getRedisNodesAddrs(r.kubeClient, r.config.Cluster.Namespace, r.config.Cluster.NodeService)
@@ -151,10 +151,10 @@ func (r *RedisNode) run(me *Node) (*Node, error) {
 	// Start redis server and wait for it to be accessible
 	chRedis := make(chan error)
 	go WrapRedis(r.config, chRedis)
-	starterr := testAndWaitConnection(ctx, me.Addr, r.config.RedisStartWait)
-	if starterr != nil {
-		glog.Error("Error while waiting for redis to start: ", starterr)
-		return nil, starterr
+	starter := testAndWaitConnection(ctx, me.Addr, r.config.RedisStartWait)
+	if starter != nil {
+		glog.Error("Error while waiting for redis to start: ", starter)
+		return nil, starter
 	}
 
 	configFunc := func() (bool, error) {
@@ -181,7 +181,7 @@ func (r *RedisNode) run(me *Node) (*Node, error) {
 	defer cancelFunc()
 	wait.PollUntil(2*time.Second, configFunc, ctx.Done())
 
-	glog.Infof("RedisNode: Runnning properly")
+	glog.Infof("RedisNode: Running properly")
 	return me, nil
 }
 
@@ -353,7 +353,7 @@ func testAndWaitConnection(ctx context.Context, addr string, maxWait time.Durati
 
 func getRedisNodesAddrs(kubeClient clientset.Interface, namespace, service string) ([]string, error) {
 	addrs := []string{}
-	eps, err := kubeClient.CoreV1().Endpoints(namespace).Get(context.Background(), service, meta_v1.GetOptions{})
+	eps, err := kubeClient.CoreV1().Endpoints(namespace).Get(context.Background(), service, metav1.GetOptions{})
 	if err != nil {
 		return addrs, err
 	}

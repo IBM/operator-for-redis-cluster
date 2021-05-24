@@ -16,7 +16,7 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 
-// PodDisruptionBudgetsControlInterface inferface for the PodDisruptionBudgetsControl
+// PodDisruptionBudgetsControlInterface interface for the PodDisruptionBudgetsControl
 type PodDisruptionBudgetsControlInterface interface {
 	// CreateRedisClusterPodDisruptionBudget used to create the Kubernetes PodDisruptionBudget needed to access the Redis Cluster
 	CreateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) (*policyv1.PodDisruptionBudget, error)

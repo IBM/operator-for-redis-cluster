@@ -5,23 +5,61 @@ import (
 	"sort"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 )
 
 func TestDispatchSlotToMaster(t *testing.T) {
-	simpleAdmin := admin.NewFakeAdmin([]string{})
-	pod1 := newPod("pod1", "vm1")
-	pod2 := newPod("pod2", "vm2")
-	pod3 := newPod("pod3", "vm3")
-	pod4 := newPod("pod4", "vm4")
+	simpleAdmin := admin.NewFakeAdmin()
+	pod1 := newPod("pod1", "node1")
+	pod2 := newPod("pod2", "node2")
+	pod3 := newPod("pod3", "node3")
+	pod4 := newPod("pod4", "node4")
 
 	masterRole := "master"
 
-	redisNode1 := &redis.Node{ID: "1", Role: masterRole, IP: "1.1.1.1", Port: "1234", Slots: redis.BuildSlotSlice(0, simpleAdmin.GetHashMaxSlot()), Pod: pod1}
-	redisNode2 := &redis.Node{ID: "2", Role: masterRole, IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod2}
-	redisNode3 := &redis.Node{ID: "3", Role: masterRole, IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod3}
-	redisNode4 := &redis.Node{ID: "4", Role: masterRole, IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod4}
+	redisNode1 := &redis.Node{ID: "1", Role: masterRole, Zone: "zone1", IP: "1.1.1.1", Port: "1234", Slots: redis.BuildSlotSlice(0, simpleAdmin.GetHashMaxSlot()), Pod: pod1}
+	redisNode2 := &redis.Node{ID: "2", Role: masterRole, Zone: "zone2", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod2}
+	redisNode3 := &redis.Node{ID: "3", Role: masterRole, Zone: "zone3", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod3}
+	redisNode4 := &redis.Node{ID: "4", Role: masterRole, Zone: "zone4", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod4}
+
+	kubeNodes := []v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node1",
+				Labels: map[string]string{
+					v1.LabelTopologyZone: "zone1",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node2",
+				Labels: map[string]string{
+					v1.LabelTopologyZone: "zone2",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node3",
+				Labels: map[string]string{
+					v1.LabelTopologyZone: "zone3",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node4",
+				Labels: map[string]string{
+					v1.LabelTopologyZone: "zone4",
+				},
+			},
+		},
+	}
 
 	testCases := []struct {
 		cluster   *redis.Cluster
@@ -29,7 +67,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 		nbMasters int32
 		err       bool
 	}{
-		// append force copy, because DispatchSlotToMaster updates the slic
+		// append force copy, because DispatchSlotToMaster updates the slice
 		{
 			cluster: &redis.Cluster{
 				Name:      "clustertest",
@@ -40,6 +78,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 					"3": redisNode3,
 					"4": redisNode4,
 				},
+				KubeNodes: kubeNodes,
 			},
 			nodes: redis.Nodes{
 				redisNode1,
@@ -49,7 +88,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 			},
 			nbMasters: 6, err: true,
 		},
-		// not enough master
+		// not enough masters
 		{
 			cluster: &redis.Cluster{
 				Name:      "clustertest",
@@ -60,6 +99,7 @@ func TestDispatchSlotToMaster(t *testing.T) {
 					"3": redisNode3,
 					"4": redisNode4,
 				},
+				KubeNodes: kubeNodes,
 			},
 			nodes: redis.Nodes{
 				redisNode1,
@@ -68,8 +108,8 @@ func TestDispatchSlotToMaster(t *testing.T) {
 				redisNode4,
 			},
 			nbMasters: 2, err: false,
-		}, // initial config
-
+		},
+		// initial config
 		{
 			cluster: &redis.Cluster{
 				Name:      "clustertest",
@@ -77,13 +117,14 @@ func TestDispatchSlotToMaster(t *testing.T) {
 				Nodes: map[string]*redis.Node{
 					"1": redisNode1,
 				},
+				KubeNodes: kubeNodes,
 			},
 			nodes: redis.Nodes{
 				redisNode1,
 			},
 			nbMasters: 1, err: false,
-		}, // only one node
-
+		},
+		// only one node with no slots
 		{
 			cluster: &redis.Cluster{
 				Name:      "clustertest",
@@ -91,24 +132,26 @@ func TestDispatchSlotToMaster(t *testing.T) {
 				Nodes: map[string]*redis.Node{
 					"2": redisNode2,
 				},
+				KubeNodes: kubeNodes,
 			},
 			nodes: redis.Nodes{
 				redisNode2,
 			},
 			nbMasters: 1, err: false,
-		}, // only one node with no slots
+		},
+		// empty
 		{
 			cluster: &redis.Cluster{
 				Name:      "clustertest",
 				Namespace: "default",
+				KubeNodes: kubeNodes,
 			},
 			nodes: redis.Nodes{}, nbMasters: 0, err: false,
-		}, // empty
-
+		},
 	}
 
 	for i, tc := range testCases {
-		_, _, _, err := DispatchMasters(tc.cluster, tc.nodes, tc.nbMasters)
+		_, _, _, err := SelectMasters(tc.cluster, tc.nodes, tc.nbMasters)
 		if (err != nil) != tc.err {
 			t.Errorf("[case: %d] Unexpected error status, expected error to be %t, got '%v'", i, tc.err, err)
 		}

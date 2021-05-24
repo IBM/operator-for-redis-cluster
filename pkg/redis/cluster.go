@@ -1,14 +1,23 @@
 package redis
 
 import (
+	"sort"
+
 	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	UnknownZone = "unknown"
 )
 
 // Cluster represents a Redis Cluster
 type Cluster struct {
 	Name           string
 	Namespace      string
+	NodeSelector   map[string]string
 	Nodes          map[string]*Node
+	KubeNodes      []corev1.Node
 	Status         v1.ClusterStatus
 	NodesPlacement v1.NodesPlacementInfo
 	ActionsInfo    ClusterActionsInfo
@@ -16,7 +25,7 @@ type Cluster struct {
 
 // ClusterActionsInfo use to store information about current action on the Cluster
 type ClusterActionsInfo struct {
-	NbslotsToMigrate int32
+	NbSlotsToMigrate int32
 }
 
 // NewCluster builds and returns new Cluster instance
@@ -28,6 +37,44 @@ func NewCluster(name, namespace string) *Cluster {
 	}
 
 	return c
+}
+
+// GetZones gets all available zones from the list of k8s nodes
+func (c *Cluster) GetZones() []string {
+	set := make(map[string]struct{})
+	var zones []string
+	for _, node := range c.KubeNodes {
+		zone, ok := node.Labels[corev1.LabelTopologyZone]
+		if ok {
+			if _, hasZone := set[zone]; !hasZone {
+				set[zone] = struct{}{}
+			}
+		}
+
+	}
+	if len(set) == 0 {
+		set[UnknownZone] = struct{}{}
+	}
+	for key := range set {
+		zones = append(zones, key)
+	}
+	sort.Strings(zones)
+	return zones
+}
+
+// GetZone gets the zone label from the specified k8s node
+func (c *Cluster) GetZone(nodeName string) string {
+	for _, node := range c.KubeNodes {
+		if node.Name == nodeName {
+			label, ok := node.Labels[corev1.LabelTopologyZone]
+			if ok {
+				return label
+			} else {
+				return UnknownZone
+			}
+		}
+	}
+	return UnknownZone
 }
 
 // AddNode used to add new Node in the cluster

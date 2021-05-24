@@ -77,7 +77,7 @@ type Admin struct {
 }
 
 // NewFakeAdmin returns new AdminInterface for fake admin
-func NewFakeAdmin(addrs []string) *Admin {
+func NewFakeAdmin() *Admin {
 	return &Admin{
 		HashMaxSlots:               16383,
 		InitRedisClusterRet:        make(map[string]error),

@@ -9,10 +9,10 @@ import (
 )
 
 // ClassifyNodesByRole use to classify the Nodes by roles
-func ClassifyNodesByRole(nodes redis.Nodes) (masters, slaves, nones redis.Nodes) {
+func ClassifyNodesByRole(nodes redis.Nodes) (masters, slaves, mastersWithNoSlots redis.Nodes) {
 	masters = redis.Nodes{}
 	slaves = redis.Nodes{}
-	nones = redis.Nodes{}
+	mastersWithNoSlots = redis.Nodes{}
 
 	for _, node := range nodes {
 		if redis.IsMasterWithSlot(node) {
@@ -20,40 +20,39 @@ func ClassifyNodesByRole(nodes redis.Nodes) (masters, slaves, nones redis.Nodes)
 		} else if redis.IsSlave(node) {
 			slaves = append(slaves, node)
 		} else if redis.IsMasterWithNoSlot(node) {
-			nones = append(nones, node)
+			mastersWithNoSlots = append(mastersWithNoSlots, node)
 		}
 	}
-	return masters, slaves, nones
+	return masters, slaves, mastersWithNoSlots
 }
 
-// DispatchSlave aim is to dispatch the available redis to slave of the current masters
+// DispatchSlave aims to dispatch the available redis to slave of the current masters
 func DispatchSlave(ctx context.Context, cluster *redis.Cluster, nodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
 
-	currentMasterNodes, currentSlaveNodes, futurSlaveNodes := ClassifyNodesByRole(nodes)
-
-	slavesByMaster, bestEffort := PlaceSlaves(cluster, currentMasterNodes, currentSlaveNodes, futurSlaveNodes, replicationLevel)
-	if bestEffort {
-		cluster.NodesPlacement = v1.NodesPlacementInfoBestEffort
-	} else {
-		cluster.NodesPlacement = v1.NodesPlacementInfoOptimal
+	currentMasterNodes, currentSlaveNodes, futureSlaveNodes := ClassifyNodesByRole(nodes)
+	glog.Infof("current masters: %v, current slaves: %v, future slaves: %v", currentMasterNodes, currentSlaveNodes, futureSlaveNodes)
+	masterToSlaves, err := PlaceSlaves(cluster, currentMasterNodes, currentSlaveNodes, futureSlaveNodes, replicationLevel)
+	if err != nil {
+		return err
 	}
-	if len(slavesByMaster) > 0 {
+	cluster.NodesPlacement = v1.NodesPlacementInfoOptimal
+	if len(masterToSlaves) > 0 {
 		return nil
 	}
-	return AttachingSlavesToMaster(ctx, cluster, admin, slavesByMaster)
+	return AttachSlavesToMaster(ctx, cluster, admin, masterToSlaves)
 }
 
-// AttachingSlavesToMaster used to attach slaves to there masters
-func AttachingSlavesToMaster(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, slavesByMaster map[string]redis.Nodes) error {
+// AttachSlavesToMaster used to attach slaves to there masters
+func AttachSlavesToMaster(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, masterToSlaves map[string]redis.Nodes) error {
 	var globalErr error
-	for masterID, slaves := range slavesByMaster {
+	for masterID, slaves := range masterToSlaves {
 		masterNode, err := cluster.GetNodeByID(masterID)
 		if err != nil {
-			glog.Errorf("[AttachingSlavesToMaster] unable fo found the Cluster.Node with redis ID:%s", masterID)
+			glog.Errorf("[AttachSlavesToMaster] unable fo found the Cluster.Node with redis ID:%s", masterID)
 			continue
 		}
 		for _, slave := range slaves {
-			glog.V(2).Infof("[AttachingSlavesToMaster] Attaching node %s to master %s", slave.ID, masterID)
+			glog.V(2).Infof("[AttachSlavesToMaster] Attaching node %s to master %s", slave.ID, masterID)
 
 			err := admin.AttachSlaveToMaster(ctx, slave, masterNode)
 			if err != nil {
