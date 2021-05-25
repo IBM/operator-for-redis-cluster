@@ -17,8 +17,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
@@ -54,15 +52,6 @@ func NewRedisOperator(cfg *Config) *RedisOperator {
 	kubeConfig, err := initKubeConfig(cfg)
 	if err != nil {
 		glog.Fatalf("Unable to init redis cluster controller: %v", err)
-	}
-
-	extClient, err := apiextensionsclient.NewForConfig(kubeConfig)
-	if err != nil {
-		glog.Fatalf("Unable to init clientset from kubeconfig:%v", err)
-	}
-	_, err = rclient.DefineRedisClusterResource(extClient)
-	if err != nil && !apierrors.IsAlreadyExists(err) {
-		glog.Fatalf("Unable to define RedisCluster resource:%v", err)
 	}
 
 	kubeClient, err := clientset.NewForConfig(kubeConfig)

@@ -7,7 +7,7 @@ import (
 
 	kapi "k8s.io/api/core/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 

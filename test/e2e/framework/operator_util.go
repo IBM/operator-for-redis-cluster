@@ -10,7 +10,7 @@ import (
 	"github.com/onsi/gomega"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 
 	v1 "k8s.io/api/core/v1"

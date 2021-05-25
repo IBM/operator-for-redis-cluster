@@ -26,7 +26,7 @@ package v1
 import (
 	"context"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	scheme "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned/scheme"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -42,15 +42,15 @@ type RedisClustersGetter interface {
 
 // RedisClusterInterface has methods to work with RedisCluster resources.
 type RedisClusterInterface interface {
-	Create(*v1.RedisCluster) (*v1.RedisCluster, error)
-	Update(*v1.RedisCluster) (*v1.RedisCluster, error)
-	UpdateStatus(*v1.RedisCluster) (*v1.RedisCluster, error)
+	Create(*rapi.RedisCluster) (*rapi.RedisCluster, error)
+	Update(*rapi.RedisCluster) (*rapi.RedisCluster, error)
+	UpdateStatus(*rapi.RedisCluster) (*rapi.RedisCluster, error)
 	Delete(name string, options *meta_v1.DeleteOptions) error
 	DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error
-	Get(name string, options meta_v1.GetOptions) (*v1.RedisCluster, error)
-	List(opts meta_v1.ListOptions) (*v1.RedisClusterList, error)
+	Get(name string, options meta_v1.GetOptions) (*rapi.RedisCluster, error)
+	List(opts meta_v1.ListOptions) (*rapi.RedisClusterList, error)
 	Watch(opts meta_v1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.RedisCluster, err error)
+	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *rapi.RedisCluster, err error)
 	RedisClusterExpansion
 }
 
@@ -69,8 +69,8 @@ func newRedisClusters(c *RedisoperatorV1Client, namespace string) *redisClusters
 }
 
 // Get takes name of the redisCluster, and returns the corresponding redisCluster object, and an error if there is any.
-func (c *redisClusters) Get(name string, options meta_v1.GetOptions) (result *v1.RedisCluster, err error) {
-	result = &v1.RedisCluster{}
+func (c *redisClusters) Get(name string, options meta_v1.GetOptions) (result *rapi.RedisCluster, err error) {
+	result = &rapi.RedisCluster{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("redisclusters").
@@ -82,8 +82,8 @@ func (c *redisClusters) Get(name string, options meta_v1.GetOptions) (result *v1
 }
 
 // List takes label and field selectors, and returns the list of RedisClusters that match those selectors.
-func (c *redisClusters) List(opts meta_v1.ListOptions) (result *v1.RedisClusterList, err error) {
-	result = &v1.RedisClusterList{}
+func (c *redisClusters) List(opts meta_v1.ListOptions) (result *rapi.RedisClusterList, err error) {
+	result = &rapi.RedisClusterList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("redisclusters").
@@ -104,8 +104,8 @@ func (c *redisClusters) Watch(opts meta_v1.ListOptions) (watch.Interface, error)
 }
 
 // Create takes the representation of a redisCluster and creates it.  Returns the server's representation of the redisCluster, and an error, if there is any.
-func (c *redisClusters) Create(redisCluster *v1.RedisCluster) (result *v1.RedisCluster, err error) {
-	result = &v1.RedisCluster{}
+func (c *redisClusters) Create(redisCluster *rapi.RedisCluster) (result *rapi.RedisCluster, err error) {
+	result = &rapi.RedisCluster{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("redisclusters").
@@ -116,8 +116,8 @@ func (c *redisClusters) Create(redisCluster *v1.RedisCluster) (result *v1.RedisC
 }
 
 // Update takes the representation of a redisCluster and updates it. Returns the server's representation of the redisCluster, and an error, if there is any.
-func (c *redisClusters) Update(redisCluster *v1.RedisCluster) (result *v1.RedisCluster, err error) {
-	result = &v1.RedisCluster{}
+func (c *redisClusters) Update(redisCluster *rapi.RedisCluster) (result *rapi.RedisCluster, err error) {
+	result = &rapi.RedisCluster{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("redisclusters").
@@ -131,8 +131,8 @@ func (c *redisClusters) Update(redisCluster *v1.RedisCluster) (result *v1.RedisC
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 
-func (c *redisClusters) UpdateStatus(redisCluster *v1.RedisCluster) (result *v1.RedisCluster, err error) {
-	result = &v1.RedisCluster{}
+func (c *redisClusters) UpdateStatus(redisCluster *rapi.RedisCluster) (result *rapi.RedisCluster, err error) {
+	result = &rapi.RedisCluster{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("redisclusters").
@@ -167,8 +167,8 @@ func (c *redisClusters) DeleteCollection(options *meta_v1.DeleteOptions, listOpt
 }
 
 // Patch applies the patch and returns the patched redisCluster.
-func (c *redisClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.RedisCluster, err error) {
-	result = &v1.RedisCluster{}
+func (c *redisClusters) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *rapi.RedisCluster, err error) {
+	result = &rapi.RedisCluster{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("redisclusters").

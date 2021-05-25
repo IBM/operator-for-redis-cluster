@@ -24,7 +24,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	rclient "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 	rinformers "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions"
 	rlisters "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/listers/redis/v1"

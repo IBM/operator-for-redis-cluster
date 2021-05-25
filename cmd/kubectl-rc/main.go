@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	rclient "github.com/TheWeatherCompany/icm-redis-operator/pkg/client"
 )
 

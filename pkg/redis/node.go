@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 	kapiv1 "k8s.io/api/core/v1"
 )
@@ -161,7 +161,7 @@ func (n Nodes) GetNodesByFunc(f FindNodeFunc) (Nodes, error) {
 	return nodes, nil
 }
 
-// ToAPINode used to convert the current Node to an API v1.RedisClusterNode
+// ToAPINode used to convert the current Node to an API v1alpha1.RedisClusterNode
 func (n *Node) ToAPINode() v1.RedisClusterNode {
 	apiNode := v1.RedisClusterNode{
 		ID:      n.ID,

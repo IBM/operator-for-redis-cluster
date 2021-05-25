@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 	kapiv1 "k8s.io/api/core/v1"

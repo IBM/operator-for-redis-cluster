@@ -10,7 +10,7 @@ import (
 	// for test lisibility
 	. "github.com/onsi/gomega"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 	"github.com/TheWeatherCompany/icm-redis-operator/test/e2e/framework"
 )

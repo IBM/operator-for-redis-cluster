@@ -1,4 +1,4 @@
-package v1
+package v1alpha1
 
 import (
 	"fmt"
@@ -12,7 +12,12 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // RedisCluster represents a Redis Cluster
+// +kubebuilder:object:root=true
+// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+// +kubebuilder:resource:scope=Namespaced,shortName=rdc
+// +kubebuilder:subresource:scale:specpath=.spec.numberOfMaster,statuspath=.status.cluster.numberOfMastersReady,selectorpath=.status.cluster.labelSelectorPath
 type RedisCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object's metadata.
@@ -113,7 +118,7 @@ type RedisClusterState struct {
 
 	LabelSelectorPath string `json:"labelSelectorPath"`
 
-	Nodes []RedisClusterNode `json:"nodes"`
+	Nodes []RedisClusterNode `json:"nodes,omitempty"`
 }
 
 func (s RedisClusterState) String() string {

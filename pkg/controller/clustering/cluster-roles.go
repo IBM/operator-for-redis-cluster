@@ -3,7 +3,7 @@ package clustering
 import (
 	"context"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/golang/glog"
 )
@@ -35,7 +35,7 @@ func DispatchSlave(ctx context.Context, cluster *redis.Cluster, nodes redis.Node
 	if err != nil {
 		return err
 	}
-	cluster.NodesPlacement = v1.NodesPlacementInfoOptimal
+	cluster.NodesPlacement = rapi.NodesPlacementInfoOptimal
 	if len(masterToSlaves) > 0 {
 		return nil
 	}

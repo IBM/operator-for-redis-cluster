@@ -29,7 +29,7 @@ package v1
 import (
 	time "time"
 
-	redis_v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	versioned "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/listers/redis/v1"
@@ -78,7 +78,7 @@ func NewFilteredRedisClusterInformer(client versioned.Interface, namespace strin
 				return client.RedisoperatorV1().RedisClusters(namespace).Watch(options)
 			},
 		},
-		&redis_v1.RedisCluster{},
+		&rapi.RedisCluster{},
 		resyncPeriod,
 		indexers,
 	)
@@ -89,7 +89,7 @@ func (f *redisClusterInformer) defaultInformer(client versioned.Interface, resyn
 }
 
 func (f *redisClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&redis_v1.RedisCluster{}, f.defaultInformer)
+	return f.factory.InformerFor(&rapi.RedisCluster{}, f.defaultInformer)
 }
 
 func (f *redisClusterInformer) Lister() v1.RedisClusterLister {

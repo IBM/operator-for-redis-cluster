@@ -8,6 +8,13 @@ PREFIX=us.icr.io/icm-docker-images/
 SOURCES := $(shell find . ! -name "*_test.go" -name '*.go')
 
 CMDBINS := operator redisnode
+CRD_OPTIONS ?= "crd:crdVersions=v1,trivialVersions=false"
+
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
 
 TAG?=$(shell git tag|tail -1)
 COMMIT=$(shell git rev-parse HEAD)
@@ -36,6 +43,27 @@ build: $(addprefix build-,$(CMDBINS))
 buildlinux: $(addprefix buildlinux-,$(CMDBINS))
 
 container: $(addprefix container-,$(CMDBINS))
+
+manifests: controller-gen
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role output:rbac:none paths="./..." output:crd:artifacts:config=charts/icm-redis-operator/crds/
+
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen:
+ifeq (, $(shell which controller-gen))
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.5.0 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
 
 test:
 	./go.test.sh

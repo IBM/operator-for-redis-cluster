@@ -1,4 +1,4 @@
-package v1
+package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +24,7 @@ const (
 	// ResourceKind represent the resource kind
 	ResourceKind = "RedisCluster"
 	// ResourceVersion represent the resource version
-	ResourceVersion = "v1"
+	ResourceVersion = "v1alpha1"
 )
 
 var (

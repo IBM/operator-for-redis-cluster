@@ -27,7 +27,7 @@ SOFTWARE.
 package v1
 
 import (
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -36,7 +36,7 @@ import (
 // RedisClusterLister helps list RedisClusters.
 type RedisClusterLister interface {
 	// List lists all RedisClusters in the indexer.
-	List(selector labels.Selector) (ret []*v1.RedisCluster, err error)
+	List(selector labels.Selector) (ret []*rapi.RedisCluster, err error)
 	// RedisClusters returns an object that can list and get RedisClusters.
 	RedisClusters(namespace string) RedisClusterNamespaceLister
 	RedisClusterListerExpansion
@@ -53,9 +53,9 @@ func NewRedisClusterLister(indexer cache.Indexer) RedisClusterLister {
 }
 
 // List lists all RedisClusters in the indexer.
-func (s *redisClusterLister) List(selector labels.Selector) (ret []*v1.RedisCluster, err error) {
+func (s *redisClusterLister) List(selector labels.Selector) (ret []*rapi.RedisCluster, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.RedisCluster))
+		ret = append(ret, m.(*rapi.RedisCluster))
 	})
 	return ret, err
 }
@@ -68,9 +68,9 @@ func (s *redisClusterLister) RedisClusters(namespace string) RedisClusterNamespa
 // RedisClusterNamespaceLister helps list and get RedisClusters.
 type RedisClusterNamespaceLister interface {
 	// List lists all RedisClusters in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1.RedisCluster, err error)
+	List(selector labels.Selector) (ret []*rapi.RedisCluster, err error)
 	// Get retrieves the RedisCluster from the indexer for a given namespace and name.
-	Get(name string) (*v1.RedisCluster, error)
+	Get(name string) (*rapi.RedisCluster, error)
 	RedisClusterNamespaceListerExpansion
 }
 
@@ -82,21 +82,21 @@ type redisClusterNamespaceLister struct {
 }
 
 // List lists all RedisClusters in the indexer for a given namespace.
-func (s redisClusterNamespaceLister) List(selector labels.Selector) (ret []*v1.RedisCluster, err error) {
+func (s redisClusterNamespaceLister) List(selector labels.Selector) (ret []*rapi.RedisCluster, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.RedisCluster))
+		ret = append(ret, m.(*rapi.RedisCluster))
 	})
 	return ret, err
 }
 
 // Get retrieves the RedisCluster from the indexer for a given namespace and name.
-func (s redisClusterNamespaceLister) Get(name string) (*v1.RedisCluster, error) {
+func (s redisClusterNamespaceLister) Get(name string) (*rapi.RedisCluster, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("rediscluster"), name)
+		return nil, errors.NewNotFound(rapi.Resource("rediscluster"), name)
 	}
-	return obj.(*v1.RedisCluster), nil
+	return obj.(*rapi.RedisCluster), nil
 }

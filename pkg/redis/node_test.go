@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,7 +32,7 @@ func TestNode_ToAPINode(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   v1.RedisClusterNode
+		want   rapi.RedisClusterNode
 	}{
 		{
 			name: "default test",
@@ -44,11 +44,11 @@ func TestNode_ToAPINode(t *testing.T) {
 				},
 				Slots: SlotSlice{},
 			},
-			want: v1.RedisClusterNode{
+			want: rapi.RedisClusterNode{
 				ID:      "id1",
 				IP:      "1.2.3.4",
 				PodName: "name1",
-				Role:    v1.RedisClusterNodeRoleNone,
+				Role:    rapi.RedisClusterNodeRoleNone,
 				Slots:   []string{},
 			},
 		},
@@ -62,11 +62,11 @@ func TestNode_ToAPINode(t *testing.T) {
 				},
 				Slots: SlotSlice{Slot(1), Slot(2)},
 			},
-			want: v1.RedisClusterNode{
+			want: rapi.RedisClusterNode{
 				ID:      "id1",
 				IP:      "1.2.3.4",
 				PodName: "name1",
-				Role:    v1.RedisClusterNodeRoleMaster,
+				Role:    rapi.RedisClusterNodeRoleMaster,
 				Slots:   []string{},
 			},
 		},
@@ -81,11 +81,11 @@ func TestNode_ToAPINode(t *testing.T) {
 				MasterReferent: "idMaster",
 				Slots:          SlotSlice{},
 			},
-			want: v1.RedisClusterNode{
+			want: rapi.RedisClusterNode{
 				ID:      "id1",
 				IP:      "1.2.3.4",
 				PodName: "name1",
-				Role:    v1.RedisClusterNodeRoleSlave,
+				Role:    rapi.RedisClusterNodeRoleSlave,
 				Slots:   []string{},
 			},
 		},

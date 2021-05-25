@@ -3,7 +3,7 @@ package redis
 import (
 	"sort"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -18,8 +18,8 @@ type Cluster struct {
 	NodeSelector   map[string]string
 	Nodes          map[string]*Node
 	KubeNodes      []corev1.Node
-	Status         v1.ClusterStatus
-	NodesPlacement v1.NodesPlacementInfo
+	Status         rapi.ClusterStatus
+	NodesPlacement rapi.NodesPlacementInfo
 	ActionsInfo    ClusterActionsInfo
 }
 
@@ -152,8 +152,8 @@ func (c *Cluster) GetNodesByFunc(f FindNodeFunc) (Nodes, error) {
 type FindNodeFunc func(node *Node) bool
 
 // ToAPIClusterStatus convert the Cluster information to a api
-func (c *Cluster) ToAPIClusterStatus() v1.RedisClusterState {
-	status := v1.RedisClusterState{}
+func (c *Cluster) ToAPIClusterStatus() rapi.RedisClusterState {
+	status := rapi.RedisClusterState{}
 	status.Status = c.Status
 	for _, node := range c.Nodes {
 		status.Nodes = append(status.Nodes, node.ToAPINode())

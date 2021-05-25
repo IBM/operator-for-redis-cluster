@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/glog"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
@@ -41,11 +41,11 @@ func SelectMasters(cluster *redis.Cluster, nodes redis.Nodes, nbMaster int32) (r
 
 	newMasterNodes = newMasterNodes.SortByFunc(func(a, b *redis.Node) bool { return a.ID < b.ID })
 
-	cluster.Status = v1.ClusterStatusCalculatingRebalancing
+	cluster.Status = rapi.ClusterStatusCalculatingRebalancing
 	if bestEffort {
-		cluster.NodesPlacement = v1.NodesPlacementInfoBestEffort
+		cluster.NodesPlacement = rapi.NodesPlacementInfoBestEffort
 	} else {
-		cluster.NodesPlacement = v1.NodesPlacementInfoOptimal
+		cluster.NodesPlacement = rapi.NodesPlacementInfoOptimal
 	}
 
 	return newMasterNodes, currentMasterNodes, allMasterNodes, nil
@@ -56,7 +56,7 @@ func DispatchSlotsToNewMasters(ctx context.Context, cluster *redis.Cluster, admi
 	// Calculate the Migration slot information (which slots goes from where to where)
 	migrationSlotInfo, info := feedMigInfo(newMasterNodes, currentMasterNodes, allMasterNodes, int(admin.GetHashMaxSlot()+1))
 	cluster.ActionsInfo = info
-	cluster.Status = v1.ClusterStatusRebalancing
+	cluster.Status = rapi.ClusterStatusRebalancing
 	for nodesInfo, slots := range migrationSlotInfo {
 		// There is a need for real error handling here, we must ensure we don't keep a slot in abnormal state
 		if nodesInfo.From == nil {
