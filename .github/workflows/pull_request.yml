@@ -158,7 +158,7 @@ jobs:
           kind load image-archive icm-redis-cluster-node.tar icm-redis-cluster-node:new
     
       - name: Install icm-redis-operator with Helm
-        run: helm install icm-redis-operator charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local
+        run: helm install icm-redis-operator charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local --set logLevel=6
       
       - name: Run e2e tests
         id: e2e
