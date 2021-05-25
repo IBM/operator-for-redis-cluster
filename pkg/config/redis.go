@@ -25,24 +25,27 @@ const (
 	RedisServerPortDefault = "6379"
 	// RedisMaxMemoryDefault default redis max memory
 	RedisMaxMemoryDefault = 0
+	// RedisPodMemLimitFilePath default file location for pod memory limit
+	RedisPodMemLimitFilePath = "/podinfo/mem_limit"
 	// RedisMaxMemoryPolicyDefault default redis max memory eviction policy
 	RedisMaxMemoryPolicyDefault = "noeviction"
 )
 
 // Redis used to store all Redis configuration information
 type Redis struct {
-	DialTimeout        int
-	ClusterNodeTimeout int
-	ConfigFileName     string
-	renameCommandsPath string
-	renameCommandsFile string
-	HTTPServerAddr     string
-	ServerBin          string
-	ServerPort         string
-	ServerIP           string
-	MaxMemory          uint64
-	MaxMemoryPolicy    string
-	ConfigFiles        []string
+	DialTimeout         int
+	ClusterNodeTimeout  int
+	ConfigFileName      string
+	PodMemLimitFilePath string
+	renameCommandsPath  string
+	renameCommandsFile  string
+	HTTPServerAddr      string
+	ServerBin           string
+	ServerPort          string
+	ServerIP            string
+	MaxMemory           uint64
+	MaxMemoryPolicy     string
+	ConfigFiles         []string
 }
 
 // AddFlags use to add the Redis config flags to the command line
@@ -53,6 +56,7 @@ func (r *Redis) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&r.renameCommandsPath, "rename-command-path", RedisRenameCommandsDefaultPath, "Path to the folder where rename-commands option for redis are available")
 	fs.StringVar(&r.renameCommandsFile, "rename-command-file", RedisRenameCommandsDefaultFile, "Name of the file where rename-commands option for redis are available, disabled if empty")
 	fs.Uint64Var(&r.MaxMemory, "max-memory", RedisMaxMemoryDefault, "redis max memory")
+	fs.StringVar(&r.PodMemLimitFilePath, "pod-mem-limit-file-path", RedisPodMemLimitFilePath, "path to file containing pod memory limit")
 	fs.StringVar(&r.MaxMemoryPolicy, "max-memory-policy", RedisMaxMemoryPolicyDefault, "redis max memory eviction policy")
 	fs.StringVar(&r.ServerBin, "bin", RedisServerBinDefault, "redis server binary file name")
 	fs.StringVar(&r.ServerPort, "port", RedisServerPortDefault, "redis server listen port")

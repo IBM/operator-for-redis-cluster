@@ -1,12 +1,15 @@
 package redisnode
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
@@ -64,6 +67,22 @@ func (n *Node) UpdateNodeConfigFile() error {
 		if err := n.addSettingInConfigFile(fmt.Sprintf("maxmemory %d", n.config.Redis.MaxMemory)); err != nil {
 			return err
 		}
+	} else {
+		maxMemory, err := n.getConfig("maxmemory")
+		if err != nil {
+			return err
+		}
+		if maxMemory == "" { //set only if the user didn't set it in additional configs
+			memLimitBytes, err := getPodMemoryLimit(n.config.Redis.PodMemLimitFilePath)
+			if err != nil {
+				return err
+			}
+			// use 70% of pod memory limit as maxmemory
+			err = n.addSettingInConfigFile(fmt.Sprintf("maxmemory %d", uint64(float64(memLimitBytes)*0.7)))
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if n.config.Redis.MaxMemoryPolicy != config.RedisMaxMemoryPolicyDefault {
 		if err := n.addSettingInConfigFile(fmt.Sprintf("maxmemory-policy %s", n.config.Redis.MaxMemoryPolicy)); err != nil {
@@ -117,6 +136,42 @@ func (n *Node) addSettingInConfigFile(line string) error {
 		return fmt.Errorf("unable to set '%s' in config file, err:%v", line, err)
 	}
 	return nil
+}
+
+// getConfig reads a config from redis config file
+func (n *Node) getConfig(name string) (string, error) {
+	configFiles := append(n.config.Redis.ConfigFiles, n.config.Redis.ConfigFileName)
+	for _, configFile := range configFiles {
+		f, err := os.OpenFile(configFile, os.O_RDONLY, 0600)
+		if err != nil {
+			if os.IsNotExist(err) {
+				glog.Warningf("Config %s not found", configFile)
+				continue
+			}
+			return "", fmt.Errorf("unable to read a config from file, openfile error %s err:%v", configFile, err)
+		}
+
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if len(line) == 0 {
+				continue
+			}
+			if string(line[0]) == "#" { //it's a comment
+				continue
+			}
+
+			strIndex := strings.Index(line, name)
+			if strIndex == -1 {
+				continue
+			}
+
+			return strings.TrimSpace(line[strIndex:]), nil
+		}
+	}
+
+	return "", nil
 }
 
 // InitRedisCluster used to init a redis cluster with the current node
@@ -178,4 +233,27 @@ func clearFolder(folder string) error {
 		}
 	}
 	return nil
+}
+
+// getPodMemoryLimit return pod's memory limit in bytes
+func getPodMemoryLimit(memFilePath string) (uint64, error) {
+	f, err := os.Open(memFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	defer f.Close()
+
+	memLimitStr, err := ioutil.ReadAll(f)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(memLimitStr) == 0 { //mem limit is not set
+		return 0, nil
+	}
+
+	return strconv.ParseUint(string(memLimitStr), 10, strconv.IntSize)
 }

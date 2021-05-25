@@ -115,6 +115,8 @@ spec:
             - name: extra-conf
               mountPath: /redis-extra-conf
             {{- end }}
+            - name: podinfo
+              mountPath: /podinfo
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -142,3 +144,10 @@ spec:
           configMap:
             name: {{ include "icm-redis-cluster.fullname" . }}
         {{- end }}
+        - name: podinfo
+          downwardAPI:
+            items:
+              - path: "mem_limit"
+                resourceFieldRef:
+                  containerName: redis-node
+                  resource: limits.memory
