@@ -4,7 +4,7 @@ metadata:
   name: {{ include "icm-redis-cluster.fullname" . }}
   labels: {{- include "icm-redis-cluster.labels" . | nindent 4 }}
 spec:
-  numberOfMaster: {{ .Values.numberOfMaster }}
+  numberOfPrimaries: {{ .Values.numberOfPrimaries }}
   replicationFactor: {{ .Values.replicationFactor }}
   serviceName: {{ include "icm-redis-cluster.fullname" . }}
   podTemplate:

@@ -152,5 +152,4 @@ See #284
 
 ## Submit a pull request
 
-Push your branch to your `redis-operator` fork and open a pull request against the
-master branch.
+Push your branch to your `redis-operator` fork and open a pull request against the main branch.

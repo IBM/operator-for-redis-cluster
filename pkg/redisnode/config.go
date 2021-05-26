@@ -19,7 +19,7 @@ const (
 // Config contains configuration for redis-operator
 type Config struct {
 	KubeConfigFile  string
-	Master          string
+	Primary         string
 	Redis           config.Redis
 	Cluster         config.Cluster
 	RedisStartWait  time.Duration
@@ -35,9 +35,9 @@ func NewRedisNodeConfig() *Config {
 
 // AddFlags add cobra flags to populate Config
 func (c *Config) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&c.KubeConfigFile, "kubeconfig", c.KubeConfigFile, "Location of kubecfg file for access to kubernetes master service")
-	fs.StringVar(&c.Master, "master", c.Master, "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	fs.DurationVar(&c.RedisStartWait, "t", RedisStartWaitDefault, "Max time waiting for redis to start")
+	fs.StringVar(&c.KubeConfigFile, "kubeconfig", c.KubeConfigFile, "location of kubeconfig file for access to kubernetes service")
+	fs.StringVar(&c.Primary, "master", c.Primary, "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	fs.DurationVar(&c.RedisStartWait, "t", RedisStartWaitDefault, "max time waiting for redis to start")
 	fs.DurationVar(&c.RedisStartDelay, "d", RedisStartDelayDefault, "delay before that the redis-server is started")
 	fs.StringVar(&c.HTTPServerAddr, "http-addr", HTTPServerAddrDefault, "the http server listen address")
 

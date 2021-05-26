@@ -13,13 +13,13 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 )
 
-func TestFixGhostMasterNodes(t *testing.T) {
+func TestFixGhostPrimaryNodes(t *testing.T) {
 	pod1 := newPod("pod1", "node1", "10.0.0.1")
 	pod2 := newPod("pod2", "node2", "10.0.0.2")
 	pod3 := newPod("pod3", "node3", "10.0.0.3")
-	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Pod: pod1}
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: pod2, Slots: redis.SlotSlice{1}}
-	redisGhostMaster := redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: pod3, Slots: redis.SlotSlice{}}
+	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Pod: pod1}
+	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: pod2, Slots: redis.SlotSlice{1}}
+	redisGhostPrimary := redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Pod: pod3, Slots: redis.SlotSlice{}}
 	ctx := context.Background()
 
 	type args struct {
@@ -72,8 +72,8 @@ func TestFixGhostMasterNodes(t *testing.T) {
 				},
 				info: &redis.ClusterInfos{
 					Infos: map[string]*redis.NodeInfos{
-						redis1.ID: {Node: &redis1, Friends: redis.Nodes{&redis2, &redisGhostMaster}},
-						redis2.ID: {Node: &redis2, Friends: redis.Nodes{&redis1, &redisGhostMaster}},
+						redis1.ID: {Node: &redis1, Friends: redis.Nodes{&redis2, &redisGhostPrimary}},
+						redis2.ID: {Node: &redis2, Friends: redis.Nodes{&redis1, &redisGhostPrimary}},
 					},
 					Status: redis.ClusterInfoConsistent,
 				},
@@ -85,13 +85,13 @@ func TestFixGhostMasterNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			admin := tt.args.adminFunc()
-			got, err := FixGhostMasterNodes(ctx, admin, tt.args.podControl, tt.args.cluster, tt.args.info)
+			got, err := FixGhostPrimaryNodes(ctx, admin, tt.args.podControl, tt.args.cluster, tt.args.info)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FixGhostMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("FixGhostPrimaryNodes() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("FixGhostMasterNodes() = %v, want %v", got, tt.want)
+				t.Errorf("FixGhostPrimaryNodes() = %v, want %v", got, tt.want)
 			}
 		})
 	}

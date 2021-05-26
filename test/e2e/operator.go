@@ -34,7 +34,7 @@ var _ = AfterSuite(func() {
 	//deleteRedisCluster(redisClient, rediscluster)
 })
 
-var _ = Describe("RedisCluster CRUD", func() {
+var _ = Describe("RedisCluster CRUD operations", func() {
 	It("should create a RedisCluster", func() {
 		rediscluster = framework.NewRedisCluster(clusterName, clusterNs, framework.FrameworkContext.ImageTag, 3, 1)
 		Eventually(framework.HOCreateRedisNodeServiceAccount(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
@@ -45,29 +45,32 @@ var _ = Describe("RedisCluster CRUD", func() {
 
 		Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "5m", "5s").ShouldNot(HaveOccurred())
 	})
-	Context("when the Redis Cluster is created properly", func() {
-		It("should scale up a RedisCluster", func() {
-			nbMaster := int32(4)
-			Eventually(framework.HOUpdateConfigRedisCluster(redisClient, rediscluster, &nbMaster, nil), "5s", "1s").ShouldNot(HaveOccurred())
+	Context("a RedisCluster is created", func() {
+		It("should scale up the RedisCluster", func() {
+			nbPrimary := int32(4)
+			Eventually(framework.HOUpdateConfigRedisCluster(redisClient, rediscluster, &nbPrimary, nil), "5s", "1s").ShouldNot(HaveOccurred())
 
 			Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "5m", "5s").ShouldNot(HaveOccurred())
 		})
-		Context("when the scale up successed", func() {
-			It("should scale down a RedisCluster", func() {
-				nbMaster := int32(3)
-				Eventually(framework.HOUpdateConfigRedisCluster(redisClient, rediscluster, &nbMaster, nil), "5s", "1s").ShouldNot(HaveOccurred())
+		Context("a RedisCluster is running", func() {
+			When("the number of primaries is reduced", func() {
+				It("should scale down the RedisCluster", func() {
+					nbPrimary := int32(3)
+					Eventually(framework.HOUpdateConfigRedisCluster(redisClient, rediscluster, &nbPrimary, nil), "5s", "1s").ShouldNot(HaveOccurred())
 
-				Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "5m", "5s").ShouldNot(HaveOccurred())
+					Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "5m", "5s").ShouldNot(HaveOccurred())
+				})
 			})
-			Context("when the scale down successed", func() {
-				It("should increase the a RedisCluster's replica factor ", func() {
+			When("the number of replicas is increased", func() {
+				It("should create additional replicas for each primary in the RedisCluster", func() {
 					replicas := int32(2)
 					Eventually(framework.HOUpdateConfigRedisCluster(redisClient, rediscluster, nil, &replicas), "5s", "1s").ShouldNot(HaveOccurred())
 
 					Eventually(framework.HOIsRedisClusterStarted(redisClient, rediscluster, clusterNs), "5m", "5s").ShouldNot(HaveOccurred())
 				})
-
-				It("should decrease the a RedisCluster's replica factor ", func() {
+			})
+			When("the number of replicas is decreased", func() {
+				It("should delete replicas for each primary in the RedisCluster", func() {
 					replicas := int32(1)
 					Eventually(framework.HOUpdateConfigRedisCluster(redisClient, rediscluster, nil, &replicas), "5s", "1s").ShouldNot(HaveOccurred())
 

@@ -114,7 +114,7 @@ func (op *RedisOperator) runGC(stop <-chan struct{}) {
 
 func initKubeConfig(c *Config) (*rest.Config, error) {
 	if len(c.KubeConfigFile) > 0 {
-		return clientcmd.BuildConfigFromFlags(c.Master, c.KubeConfigFile) // out of cluster config
+		return clientcmd.BuildConfigFromFlags(c.Primary, c.KubeConfigFile) // out of cluster config
 	}
 	return rest.InClusterConfig()
 }

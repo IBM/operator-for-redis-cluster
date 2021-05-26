@@ -39,11 +39,16 @@ spec:
                   type: string
                 description: Labels for created redis-cluster (deployment, rs, pod) (if any)
                 type: object
-              numberOfMaster:
+              nodeSelector:
+                additionalProperties:
+                  type: string
+                description: NodeSelector determines which kubernetes nodes to use when scheduling pods
+                type: object
+              numberOfPrimaries:
                 format: int32
                 type: integer
               podTemplate:
-                description: PodTemplate contains the pod specificaton that should run the redis-server process
+                description: PodTemplate contains the pod specification that should run the redis-server process
                 properties:
                   metadata:
                     description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata'
@@ -3786,8 +3791,16 @@ spec:
                 format: int32
                 type: integer
               serviceName:
-                description: ServiceName name used to create the Kubernetes Service that reference the Redis Cluster nodes. if ServiceName is empty, the RedisCluster.Name will be use for creating the service.
+                description: ServiceName name used to create the kubernetes service that fronts the RedisCluster nodes. If ServiceName is empty, the RedisCluster name will be used for creating the service.
                 type: string
+              zoneAwareReplication:
+                description: ZoneAwareReplication spreads primary and replica nodes across all available zones
+                properties:
+                  enabled:
+                    type: boolean
+                required:
+                - enabled
+                type: object
             type: object
           status:
             description: Status represents the current RedisCluster status
@@ -3811,11 +3824,11 @@ spec:
                           type: string
                         ip:
                           type: string
-                        masterRef:
-                          type: string
                         podName:
                           type: string
                         port:
+                          type: string
+                        primaryRef:
                           type: string
                         role:
                           description: RedisClusterNodeRole RedisCluster Node Role type
@@ -3835,12 +3848,6 @@ spec:
                   nodesPlacementInfo:
                     description: NodesPlacementInfo Redis Nodes placement mode information
                     type: string
-                  numberOfMaster:
-                    format: int32
-                    type: integer
-                  numberOfMastersReady:
-                    format: int32
-                    type: integer
                   numberOfPods:
                     description: In theory, we always have NumberOfPods > NumberOfRedisNodesRunning > NumberOfPodsReady
                     format: int32
@@ -3848,10 +3855,16 @@ spec:
                   numberOfPodsReady:
                     format: int32
                     type: integer
+                  numberOfPrimaries:
+                    format: int32
+                    type: integer
+                  numberOfPrimariesReady:
+                    format: int32
+                    type: integer
                   numberOfRedisNodesRunning:
                     format: int32
                     type: integer
-                  numberOfSlavesPerMaster:
+                  numberOfReplicasPerPrimary:
                     additionalProperties:
                       type: integer
                     type: object

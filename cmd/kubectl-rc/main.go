@@ -72,7 +72,7 @@ func main() {
 
 	data := [][]string{}
 	for _, rc := range rcs.Items {
-		data = append(data, []string{rc.Name, rc.Namespace, buildPodStatus(&rc), buildClusterStatus(&rc), string(rc.Status.Cluster.Status), buildMasterStatus(&rc), buildReplicationStatus(&rc)})
+		data = append(data, []string{rc.Name, rc.Namespace, buildPodStatus(&rc), buildClusterStatus(&rc), string(rc.Status.Cluster.Status), buildPrimaryStatus(&rc), buildReplicationStatus(&rc)})
 	}
 
 	if len(data) == 0 {
@@ -81,7 +81,7 @@ func main() {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Namespace", "Pods", "Ops Status", "Redis Status", "Nb Master", "Replication"})
+	table.SetHeader([]string{"Name", "Namespace", "Pods", "Ops Status", "Redis Status", "Nb Primary", "Replication"})
 	table.SetBorders(tablewriter.Border{Left: false, Top: false, Right: false, Bottom: false})
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetRowLine(false)
@@ -129,9 +129,9 @@ func buildClusterStatus(rc *v1.RedisCluster) string {
 }
 
 func buildPodStatus(rc *v1.RedisCluster) string {
-	specMaster := *rc.Spec.NumberOfMaster
+	specPrimary := *rc.Spec.NumberOfPrimaries
 	specReplication := *rc.Spec.ReplicationFactor
-	podWanted := (1 + specReplication) * specMaster
+	podWanted := (1 + specReplication) * specPrimary
 
 	pod := rc.Status.Cluster.NumberOfPods
 	podReady := rc.Status.Cluster.NumberOfPodsReady
@@ -139,8 +139,8 @@ func buildPodStatus(rc *v1.RedisCluster) string {
 	return fmt.Sprintf("%d/%d/%d", podReady, pod, podWanted)
 }
 
-func buildMasterStatus(rc *v1.RedisCluster) string {
-	return fmt.Sprintf("%d/%d", rc.Status.Cluster.NumberOfMasters, *rc.Spec.NumberOfMaster)
+func buildPrimaryStatus(rc *v1.RedisCluster) string {
+	return fmt.Sprintf("%d/%d", rc.Status.Cluster.NumberOfPrimaries, *rc.Spec.NumberOfPrimaries)
 }
 
 func buildReplicationStatus(rc *v1.RedisCluster) string {

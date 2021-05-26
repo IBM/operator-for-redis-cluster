@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-numberOfMaster: 3
+numberOfPrimaries: 3
 replicationFactor: 1
 
 image:
@@ -33,7 +33,7 @@ serviceAccount:
 #          --config-file stringArray          location of redis configuration file that will be include in the
 #          --d duration                       delay before that the redis-server is started (default 10s)
 #          --http-addr string                 the http server listen address (default "0.0.0.0:8080")
-#          --kubeconfig string                location of kubeconfig file for access to kubernetes master service
+#          --kubeconfig string                location of kubeconfig file for access to kubernetes service
 #          --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
 #          --log_dir string                   if non-empty, write log files in this directory
 #          --logtostderr                      log to standard error instead of files (default false)

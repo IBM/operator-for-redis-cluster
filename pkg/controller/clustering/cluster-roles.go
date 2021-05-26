@@ -9,54 +9,54 @@ import (
 )
 
 // ClassifyNodesByRole use to classify the Nodes by roles
-func ClassifyNodesByRole(nodes redis.Nodes) (masters, slaves, mastersWithNoSlots redis.Nodes) {
-	masters = redis.Nodes{}
-	slaves = redis.Nodes{}
-	mastersWithNoSlots = redis.Nodes{}
+func ClassifyNodesByRole(nodes redis.Nodes) (primaries, replicas, primariesWithNoSlots redis.Nodes) {
+	primaries = redis.Nodes{}
+	replicas = redis.Nodes{}
+	primariesWithNoSlots = redis.Nodes{}
 
 	for _, node := range nodes {
-		if redis.IsMasterWithSlot(node) {
-			masters = append(masters, node)
-		} else if redis.IsSlave(node) {
-			slaves = append(slaves, node)
-		} else if redis.IsMasterWithNoSlot(node) {
-			mastersWithNoSlots = append(mastersWithNoSlots, node)
+		if redis.IsPrimaryWithSlot(node) {
+			primaries = append(primaries, node)
+		} else if redis.IsReplica(node) {
+			replicas = append(replicas, node)
+		} else if redis.IsPrimaryWithNoSlot(node) {
+			primariesWithNoSlots = append(primariesWithNoSlots, node)
 		}
 	}
-	return masters, slaves, mastersWithNoSlots
+	return primaries, replicas, primariesWithNoSlots
 }
 
-// DispatchSlave aims to dispatch the available redis to slave of the current masters
-func DispatchSlave(ctx context.Context, cluster *redis.Cluster, nodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
+// DispatchReplica aims to dispatch the available redis to replica of the current primaries
+func DispatchReplica(ctx context.Context, cluster *redis.Cluster, nodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
 
-	currentMasterNodes, currentSlaveNodes, futureSlaveNodes := ClassifyNodesByRole(nodes)
-	glog.Infof("current masters: %v, current slaves: %v, future slaves: %v", currentMasterNodes, currentSlaveNodes, futureSlaveNodes)
-	masterToSlaves, err := PlaceSlaves(cluster, currentMasterNodes, currentSlaveNodes, futureSlaveNodes, replicationLevel)
+	currentPrimaryNodes, currentReplicaNodes, futureReplicaNodes := ClassifyNodesByRole(nodes)
+	glog.Infof("current primaries: %v, current replicas: %v, future replicas: %v", currentPrimaryNodes, currentReplicaNodes, futureReplicaNodes)
+	primaryToReplicas, err := PlaceReplicas(cluster, currentPrimaryNodes, currentReplicaNodes, futureReplicaNodes, replicationLevel)
 	if err != nil {
 		return err
 	}
 	cluster.NodesPlacement = rapi.NodesPlacementInfoOptimal
-	if len(masterToSlaves) > 0 {
+	if len(primaryToReplicas) > 0 {
 		return nil
 	}
-	return AttachSlavesToMaster(ctx, cluster, admin, masterToSlaves)
+	return AttachReplicasToPrimary(ctx, cluster, admin, primaryToReplicas)
 }
 
-// AttachSlavesToMaster used to attach slaves to there masters
-func AttachSlavesToMaster(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, masterToSlaves map[string]redis.Nodes) error {
+// AttachReplicasToPrimary used to attach replicas to there primaries
+func AttachReplicasToPrimary(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, primaryToReplicas map[string]redis.Nodes) error {
 	var globalErr error
-	for masterID, slaves := range masterToSlaves {
-		masterNode, err := cluster.GetNodeByID(masterID)
+	for primaryID, replicas := range primaryToReplicas {
+		primaryNode, err := cluster.GetNodeByID(primaryID)
 		if err != nil {
-			glog.Errorf("[AttachSlavesToMaster] unable fo found the Cluster.Node with redis ID:%s", masterID)
+			glog.Errorf("[AttachReplicasToPrimary] unable fo found the Cluster.Node with redis ID:%s", primaryID)
 			continue
 		}
-		for _, slave := range slaves {
-			glog.V(2).Infof("[AttachSlavesToMaster] Attaching node %s to master %s", slave.ID, masterID)
+		for _, replica := range replicas {
+			glog.V(2).Infof("[AttachReplicasToPrimary] Attaching node %s to primary %s", replica.ID, primaryID)
 
-			err := admin.AttachSlaveToMaster(ctx, slave, masterNode)
+			err := admin.AttachReplicaToPrimary(ctx, replica, primaryNode)
 			if err != nil {
-				glog.Errorf("Error while attaching node %s to master %s: %v", slave.ID, masterID, err)
+				glog.Errorf("Error while attaching node %s to primary %s: %v", replica.ID, primaryID, err)
 				globalErr = err
 			}
 		}
@@ -64,111 +64,111 @@ func AttachSlavesToMaster(ctx context.Context, cluster *redis.Cluster, admin red
 	return globalErr
 }
 
-// DispatchSlavesToNewMasters use to dispatch available Nodes as slave to Master in the case of rolling update
-func DispatchSlavesToNewMasters(ctx context.Context, newMasterNodesSlice, oldSlaveNodesSlice, newSlaveNodesSlice redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
-	glog.V(3).Info("DispatchSlavesToNewMasters start")
+// DispatchReplicasToNewPrimaries use to dispatch available Nodes as replica to Primary in the case of rolling update
+func DispatchReplicasToNewPrimaries(ctx context.Context, newPrimaryNodesSlice, oldReplicaNodesSlice, newReplicaNodesSlice redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
+	glog.V(3).Info("DispatchReplicasToNewPrimaries start")
 	var err error
-	slavesByMaster := make(map[string]redis.Nodes)
-	masterByID := make(map[string]*redis.Node)
+	replicasByPrimary := make(map[string]redis.Nodes)
+	primaryByID := make(map[string]*redis.Node)
 
-	for _, node := range newMasterNodesSlice {
-		slavesByMaster[node.ID] = redis.Nodes{}
-		masterByID[node.ID] = node
+	for _, node := range newPrimaryNodesSlice {
+		replicasByPrimary[node.ID] = redis.Nodes{}
+		primaryByID[node.ID] = node
 	}
 
-	for _, slave := range oldSlaveNodesSlice {
-		for _, master := range newMasterNodesSlice {
-			if slave.MasterReferent == master.ID {
-				//The master of this slave is among the new master nodes
-				slavesByMaster[slave.MasterReferent] = append(slavesByMaster[slave.MasterReferent], slave)
+	for _, replica := range oldReplicaNodesSlice {
+		for _, primary := range newPrimaryNodesSlice {
+			if replica.PrimaryReferent == primary.ID {
+				//The primary of this replica is among the new primary nodes
+				replicasByPrimary[replica.PrimaryReferent] = append(replicasByPrimary[replica.PrimaryReferent], replica)
 				break
 			}
 		}
 	}
-	for _, slave := range newSlaveNodesSlice {
-		selectedMaster := ""
-		minSlaveNumber := int32(200) // max slave replication level
-		for id, nodes := range slavesByMaster {
+	for _, replica := range newReplicaNodesSlice {
+		selectedPrimary := ""
+		minReplicaNumber := int32(200) // max replica replication level
+		for id, nodes := range replicasByPrimary {
 			len := int32(len(nodes))
 			if len == replicationLevel {
 				continue
 			}
-			if len < minSlaveNumber {
-				selectedMaster = id
-				minSlaveNumber = len
+			if len < minReplicaNumber {
+				selectedPrimary = id
+				minReplicaNumber = len
 			}
 		}
-		if selectedMaster != "" {
-			glog.V(2).Infof("Attaching node %s to master %s", slave.ID, selectedMaster)
-			if err2 := admin.AttachSlaveToMaster(ctx, slave, masterByID[selectedMaster]); err2 != nil {
-				glog.Errorf("Error while attaching node %s to master %s: %v", slave.ID, selectedMaster, err)
+		if selectedPrimary != "" {
+			glog.V(2).Infof("Attaching node %s to primary %s", replica.ID, selectedPrimary)
+			if err2 := admin.AttachReplicaToPrimary(ctx, replica, primaryByID[selectedPrimary]); err2 != nil {
+				glog.Errorf("Error while attaching node %s to primary %s: %v", replica.ID, selectedPrimary, err)
 				break
 			}
-			slavesByMaster[selectedMaster] = append(slavesByMaster[selectedMaster], slave)
+			replicasByPrimary[selectedPrimary] = append(replicasByPrimary[selectedPrimary], replica)
 		} else {
-			glog.V(2).Infof("No master found to attach for new slave : %s", slave.ID)
+			glog.V(2).Infof("No primary found to attach for new replica : %s", replica.ID)
 		}
 	}
 	return err
 }
 
-// DispatchSlaveByMaster use to dispatch available Nodes as slave to Master
-func DispatchSlaveByMaster(ctx context.Context, futurMasterNodes, currentSlaveNodes, futurSlaveNodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
+// DispatchReplicaByPrimary use to dispatch available Nodes as replica to Primary
+func DispatchReplicaByPrimary(ctx context.Context, futurPrimaryNodes, currentReplicaNodes, futureReplicaNodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
 
 	var err error
 
-	glog.Infof("Attaching %d slaves per master, with %d masters, %d slaves, %d unassigned", replicationLevel, len(futurMasterNodes), len(currentSlaveNodes), len(futurSlaveNodes))
+	glog.Infof("Attaching %d replicas per primary, with %d primaries, %d replicas, %d unassigned", replicationLevel, len(futurPrimaryNodes), len(currentReplicaNodes), len(futureReplicaNodes))
 
-	slavesByMaster := make(map[string]redis.Nodes)
-	masterByID := make(map[string]*redis.Node)
+	replicasByPrimary := make(map[string]redis.Nodes)
+	primaryByID := make(map[string]*redis.Node)
 
-	for _, node := range futurMasterNodes {
-		slavesByMaster[node.ID] = redis.Nodes{}
-		masterByID[node.ID] = node
+	for _, node := range futurPrimaryNodes {
+		replicasByPrimary[node.ID] = redis.Nodes{}
+		primaryByID[node.ID] = node
 	}
 
-	for _, node := range currentSlaveNodes {
-		slavesByMaster[node.MasterReferent] = append(slavesByMaster[node.MasterReferent], node)
+	for _, node := range currentReplicaNodes {
+		replicasByPrimary[node.PrimaryReferent] = append(replicasByPrimary[node.PrimaryReferent], node)
 	}
 
-	for id, slaves := range slavesByMaster {
-		// detach slaves that are linked to a node without slots
-		if _, err = futurSlaveNodes.GetNodeByID(id); err == nil {
-			glog.Infof("Loosing master role: following slaves previously attached to '%s', will be reassigned: %s", id, slaves)
-			futurSlaveNodes = append(futurSlaveNodes, slaves...)
-			delete(slavesByMaster, id)
+	for id, replicas := range replicasByPrimary {
+		// detach replicas that are linked to a node without slots
+		if _, err = futureReplicaNodes.GetNodeByID(id); err == nil {
+			glog.Infof("Loosing primary role: following replicas previously attached to '%s', will be reassigned: %s", id, replicas)
+			futureReplicaNodes = append(futureReplicaNodes, replicas...)
+			delete(replicasByPrimary, id)
 			continue
 		}
-		// if too many slaves on a master, make them available
-		len := int32(len(slaves))
+		// if too many replicas on a primary, make them available
+		len := int32(len(replicas))
 		if len > replicationLevel {
-			glog.Infof("Too many slaves: following slaves previously attached to '%s', will be reassigned: %s", id, slaves[:len-replicationLevel])
-			futurSlaveNodes = append(futurSlaveNodes, slaves[:len-replicationLevel]...)
-			slavesByMaster[id] = slaves[len-replicationLevel:]
+			glog.Infof("Too many replicas: following replicas previously attached to '%s', will be reassigned: %s", id, replicas[:len-replicationLevel])
+			futureReplicaNodes = append(futureReplicaNodes, replicas[:len-replicationLevel]...)
+			replicasByPrimary[id] = replicas[len-replicationLevel:]
 		}
 	}
 
-	for _, slave := range futurSlaveNodes {
-		selectedMaster := ""
-		minLevel := int32(200) // max slave replication level
-		for id, nodes := range slavesByMaster {
+	for _, replica := range futureReplicaNodes {
+		selectedPrimary := ""
+		minLevel := int32(200) // max replica replication level
+		for id, nodes := range replicasByPrimary {
 			len := int32(len(nodes))
 			if len == replicationLevel {
 				continue
 			}
 			if len < minLevel {
-				selectedMaster = id
+				selectedPrimary = id
 				minLevel = len
 			}
 		}
-		if selectedMaster != "" {
-			glog.V(2).Infof("Attaching node %s to master %s", slave.ID, selectedMaster)
-			err = admin.AttachSlaveToMaster(ctx, slave, masterByID[selectedMaster])
+		if selectedPrimary != "" {
+			glog.V(2).Infof("Attaching node %s to primary %s", replica.ID, selectedPrimary)
+			err = admin.AttachReplicaToPrimary(ctx, replica, primaryByID[selectedPrimary])
 			if err != nil {
-				glog.Errorf("Error while attaching node %s to master %s: %v", slave.ID, selectedMaster, err)
+				glog.Errorf("Error while attaching node %s to primary %s: %v", replica.ID, selectedPrimary, err)
 				break
 			}
-			slavesByMaster[selectedMaster] = append(slavesByMaster[selectedMaster], slave)
+			replicasByPrimary[selectedPrimary] = append(replicasByPrimary[selectedPrimary], replica)
 		}
 	}
 	return err

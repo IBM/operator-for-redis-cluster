@@ -23,11 +23,11 @@ var (
 
 func TestNode_ToAPINode(t *testing.T) {
 	type fields struct {
-		ID             string
-		IP             string
-		MasterReferent string
-		Slots          SlotSlice
-		Pod            *kapiv1.Pod
+		ID              string
+		IP              string
+		PrimaryReferent string
+		Slots           SlotSlice
+		Pod             *kapiv1.Pod
 	}
 	tests := []struct {
 		name   string
@@ -53,7 +53,7 @@ func TestNode_ToAPINode(t *testing.T) {
 			},
 		},
 		{
-			name: "convert a master",
+			name: "convert a primary",
 			fields: fields{
 				ID: "id1",
 				IP: "1.2.3.4",
@@ -66,26 +66,26 @@ func TestNode_ToAPINode(t *testing.T) {
 				ID:      "id1",
 				IP:      "1.2.3.4",
 				PodName: "name1",
-				Role:    rapi.RedisClusterNodeRoleMaster,
+				Role:    rapi.RedisClusterNodeRolePrimary,
 				Slots:   []string{},
 			},
 		},
 		{
-			name: "convert a slave",
+			name: "convert a replica",
 			fields: fields{
 				ID: "id1",
 				IP: "1.2.3.4",
 				Pod: &kapiv1.Pod{
 					ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "NS1"},
 				},
-				MasterReferent: "idMaster",
-				Slots:          SlotSlice{},
+				PrimaryReferent: "idPrimary",
+				Slots:           SlotSlice{},
 			},
 			want: rapi.RedisClusterNode{
 				ID:      "id1",
 				IP:      "1.2.3.4",
 				PodName: "name1",
-				Role:    rapi.RedisClusterNodeRoleSlave,
+				Role:    rapi.RedisClusterNodeRoleReplica,
 				Slots:   []string{},
 			},
 		},
@@ -93,11 +93,11 @@ func TestNode_ToAPINode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := &Node{
-				ID:             tt.fields.ID,
-				IP:             tt.fields.IP,
-				Pod:            tt.fields.Pod,
-				MasterReferent: tt.fields.MasterReferent,
-				Slots:          tt.fields.Slots,
+				ID:              tt.fields.ID,
+				IP:              tt.fields.IP,
+				Pod:             tt.fields.Pod,
+				PrimaryReferent: tt.fields.PrimaryReferent,
+				Slots:           tt.fields.Slots,
 			}
 			if got := n.ToAPINode(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Node.ToAPINode() = %v, want %v", got, tt.want)
@@ -141,29 +141,29 @@ func TestNodes_SortNodes(t *testing.T) {
 	}
 }
 
-func TestNodeSetRoleMasterValid(t *testing.T) {
+func TestNodeSetRolePrimaryValid(t *testing.T) {
 	node := &Node{}
 
-	flags := "master"
+	flags := "primary"
 	err := node.SetRole(flags)
 	if err != nil {
-		t.Error("Failed to set Master as role [err]:", err)
+		t.Error("Failed to set Primary as role [err]:", err)
 	}
-	if node.Role != redisMasterRole {
-		t.Error("Role should be Master")
+	if node.Role != redisPrimaryRole {
+		t.Error("Role should be Primary")
 	}
 }
 
-func TestNodeSetRoleSlaveValid(t *testing.T) {
+func TestNodeSetRoleReplicaValid(t *testing.T) {
 	node := &Node{}
 
-	flags := "slave"
+	flags := "replica"
 	err := node.SetRole(flags)
 	if err != nil {
-		t.Error("Failed to set Slave as role [err]:", err)
+		t.Error("Failed to set Replica as role [err]:", err)
 	}
-	if node.Role != redisSlaveRole {
-		t.Error("Role should be Slave")
+	if node.Role != redisReplicaRole {
+		t.Error("Role should be Replica")
 	}
 }
 
@@ -184,13 +184,13 @@ func TestNodeSetRoleNotValid(t *testing.T) {
 func TestNodeSetRoleMultFlags(t *testing.T) {
 	node := &Node{}
 
-	flags := "myself,slave"
+	flags := "myself,replica"
 	err := node.SetRole(flags)
 	if err != nil {
-		t.Error("Failed to set Slave as role [err]:", err)
+		t.Error("Failed to set Replica as role [err]:", err)
 	}
-	if node.Role != redisSlaveRole {
-		t.Error("Role should be Slave")
+	if node.Role != redisReplicaRole {
+		t.Error("Role should be Replica")
 	}
 }
 
@@ -237,7 +237,7 @@ func TestNodeSetLinkStatusKO(t *testing.T) {
 func TestNodeSetFailureStateFail(t *testing.T) {
 	node := &Node{}
 
-	flags := "master,myself,fail"
+	flags := "primary,myself,fail"
 	node.SetFailureStatus(flags)
 
 	if !node.HasStatus(NodeStatusFail) {
@@ -248,7 +248,7 @@ func TestNodeSetFailureStateFail(t *testing.T) {
 func TestNodeSetFailureStatePFail(t *testing.T) {
 	node := &Node{}
 
-	flags := "master,myself,fail?"
+	flags := "primary,myself,fail?"
 	node.SetFailureStatus(flags)
 
 	if !node.HasStatus(NodeStatusPFail) {
@@ -259,7 +259,7 @@ func TestNodeSetFailureStatePFail(t *testing.T) {
 func TestNodeSetFailureStateOK(t *testing.T) {
 	node := &Node{}
 
-	flags := "master,myself"
+	flags := "primary,myself"
 	node.SetFailureStatus(flags)
 
 	if len(node.FailStatus) > 0 {
@@ -270,7 +270,7 @@ func TestNodeSetFailureStateOK(t *testing.T) {
 func TestNodeSliceTestSearchInSlde(t *testing.T) {
 	node := &Node{}
 
-	flags := "master,myself"
+	flags := "primary,myself"
 	node.SetFailureStatus(flags)
 
 	if len(node.FailStatus) > 0 {
@@ -278,48 +278,48 @@ func TestNodeSliceTestSearchInSlde(t *testing.T) {
 	}
 }
 
-func TestNodeSetReferentMaster(t *testing.T) {
+func TestNodeSetReferentPrimary(t *testing.T) {
 	node := &Node{}
 
 	ref := "899809809808343434342323"
-	node.SetReferentMaster(ref)
-	if node.MasterReferent != ref {
-		t.Error("Node MasterReferent is not correct [current]:", node.MasterReferent)
+	node.SetPrimaryReferent(ref)
+	if node.PrimaryReferent != ref {
+		t.Error("Node PrimaryReferent is not correct [current]:", node.PrimaryReferent)
 	}
 }
 
-func TestNodeSetReferentMasterNone(t *testing.T) {
+func TestNodeSetReferentPrimaryNone(t *testing.T) {
 	node := &Node{}
 
 	ref := "-"
-	node.SetReferentMaster(ref)
-	if node.MasterReferent != "" {
-		t.Error("Node MasterReferent should be empty  [current]:", node.MasterReferent)
+	node.SetPrimaryReferent(ref)
+	if node.PrimaryReferent != "" {
+		t.Error("Node PrimaryReferent should be empty  [current]:", node.PrimaryReferent)
 	}
 }
 func TestNodeWhereP(t *testing.T) {
 	var slice Nodes
-	nodeMaster := &Node{ID: "A", Role: redisMasterRole, Slots: SlotSlice{0, 1, 4, 10}}
-	slice = append(slice, nodeMaster)
-	nodeSlave := &Node{ID: "B", Role: redisSlaveRole, Slots: SlotSlice{}}
-	slice = append(slice, nodeSlave)
-	nodeUnset := &Node{ID: "C", Role: redisMasterRole, Slots: SlotSlice{}}
+	nodePrimary := &Node{ID: "A", Role: redisPrimaryRole, Slots: SlotSlice{0, 1, 4, 10}}
+	slice = append(slice, nodePrimary)
+	nodeReplica := &Node{ID: "B", Role: redisReplicaRole, Slots: SlotSlice{}}
+	slice = append(slice, nodeReplica)
+	nodeUnset := &Node{ID: "C", Role: redisPrimaryRole, Slots: SlotSlice{}}
 	slice = append(slice, nodeUnset)
 
-	masterSlice, err := slice.GetNodesByFunc(IsMasterWithSlot)
+	primarySlice, err := slice.GetNodesByFunc(IsPrimaryWithSlot)
 	if err != nil {
-		t.Error("slice.GetNodesByFunc(IsMasterWithSlot) sould not return an error, current err:", err)
+		t.Error("slice.GetNodesByFunc(IsPrimaryWithSlot) sould not return an error, current err:", err)
 	}
-	if len(masterSlice) != 1 {
-		t.Error("masterSlice should have a size of 1, current:", len(masterSlice))
+	if len(primarySlice) != 1 {
+		t.Error("primarySlice should have a size of 1, current:", len(primarySlice))
 	}
-	if masterSlice[0].ID != "A" {
-		t.Error("masterSlice[0].ID should be A current:", masterSlice[0].ID)
+	if primarySlice[0].ID != "A" {
+		t.Error("primarySlice[0].ID should be A current:", primarySlice[0].ID)
 	}
 
-	unsetSlice, err := slice.GetNodesByFunc(IsMasterWithNoSlot)
+	unsetSlice, err := slice.GetNodesByFunc(IsPrimaryWithNoSlot)
 	if err != nil {
-		t.Error("slice.GetNodesByFunc(IsMasterWithSlot) sould not return an error, current err:", err)
+		t.Error("slice.GetNodesByFunc(IsPrimaryWithSlot) sould not return an error, current err:", err)
 	}
 	if len(unsetSlice) != 1 {
 		t.Error("unsetSlice should have a size of 1, current:", len(unsetSlice))
@@ -328,25 +328,25 @@ func TestNodeWhereP(t *testing.T) {
 		t.Error("unsetSlice[0].ID should should be C current:", unsetSlice[0].ID)
 	}
 
-	slaveSlice, err := slice.GetNodesByFunc(IsSlave)
+	replicaSlice, err := slice.GetNodesByFunc(IsReplica)
 	if err != nil {
-		t.Error("slice.GetNodesByFunc(IsMasterWithSlot) sould not return an error, current err:", err)
+		t.Error("slice.GetNodesByFunc(IsPrimaryWithSlot) sould not return an error, current err:", err)
 	}
-	if len(slaveSlice) != 1 {
-		t.Error("slaveSlice should have a size of 1, current:", len(slaveSlice))
+	if len(replicaSlice) != 1 {
+		t.Error("replicaSlice should have a size of 1, current:", len(replicaSlice))
 	}
-	if slaveSlice[0].ID != "B" {
-		t.Error("slaveSlice[0].ID should should be B current:", slaveSlice[0].ID)
+	if replicaSlice[0].ID != "B" {
+		t.Error("replicaSlice[0].ID should should be B current:", replicaSlice[0].ID)
 	}
 }
 
 func TestSearchNodeByID(t *testing.T) {
 	var slice Nodes
-	nodeMaster := &Node{ID: "A", Role: redisMasterRole, Slots: SlotSlice{0, 1, 4, 10}}
-	slice = append(slice, nodeMaster)
-	nodeSlave := &Node{ID: "B", Role: redisSlaveRole, Slots: SlotSlice{}}
-	slice = append(slice, nodeSlave)
-	nodeUnset := &Node{ID: "C", Role: redisMasterRole, Slots: SlotSlice{}}
+	nodePrimary := &Node{ID: "A", Role: redisPrimaryRole, Slots: SlotSlice{0, 1, 4, 10}}
+	slice = append(slice, nodePrimary)
+	nodeReplica := &Node{ID: "B", Role: redisReplicaRole, Slots: SlotSlice{}}
+	slice = append(slice, nodeReplica)
+	nodeUnset := &Node{ID: "C", Role: redisPrimaryRole, Slots: SlotSlice{}}
 	slice = append(slice, nodeUnset)
 
 	// empty list
@@ -366,7 +366,7 @@ func TestSearchNodeByID(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error returned by GetNodeByID, current error:%v", err)
 	}
-	if node != nodeSlave {
-		t.Errorf("Expected to find node %v, got %v", nodeSlave, node)
+	if node != nodeReplica {
+		t.Errorf("Expected to find node %v, got %v", nodeReplica, node)
 	}
 }

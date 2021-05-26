@@ -10,15 +10,15 @@ The aim of this project is to ease the deployment and operations of a [Redis-clu
 
 ## Overview
 
-The Redis-cluster will be deployed thanks to a unique deployment. Each node of the Redis-cluster is running in its own Pod; At startup, each node has no active role (not slave nor master with slot), it just joins the cluster as a master without slot. See representation in the schema below.
+The Redis-cluster will be deployed thanks to a unique deployment. Each node of the Redis-cluster is running in its own Pod; At startup, each node has no active role (not replica nor primary with slot), it just joins the cluster as a primary without slot. See representation in the schema below.
 
 ![Initial state](imgs/overview_1.png)
 
-At this point you have your redis process running, each node is aware of each other, but only one master prossess all slots.
+At this point you have your redis process running, each node is aware of each other, but only one primary prossess all slots.
 
 In order to configure properly the different redis-servers and setup the redis cluster, we introduce the `Redis-Operator`.
 
-The `redis-operator` is watching a new kink of Custom-Resource `RedisCluster` that stores the redis-cluster configuration: number of masters, and the replication factor (number of slaves by master) and the pod template. Then the `redis-operator` tries to apply this configuration to the set of redis-server processes. If the number of redis-servers doesn't correspond to the provided configuration, the manager scales the redis-node pods to obtain the proper number of redis-nodes.
+The `redis-operator` is watching a new kink of Custom-Resource `RedisCluster` that stores the redis-cluster configuration: number of primaries, and the replication factor (number of replicas by primary) and the pod template. Then the `redis-operator` tries to apply this configuration to the set of redis-server processes. If the number of redis-servers doesn't correspond to the provided configuration, the manager scales the redis-node pods to obtain the proper number of redis-nodes.
 
 Then reconciliation is constantly done between the state of the cluster and the configuration stored in the `RedisCluster` CR.
 
@@ -70,7 +70,7 @@ Thanks to the helm chart `charts/icm-redis-cluster` you can create a `RedisClust
 You can configure the Topology of the cluster by providing your own `values.yml` file to helm, or settings the value with the `--set` parameters when you execute `helm install`
 
 ```console
-helm install --name mycluster charts/icm-redis-cluster --set numberOfMaster=3 --set replicationFactor=1
+helm install --name mycluster charts/icm-redis-cluster --set numberOfPrimaries=3 --set replicationFactor=1
 ...
 ```
 

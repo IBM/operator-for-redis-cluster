@@ -10,15 +10,15 @@ The aim of this project is to ease the deployment and operations of a [Redis-clu
 
 ## Overview
 
-The Redis-cluster will be deployed thanks to a unique deployment. Each node of the icm-redis-cluster is running in its own Pod; At startup, each node has no active role (not slave nor master with slot), it just joins the cluster as a master without slot. See representation in the schema below 
+The Redis-cluster will be deployed thanks to a unique deployment. Each node of the icm-redis-cluster is running in its own Pod; At startup, each node has no active role (not replica nor primary with slot), it just joins the cluster as a primary without slot. See representation in the schema below 
 
 ![Initial state](docs/imgs/overview_1.png)
 
-At this point you have your redis process running, each node is aware of each other, but only one master prossess all slots.
+At this point you have your redis process running, each node is aware of each other, but only one primary process all slots.
 
 In order to configure properly the different redis-servers and setup the redis cluster, we introduce the `icm-redis-operator`.
 
-The `icm-redis-operator` is watching a new kind of Custom-Resource `RedisCluster` that stores the redis-cluster configuration: number of masters, and the replication factor (number of slaves by master) and the pod template. Then `icm-redis-operator` tries to apply this configuration to the set of redis-server processes. If the number of redis-servers doesn't correspond to the provided configuration, the manager scales the redis-node pods to obtain the proper number of redis-nodes.
+The `icm-redis-operator` is watching a new kind of Custom-Resource `RedisCluster` that stores the redis-cluster configuration: number of primaries, and the replication factor (number of replicas by primary) and the pod template. Then `icm-redis-operator` tries to apply this configuration to the set of redis-server processes. If the number of redis-servers doesn't correspond to the provided configuration, the manager scales the redis-node pods to obtain the proper number of redis-nodes.
 
 Then reconciliation is constantly done between the state of the cluster and the configuration stored in the `RedisCluster` CR.
 
@@ -73,13 +73,13 @@ You can configure the Topology of the cluster by providing your own `values.yml`
 helm install icm-redis-cluster charts/icm-redis-cluster
 ```
 
-> **! Warning !**, if you want to use the docker images corresponding  to the level of code present in the "master" branch. you need to set the image tag when you instantiate the Redis-Cluster chart and the Redis-Operator chart. The "latest" tag is corresponding to the last validated release.
+> **! Warning !**, if you want to use the docker images corresponding to the level of code present in the "main" branch. You need to set the image tag when you instantiate the icm-redis-cluster chart and the icm-redis-operator chart. The "latest" tag is corresponding to the last validated release.
 
 ```console
-helm install icm-redis-cluster charts/icm-redis-cluster --set image.tag=master-$COMMIT-dev
+helm install icm-redis-cluster charts/icm-redis-cluster --set image.tag=main-$COMMIT-dev
 ```
 
-#### Install the kubctl redis-cluster plugin
+#### Install the kubectl redis-cluster plugin
 
 docs available [here](docs/kubectl-plugin.md).
 
@@ -101,7 +101,7 @@ make TAG=<Your-TAG> container
 
 > THIS IS FOR RELEASE INTO ICM REPOS:
 >
-> Do the following in `master`:
+> Do the following in `main` branch:
 > 1. Create a tag on commit
 > 2. Push the commit and tag
 > 3. ICM automation will build and push docker images and helm charts with git tag version

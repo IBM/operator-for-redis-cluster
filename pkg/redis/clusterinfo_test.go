@@ -18,7 +18,7 @@ func TestNodeDecodeRedisInfoInvalidInput(t *testing.T) {
 	}
 }
 
-func TestNodeDecodeRedisInfoOneSlave(t *testing.T) {
+func TestNodeDecodeRedisInfoOneReplica(t *testing.T) {
 	input := "07c37dfeb235213a872192d90877d0cd55635b91 127.0.0.1:30004 myself,slave e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca 0 1426238317239 4 connected"
 
 	nodeinfos := DecodeNodeInfos(&input, "")
@@ -31,21 +31,21 @@ func TestNodeDecodeRedisInfoOneSlave(t *testing.T) {
 
 	n := nodeinfos.Node
 	if n.ID != "07c37dfeb235213a872192d90877d0cd55635b91" {
-		t.Error("Wrong Node id")
+		t.Error("wrong node ID")
 	}
 	if n.IPPort() != "127.0.0.1:30004" {
-		t.Error("Wrong Node IPPort")
+		t.Error("wrong node IPPort")
 	}
-	if n.Role != redisSlaveRole {
-		t.Error("Wrong Node Role, should be slave")
+	if n.Role != redisReplicaRole {
+		t.Error("wrong node role, should be replica")
 	}
 
 	if len(n.FailStatus) != 0 {
-		t.Error("Wrong Node FailureStatus")
+		t.Error("wrong node FailureStatus")
 	}
 
-	if n.MasterReferent != "e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca" {
-		t.Error("Wrong Master Referent ")
+	if n.PrimaryReferent != "e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca" {
+		t.Error("wrong primary referent ")
 	}
 
 	if n.PingSent != 0 {
@@ -57,7 +57,7 @@ func TestNodeDecodeRedisInfoOneSlave(t *testing.T) {
 	}
 
 	if n.ConfigEpoch != 4 {
-		t.Error("wrong ConfigEpoch value [badvalue]:", n.ConfigEpoch)
+		t.Error("wrong ConfigEpoch value:", n.ConfigEpoch)
 	}
 
 	if n.LinkState != RedisLinkStateConnected {
@@ -65,23 +65,23 @@ func TestNodeDecodeRedisInfoOneSlave(t *testing.T) {
 	}
 }
 
-func TestNodeDecodeRedisInfoOneMaster(t *testing.T) {
+func TestNodeDecodeRedisInfoOnePrimary(t *testing.T) {
 	input := "67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1 127.0.0.1:30002 myself,master - 0 1426238316232 2 connected 5461-10922"
 	nodeinfos := DecodeNodeInfos(&input, "")
 	if nodeinfos.Node == nil {
-		t.Error("nodeinfos should have one Node")
+		t.Error("nodeinfos should have one node")
 	}
 	if len(nodeinfos.Friends) != 0 {
 		t.Error("nodes should be alone in the cluster:", len(nodeinfos.Friends))
 	}
 
 	n := nodeinfos.Node
-	if n.Role != redisMasterRole {
-		t.Error("Wrong Node Role, should be slave")
+	if n.Role != redisPrimaryRole {
+		t.Error("wrong node role, should be replica")
 	}
 
 	if len(n.Slots) != (10922 - 5461 + 1) {
-		t.Errorf("Master should have %d slots", 10922-5461+1)
+		t.Errorf("Primary should have %d slots", 10922 - 5461 + 1)
 	}
 }
 
@@ -95,7 +95,7 @@ e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca :30001 myself,master - 0 0 1 connected 
 
 	nodeinfos := DecodeNodeInfos(&input, "127.0.0.1")
 	if len(nodeinfos.Friends) != 5 {
-		t.Error("nodeinfo friends should contains 5 Node len:", len(nodeinfos.Friends))
+		t.Error("friends should contain 5 nodes, actual:", len(nodeinfos.Friends))
 	}
 }
 
@@ -107,7 +107,7 @@ func TestNodeToString(t *testing.T) {
 	} else {
 
 		output :=
-			`{Redis ID: 67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1, role: Master, master: , link: connected, status: [], addr: 127.0.0.1:30002, slots: [5461-5471], len(migratingSlots): 0, len(importingSlots): 0}`
+			`{Redis ID: 67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1, role: Primary, primary: , link: connected, status: [], addr: 127.0.0.1:30002, slots: [5461-5471], len(migratingSlots): 0, len(importingSlots): 0}`
 
 		if nodeinfos.Node.String() != output {
 			t.Errorf("String output not valide: expected '%s', got '%s'", output, nodeinfos.Node.String())

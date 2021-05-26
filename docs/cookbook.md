@@ -114,7 +114,7 @@ operator-redis-operator-5d64589b66-9rwsx   1/1       Running   0          1m
 # Create a redis cluster
 
 ```console
-$ helm install --wait -n mycluster chart/redis-cluster --set numberOfMaster=3 --set replicationFactor=1
+$ helm install --wait -n mycluster chart/redis-cluster --set numberOfPrimaries=3 --set replicationFactor=1
 NAME:   mycluster
 LAST DEPLOYED: Thu Feb 15 14:56:35 2018
 NAMESPACE: default
@@ -142,8 +142,8 @@ Monitor the redis-cluster creation
 ```console
 $ watch kubectl plugin rediscluster --rc myCluster
 Every 2.0s: kubectl plugin rediscluster
- NAME       NAMESPACE  PODS   STATUS  NB MASTER  REPLICATION
- mycluster  default    6/6/6  OK      3/3        1-1/1
+ NAME       NAMESPACE  PODS   STATUS  NB PRIMARY  REPLICATION
+ mycluster  default    6/6/6  OK      3/3         1-1/1
 ```
 
 check the cluster status thanks to redis command `cluster info`:

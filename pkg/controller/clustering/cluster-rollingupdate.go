@@ -6,36 +6,36 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-// SelectMastersToReplace used to replace currentMasters with new redis nodes
-func SelectMastersToReplace(oldMasters, newMasters, newNodesNoRole redis.Nodes, nbMaster, nbMasterToReplace int32) (selectedMasters redis.Nodes, newSelectedMasters redis.Nodes, err error) {
-	newSelectedMasters = redis.Nodes{}
-	if len(newMasters) == int(nbMaster) {
-		return newMasters, newSelectedMasters, nil
+// SelectPrimariesToReplace used to replace currentPrimaries with new redis nodes
+func SelectPrimariesToReplace(oldPrimaries, newPrimaries, newNodesNoRole redis.Nodes, nbPrimary, nbPrimaryToReplace int32) (selectedPrimaries redis.Nodes, newSelectedPrimaries redis.Nodes, err error) {
+	newSelectedPrimaries = redis.Nodes{}
+	if len(newPrimaries) == int(nbPrimary) {
+		return newPrimaries, newSelectedPrimaries, nil
 	}
 
-	selectedMasters = append(selectedMasters, newMasters...)
-	nbMasterReplaced := int32(0)
+	selectedPrimaries = append(selectedPrimaries, newPrimaries...)
+	nbPrimaryReplaced := int32(0)
 	for _, newNode := range newNodesNoRole {
-		if nbMasterReplaced == nbMasterToReplace {
+		if nbPrimaryReplaced == nbPrimaryToReplace {
 			break
 		}
-		nbMasterReplaced++
-		selectedMasters = append(selectedMasters, newNode)
-		newSelectedMasters = append(newSelectedMasters, newNode)
+		nbPrimaryReplaced++
+		selectedPrimaries = append(selectedPrimaries, newNode)
+		newSelectedPrimaries = append(newSelectedPrimaries, newNode)
 	}
-	nbRemainingOldMaster := int(nbMaster) - len(selectedMasters)
-	if nbRemainingOldMaster > len(oldMasters) {
-		nbRemainingOldMaster = len(oldMasters)
+	nbRemainingOldPrimary := int(nbPrimary) - len(selectedPrimaries)
+	if nbRemainingOldPrimary > len(oldPrimaries) {
+		nbRemainingOldPrimary = len(oldPrimaries)
 	}
-	currentOldMasterSorted := oldMasters.SortNodes()
-	selectedMasters = append(selectedMasters, currentOldMasterSorted[:nbRemainingOldMaster]...)
-	if nbMasterReplaced != nbMasterToReplace {
-		return selectedMasters, newSelectedMasters, fmt.Errorf("insufficient number of nodes for master replacement, wanted:%d, current:%d", nbMasterToReplace, nbMasterReplaced)
-	}
-
-	if len(selectedMasters) != int(nbMaster) {
-		return selectedMasters, newSelectedMasters, fmt.Errorf("insufficient number of masters, wanted:%d, current:%d", len(selectedMasters), nbMaster)
+	currentOldPrimarySorted := oldPrimaries.SortNodes()
+	selectedPrimaries = append(selectedPrimaries, currentOldPrimarySorted[:nbRemainingOldPrimary]...)
+	if nbPrimaryReplaced != nbPrimaryToReplace {
+		return selectedPrimaries, newSelectedPrimaries, fmt.Errorf("insufficient number of nodes for primary replacement, wanted:%d, current:%d", nbPrimaryToReplace, nbPrimaryReplaced)
 	}
 
-	return selectedMasters, newSelectedMasters, err
+	if len(selectedPrimaries) != int(nbPrimary) {
+		return selectedPrimaries, newSelectedPrimaries, fmt.Errorf("insufficient number of primaries, wanted:%d, current:%d", len(selectedPrimaries), nbPrimary)
+	}
+
+	return selectedPrimaries, newSelectedPrimaries, err
 }

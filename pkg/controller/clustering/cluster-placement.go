@@ -12,71 +12,71 @@ const (
 	unknownNodeName = "unknown" // I hope nobody will ever name a node "unknown" because this will impact the algorithm inside this package
 )
 
-// PlaceMasters selects master redis nodes by spreading out the masters across zones as much as possible.
-func PlaceMasters(cluster *redis.Cluster, currentMasters redis.Nodes, candidateMasters redis.Nodes, nbMaster int32) (redis.Nodes, bool, error) {
+// PlacePrimaries selects primary redis nodes by spreading out the primaries across zones as much as possible.
+func PlacePrimaries(cluster *redis.Cluster, currentPrimaries redis.Nodes, candidatePrimaries redis.Nodes, nbPrimary int32) (redis.Nodes, bool, error) {
 	selection := redis.Nodes{}
-	selection = append(selection, currentMasters...)
+	selection = append(selection, currentPrimaries...)
 
-	// in case of scale down, we use the required number of masters instead of
-	// current number of masters to limit the size of the selection
-	if len(selection) > int(nbMaster) {
-		selectedMasters, err := selectMastersByZone(cluster, selection, nbMaster)
+	// in case of scale down, we use the required number of primaries instead of
+	// current number of primaries to limit the size of the selection
+	if len(selection) > int(nbPrimary) {
+		selectedPrimaries, err := selectPrimariesByZone(cluster, selection, nbPrimary)
 		if err != nil {
-			glog.Errorf("Error selecting masters by zone: %v", err)
+			glog.Errorf("Error selecting primaries by zone: %v", err)
 		}
-		selection = selectedMasters
+		selection = selectedPrimaries
 	}
 
-	nodeToCandidateMasters := k8sNodeToRedisNodes(cluster, candidateMasters)
-	nodeToCurrentMasters := k8sNodeToRedisNodes(cluster, currentMasters)
+	nodeToCandidatePrimaries := k8sNodeToRedisNodes(cluster, candidatePrimaries)
+	nodeToCurrentPrimaries := k8sNodeToRedisNodes(cluster, currentPrimaries)
 
-	return addMasters(cluster, selection, nodeToCurrentMasters, nodeToCandidateMasters, nbMaster)
+	return addPrimaries(cluster, selection, nodeToCurrentPrimaries, nodeToCandidatePrimaries, nbPrimary)
 }
 
-func addMasters(cluster *redis.Cluster, masters redis.Nodes, nodeToCurrentMasters map[string]redis.Nodes, nodeToCandidateMasters map[string]redis.Nodes, nbMaster int32) (redis.Nodes, bool, error) {
+func addPrimaries(cluster *redis.Cluster, primaries redis.Nodes, nodeToCurrentPrimaries map[string]redis.Nodes, nodeToCandidatePrimaries map[string]redis.Nodes, nbPrimary int32) (redis.Nodes, bool, error) {
 	bestEffort := false
-	// iterate until we have the requested number of masters or we reach best effort
-	for len(masters) < int(nbMaster) {
+	// iterate until we have the requested number of primaries or we reach best effort
+	for len(primaries) < int(nbPrimary) {
 		nodeAdded := false
-		for node, candidates := range nodeToCandidateMasters {
-			// discard kubernetes nodes with masters when we are not in best effort mode
-			if _, ok := nodeToCurrentMasters[node]; !bestEffort && ok {
+		for node, candidates := range nodeToCandidatePrimaries {
+			// discard kubernetes nodes with primaries when we are not in best effort mode
+			if _, ok := nodeToCurrentPrimaries[node]; !bestEffort && ok {
 				continue
 			}
-			// iterate over candidate masters and choose one that preserves zone balance between master nodes
+			// iterate over candidate primaries and choose one that preserves zone balance between primary nodes
 			for i, candidate := range candidates {
-				if ZonesBalanced(cluster, candidate, masters) {
-					glog.Infof("- add node: %s to the master selection", candidate.ID)
-					// Add the candidate to the masters list
-					masters = append(masters, candidate)
+				if ZonesBalanced(cluster, candidate, primaries) {
+					glog.Infof("- add node: %s to the primary selection", candidate.ID)
+					// Add the candidate to the primaries list
+					primaries = append(primaries, candidate)
 					nodeAdded = true
-					// Remove the candidate master from the candidates list
+					// Remove the candidate primary from the candidates list
 					candidates[i] = candidates[len(candidates)-1]
-					nodeToCandidateMasters[node] = candidates[:len(candidates)-1]
-					if len(masters) >= int(nbMaster) {
-						return masters, bestEffort, nil
+					nodeToCandidatePrimaries[node] = candidates[:len(candidates)-1]
+					if len(primaries) >= int(nbPrimary) {
+						return primaries, bestEffort, nil
 					}
 					break
 				}
 			}
 		}
 		if bestEffort && !nodeAdded {
-			glog.Errorf("nothing added since last loop, no more masters are available")
+			glog.Errorf("nothing added since last loop, no more primaries are available")
 			break
 		}
 		bestEffort = true
 		if glog.V(4) {
-			glog.Warning("pods are not sufficiently distributed to have only one master per node")
+			glog.Warning("pods are not sufficiently distributed to have only one primary per node")
 		}
 	}
 	glog.Infof("- bestEffort %v", bestEffort)
-	for _, master := range masters {
-		glog.Infof("- Master %s, ip:%s", master.ID, master.IP)
+	for _, primary := range primaries {
+		glog.Infof("- Primary %s, ip:%s", primary.ID, primary.IP)
 	}
-	if len(masters) >= int(nbMaster) {
-		return masters, bestEffort, nil
+	if len(primaries) >= int(nbPrimary) {
+		return primaries, bestEffort, nil
 	}
-	return masters, bestEffort, fmt.Errorf("insufficient number of redis nodes for the requested number of masters")
+	return primaries, bestEffort, fmt.Errorf("insufficient number of redis nodes for the requested number of primaries")
 }
 
 func ZoneToNodes(cluster *redis.Cluster, nodes redis.Nodes) map[string]redis.Nodes {
@@ -91,21 +91,21 @@ func ZoneToNodes(cluster *redis.Cluster, nodes redis.Nodes) map[string]redis.Nod
 	return zoneToNodes
 }
 
-func selectMastersByZone(cluster *redis.Cluster, masters redis.Nodes, nbMaster int32) (redis.Nodes, error) {
+func selectPrimariesByZone(cluster *redis.Cluster, primaries redis.Nodes, nbPrimary int32) (redis.Nodes, error) {
 	selection := redis.Nodes{}
-	zoneToNodes := ZoneToNodes(cluster, masters)
-	for len(selection) < int(nbMaster) {
+	zoneToNodes := ZoneToNodes(cluster, primaries)
+	for len(selection) < int(nbPrimary) {
 		for zone, nodes := range zoneToNodes {
 			if len(nodes) > 0 {
 				selection = append(selection, nodes[0])
 				zoneToNodes[zone] = nodes[1:]
 			}
-			if len(selection) >= int(nbMaster) {
+			if len(selection) >= int(nbPrimary) {
 				return selection, nil
 			}
 		}
 	}
-	return selection, fmt.Errorf("insufficient number of redis nodes for the requested number of masters")
+	return selection, fmt.Errorf("insufficient number of redis nodes for the requested number of primaries")
 }
 
 func ZonesBalanced(cluster *redis.Cluster, candidate *redis.Node, nodes redis.Nodes) bool {
@@ -122,66 +122,66 @@ func ZonesBalanced(cluster *redis.Cluster, candidate *redis.Node, nodes redis.No
 	return len(zoneToNodes[candidate.Zone]) <= smallestZoneSize
 }
 
-// PlaceSlaves selects slave redis nodes by spreading out the slaves across zones as much as possible.
-func PlaceSlaves(cluster *redis.Cluster, masters, oldSlaves, newSlaves redis.Nodes, replicationFactor int32) (map[string]redis.Nodes, error) {
-	removeOldSlaves(&oldSlaves, &newSlaves)
-	zoneToSlaves := ZoneToNodes(cluster, newSlaves)
-	masterToSlaves := generateMasterToSlaves(masters, oldSlaves, zoneToSlaves, replicationFactor)
-	err := addSlavesToMastersByZone(cluster, masterToSlaves, zoneToSlaves, replicationFactor)
+// PlaceReplicas selects replica redis nodes by spreading out the replicas across zones as much as possible.
+func PlaceReplicas(cluster *redis.Cluster, primaries, oldReplicas, newReplicas redis.Nodes, replicationFactor int32) (map[string]redis.Nodes, error) {
+	removeOldReplicas(&oldReplicas, &newReplicas)
+	zoneToReplicas := ZoneToNodes(cluster, newReplicas)
+	primaryToReplicas := generatePrimaryToReplicas(primaries, oldReplicas, zoneToReplicas, replicationFactor)
+	err := addReplicasToPrimariesByZone(cluster, primaryToReplicas, zoneToReplicas, replicationFactor)
 	if err != nil {
 		return nil, err
 	}
-	return masterToSlaves, nil
+	return primaryToReplicas, nil
 }
 
-func removeOldSlaves(oldSlaves, newSlaves *redis.Nodes) {
-	// be sure that no oldSlaves are present in newSlaves
-	for _, newSlave := range *newSlaves {
-		for _, oldSlave := range *oldSlaves {
-			if newSlave.ID == oldSlave.ID {
+func removeOldReplicas(oldReplicas, newReplicas *redis.Nodes) {
+	// be sure that no oldReplicas are present in newReplicas
+	for _, newReplica := range *newReplicas {
+		for _, oldReplica := range *oldReplicas {
+			if newReplica.ID == oldReplica.ID {
 				removeIDFunc := func(node *redis.Node) bool {
-					return node.ID == newSlave.ID
+					return node.ID == newReplica.ID
 				}
-				newSlaves.FilterByFunc(removeIDFunc)
+				newReplicas.FilterByFunc(removeIDFunc)
 				if glog.V(4) {
-					glog.Warningf("removing old slave with id %s from list of new slaves", newSlave.ID)
+					glog.Warningf("removing old replica with id %s from list of new replicas", newReplica.ID)
 				}
 			}
 		}
 	}
 }
 
-func generateMasterToSlaves(masters, slaves redis.Nodes, zoneToSlaves map[string]redis.Nodes, replicationFactor int32) map[string]redis.Nodes {
-	masterToSlaves := make(map[string]redis.Nodes)
-	for _, node := range masters {
-		masterToSlaves[node.ID] = redis.Nodes{}
+func generatePrimaryToReplicas(primaries, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, replicationFactor int32) map[string]redis.Nodes {
+	primaryToReplicas := make(map[string]redis.Nodes)
+	for _, node := range primaries {
+		primaryToReplicas[node.ID] = redis.Nodes{}
 	}
-	for _, slave := range slaves {
-		for _, master := range masters {
-			if slave.MasterReferent == master.ID {
-				if len(masterToSlaves[master.ID]) < int(replicationFactor) {
-					// master of this slave is among the new master nodes
-					masterToSlaves[master.ID] = append(masterToSlaves[master.ID], slave)
+	for _, replica := range replicas {
+		for _, primary := range primaries {
+			if replica.PrimaryReferent == primary.ID {
+				if len(primaryToReplicas[primary.ID]) < int(replicationFactor) {
+					// primary of this replica is among the new primary nodes
+					primaryToReplicas[primary.ID] = append(primaryToReplicas[primary.ID], replica)
 					break
 				} else {
-					zoneToSlaves[master.Zone] = append(masterToSlaves[master.Zone], slave)
+					zoneToReplicas[primary.Zone] = append(primaryToReplicas[primary.Zone], replica)
 				}
 			}
 		}
 	}
-	return masterToSlaves
+	return primaryToReplicas
 }
 
-func addSlavesToMastersByZone(cluster *redis.Cluster, masterToSlaves map[string]redis.Nodes, zoneToSlaves map[string]redis.Nodes, replicationFactor int32) error {
+func addReplicasToPrimariesByZone(cluster *redis.Cluster, primaryToReplicas map[string]redis.Nodes, zoneToReplicas map[string]redis.Nodes, replicationFactor int32) error {
 	zones := cluster.GetZones()
-	for masterID, currentSlaves := range masterToSlaves {
-		if len(currentSlaves) < int(replicationFactor) {
-			master, err := cluster.GetNodeByID(masterID)
+	for primaryID, currentReplicas := range primaryToReplicas {
+		if len(currentReplicas) < int(replicationFactor) {
+			primary, err := cluster.GetNodeByID(primaryID)
 			if err != nil {
-				glog.Errorf("unable to find master with id: %s", masterID)
+				glog.Errorf("unable to find primary with id: %s", primaryID)
 				break
 			}
-			err = addSlavesToMaster(zones, master, currentSlaves, masterToSlaves, zoneToSlaves, replicationFactor)
+			err = addReplicasToPrimary(zones, primary, currentReplicas, primaryToReplicas, zoneToReplicas, replicationFactor)
 			if err != nil {
 				return err
 			}
@@ -190,31 +190,31 @@ func addSlavesToMastersByZone(cluster *redis.Cluster, masterToSlaves map[string]
 	return nil
 }
 
-func addSlavesToMaster(zones []string, master *redis.Node, currentSlaves redis.Nodes, masterToSlaves map[string]redis.Nodes, zoneToSlaves map[string]redis.Nodes, replicationFactor int32) error {
-	// calculate zone index for master node
+func addReplicasToPrimary(zones []string, primary *redis.Node, currentReplicas redis.Nodes, primaryToReplicas map[string]redis.Nodes, zoneToReplicas map[string]redis.Nodes, replicationFactor int32) error {
+	// calculate zone index for primary node
 	zoneIndex := 0
 	for i, zone := range zones {
-		if master.Zone == zone {
-			zoneIndex = (i + len(currentSlaves) + 1) % len(zones)
+		if primary.Zone == zone {
+			zoneIndex = (i + len(currentReplicas) + 1) % len(zones)
 			break
 		}
 	}
 	numEmptyZones := 0
-	// iterate while zones are non-empty and the number of slaves is less than RF
-	for numEmptyZones < len(zones) && len(masterToSlaves[master.ID]) < int(replicationFactor) {
+	// iterate while zones are non-empty and the number of replicas is less than RF
+	for numEmptyZones < len(zones) && len(primaryToReplicas[primary.ID]) < int(replicationFactor) {
 		zone := zones[zoneIndex]
-		zoneSlaves := zoneToSlaves[zone]
-		if len(zoneSlaves) > 0 {
-			// append slave to master and remove from map
-			masterToSlaves[master.ID] = append(masterToSlaves[master.ID], zoneSlaves[0])
-			zoneToSlaves[zone] = zoneSlaves[1:]
+		zoneReplicas := zoneToReplicas[zone]
+		if len(zoneReplicas) > 0 {
+			// append replica to primary and remove from map
+			primaryToReplicas[primary.ID] = append(primaryToReplicas[primary.ID], zoneReplicas[0])
+			zoneToReplicas[zone] = zoneReplicas[1:]
 		} else {
 			numEmptyZones++
 		}
 		zoneIndex = (zoneIndex + 1) % len(zones)
 	}
-	if len(masterToSlaves[master.ID]) < int(replicationFactor) {
-		return fmt.Errorf("insufficient number of slaves for master %s, expected: %v, actual: %v", master.ID, int(replicationFactor), len(masterToSlaves[master.ID]))
+	if len(primaryToReplicas[primary.ID]) < int(replicationFactor) {
+		return fmt.Errorf("insufficient number of replicas for primary %s, expected: %v, actual: %v", primary.ID, int(replicationFactor), len(primaryToReplicas[primary.ID]))
 
 	}
 	return nil

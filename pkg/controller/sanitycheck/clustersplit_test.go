@@ -176,14 +176,14 @@ func TestSplitMainCluster(t *testing.T) {
 }
 
 // newCluster generate a new Cluster struct
-func newCluster(replicaFactor int32, nbMaster int32) *rapi.RedisCluster {
+func newCluster(replicaFactor int32, nbPrimary int32) *rapi.RedisCluster {
 	return &rapi.RedisCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "",
 		},
 		Spec: rapi.RedisClusterSpec{
-			NumberOfMaster:    &nbMaster,
+			NumberOfPrimaries: &nbPrimary,
 			ReplicationFactor: &replicaFactor,
 		},
 	}

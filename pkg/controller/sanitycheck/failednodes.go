@@ -11,7 +11,7 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-// FixFailedNodes fix failed nodes: in some cases (cluster without enough master after crash or scale down), some nodes may still know about fail nodes
+// FixFailedNodes fix failed nodes: in some cases (cluster without enough primary after crash or scale down), some nodes may still know about fail nodes
 func FixFailedNodes(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
 	forgetSet := listGhostNodes(cluster, infos)
 	var errs []error

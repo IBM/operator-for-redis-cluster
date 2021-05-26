@@ -12,14 +12,14 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-// FixGhostMasterNodes used to remove ghost redis nodes
-func FixGhostMasterNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, info *redis.ClusterInfos) (bool, error) {
-	ghosts := listGhostMasterNodes(podControl, cluster, info)
+// FixGhostPrimaryNodes used to remove ghost redis nodes
+func FixGhostPrimaryNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, info *redis.ClusterInfos) (bool, error) {
+	ghosts := listGhostPrimaryNodes(podControl, cluster, info)
 	var errs []error
 	doneAnAction := false
 	for _, nodeID := range ghosts {
 		doneAnAction = true
-		glog.Infof("forget ghost master nodes with no slot, id:%s", nodeID)
+		glog.Infof("forget ghost primary nodes with no slot, id:%s", nodeID)
 
 		if err := admin.ForgetNode(ctx, nodeID); err != nil {
 			errs = append(errs, err)
@@ -29,14 +29,14 @@ func FixGhostMasterNodes(ctx context.Context, admin redis.AdminInterface, podCon
 	return doneAnAction, errors.NewAggregate(errs)
 }
 
-func listGhostMasterNodes(podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) []string {
+func listGhostPrimaryNodes(podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) []string {
 	if infos == nil || infos.Infos == nil {
 		return []string{}
 	}
 
 	ghostNodes := make(map[string]*redis.Node) // map by id is used to dedouble Node from the different view
 	for _, nodeinfos := range infos.Infos {
-		for _, node := range nodeinfos.Friends.FilterByFunc(redis.IsMasterWithNoSlot) {
+		for _, node := range nodeinfos.Friends.FilterByFunc(redis.IsPrimaryWithNoSlot) {
 			ghostNodes[node.ID] = node
 		}
 	}
@@ -50,7 +50,7 @@ func listGhostMasterNodes(podControl pod.RedisClusterControlInterface, cluster *
 	for id := range ghostNodes {
 		podExist := false
 		podReused := false
-		// Check if the Redis master nodes (with not slot) is still running in a Pod
+		// Check if the Redis primary nodes (with not slot) is still running in a Pod
 		// if not it will be added to the ghosts redis node slice
 		bomNode, _ := infos.GetNodes().GetNodeByID(id)
 		if bomNode != nil && bomNode.Pod != nil {

@@ -14,18 +14,18 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func Test_getNewSlaves(t *testing.T) {
-	_, redisMaster1 := newRedisMasterNode("master1", "zone1", "pod1", "node1", []string{"1"})
-	_, redisSlave1 := newRedisSlaveNode("slave1", "zone2", redisMaster1.ID, "pod2", "node2")
-	_, futureSlave := newRedisMasterNode("futureSlave", "zone1", "pod3", "node1", []string{})
+func Test_getNewReplicas(t *testing.T) {
+	_, redisPrimary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	_, redisReplica1 := newRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod2", "node2")
+	_, futureReplica := newRedisPrimaryNode("futureReplica", "zone1", "pod3", "node1", []string{})
 
 	node1 := newNode("node1", "zone1")
 	node2 := newNode("node2", "zone2")
 
 	type args struct {
-		cluster        *redis.Cluster
-		nodes          redis.Nodes
-		nbSlavedNeeded int32
+		cluster          *redis.Cluster
+		nodes            redis.Nodes
+		nbReplicadNeeded int32
 	}
 	tests := []struct {
 		name    string
@@ -34,75 +34,75 @@ func Test_getNewSlaves(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "no slave to search",
+			name: "no replica to search",
 			args: args{
 				cluster: &redis.Cluster{
 					Nodes: map[string]*redis.Node{
-						"master1": &redisMaster1,
-						"slave1":  &redisSlave1,
+						"primary1": &redisPrimary1,
+						"replica1": &redisReplica1,
 					},
 					KubeNodes: []kapiv1.Node{*node1, *node2},
 				},
-				nbSlavedNeeded: 0,
-				nodes:          redis.Nodes{&redisMaster1, &redisMaster1},
+				nbReplicadNeeded: 0,
+				nodes:            redis.Nodes{&redisPrimary1, &redisPrimary1},
 			},
 			want:    redis.Nodes{},
 			wantErr: false,
 		},
 		{
-			name: "search one slave",
+			name: "search one replica",
 			args: args{
 				cluster: &redis.Cluster{
 					Nodes: map[string]*redis.Node{
-						"master1":     &redisMaster1,
-						"slave1":      &redisSlave1,
-						"futureSlave": &futureSlave,
+						"primary1":      &redisPrimary1,
+						"replica1":      &redisReplica1,
+						"futureReplica": &futureReplica,
 					},
 					KubeNodes: []kapiv1.Node{*node1, *node2},
 				},
-				nbSlavedNeeded: 1,
-				nodes:          redis.Nodes{&redisMaster1, &redisMaster1, &futureSlave},
+				nbReplicadNeeded: 1,
+				nodes:            redis.Nodes{&redisPrimary1, &redisPrimary1, &futureReplica},
 			},
-			want:    redis.Nodes{&futureSlave},
+			want:    redis.Nodes{&futureReplica},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getNewSlaves(tt.args.cluster, tt.args.nodes, tt.args.nbSlavedNeeded)
+			got, err := getNewReplicas(tt.args.cluster, tt.args.nodes, tt.args.nbReplicadNeeded)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getNewSlaves() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("getNewReplicas() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getNewSlaves() = %v, want %v", got, tt.want)
+				t.Errorf("getNewReplicas() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_selectSlavesToDelete(t *testing.T) {
-	_, redisMaster1 := newRedisMasterNode("master1", "zone1", "pod1", "node1", []string{"1"})
-	_, redisMaster2 := newRedisMasterNode("master2", "zone2", "pod2", "node2", []string{"2"})
-	_, redisMaster3 := newRedisMasterNode("master3", "zone3", "pod3", "node3", []string{"3"})
+func Test_selectReplicasToDelete(t *testing.T) {
+	_, redisPrimary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	_, redisPrimary2 := newRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
+	_, redisPrimary3 := newRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
 
-	_, redisSlave1 := newRedisSlaveNode("slave1", "zone2", redisMaster1.ID, "pod4", "node2")
-	_, redisSlave2 := newRedisSlaveNode("slave2", "zone3", redisMaster2.ID, "pod5", "node3")
-	_, redisSlave3 := newRedisSlaveNode("slave3", "zone1", redisMaster3.ID, "pod6", "node1")
-	_, redisSlave4 := newRedisSlaveNode("slave4", "zone1", redisMaster2.ID, "pod7", "node1")
-	_, redisSlave5 := newRedisSlaveNode("slave5", "zone3", redisMaster3.ID, "pod8", "node2")
-	_, redisSlave6 := newRedisSlaveNode("slave6", "zone2", redisMaster3.ID, "pod9", "node3")
+	_, redisReplica1 := newRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod4", "node2")
+	_, redisReplica2 := newRedisReplicaNode("replica2", "zone3", redisPrimary2.ID, "pod5", "node3")
+	_, redisReplica3 := newRedisReplicaNode("replica3", "zone1", redisPrimary3.ID, "pod6", "node1")
+	_, redisReplica4 := newRedisReplicaNode("replica4", "zone1", redisPrimary2.ID, "pod7", "node1")
+	_, redisReplica5 := newRedisReplicaNode("replica5", "zone3", redisPrimary3.ID, "pod8", "node2")
+	_, redisReplica6 := newRedisReplicaNode("replica6", "zone2", redisPrimary3.ID, "pod9", "node3")
 
 	node1 := newNode("node1", "zone1")
 	node2 := newNode("node2", "zone2")
 	node3 := newNode("node3", "zone3")
 
 	type args struct {
-		cluster          *redis.Cluster
-		masterID         string
-		masterSlaves     redis.Nodes
-		slaves           redis.Nodes
-		nbSlavesToDelete int32
+		cluster            *redis.Cluster
+		primaryID          string
+		primaryReplicas    redis.Nodes
+		replicas           redis.Nodes
+		nbReplicasToDelete int32
 	}
 	tests := []struct {
 		name    string
@@ -111,93 +111,93 @@ func Test_selectSlavesToDelete(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "one slave to delete in same zone as master",
-			want:    redis.Nodes{&redisSlave5},
+			name:    "one replica to delete in same zone as primary",
+			want:    redis.Nodes{&redisReplica5},
 			wantErr: false,
 			args: args{
 				cluster: &redis.Cluster{
 					Nodes: map[string]*redis.Node{
-						"master1": &redisMaster1,
-						"master2": &redisMaster2,
-						"master3": &redisMaster3,
-						"slave1":  &redisSlave1,
-						"slave2":  &redisSlave2,
-						"slave3":  &redisSlave3,
-						"slave4":  &redisSlave4,
+						"primary1": &redisPrimary1,
+						"primary2": &redisPrimary2,
+						"primary3": &redisPrimary3,
+						"replica1": &redisReplica1,
+						"replica2": &redisReplica2,
+						"replica3": &redisReplica3,
+						"replica4": &redisReplica4,
 					},
 					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
-				masterID:         redisMaster3.ID,
-				masterSlaves:     redis.Nodes{&redisSlave3, &redisSlave5},
-				nbSlavesToDelete: 1,
+				primaryID:          redisPrimary3.ID,
+				primaryReplicas:    redis.Nodes{&redisReplica3, &redisReplica5},
+				nbReplicasToDelete: 1,
 			},
 		},
 		{
-			name:    "one slave to delete in largest zone cluster-wide",
-			want:    redis.Nodes{&redisSlave4},
+			name:    "one replica to delete in largest zone cluster-wide",
+			want:    redis.Nodes{&redisReplica4},
 			wantErr: false,
 			args: args{
 				cluster: &redis.Cluster{
 					Nodes: map[string]*redis.Node{
-						"master1": &redisMaster1,
-						"master2": &redisMaster2,
-						"master3": &redisMaster3,
-						"slave1":  &redisSlave1,
-						"slave2":  &redisSlave2,
-						"slave3":  &redisSlave3,
-						"slave4":  &redisSlave4,
+						"primary1": &redisPrimary1,
+						"primary2": &redisPrimary2,
+						"primary3": &redisPrimary3,
+						"replica1": &redisReplica1,
+						"replica2": &redisReplica2,
+						"replica3": &redisReplica3,
+						"replica4": &redisReplica4,
 					},
 					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
-				masterID:         redisMaster2.ID,
-				masterSlaves:     redis.Nodes{&redisSlave2, &redisSlave4},
-				slaves:           redis.Nodes{&redisSlave1, &redisSlave2, &redisSlave3, &redisSlave4},
-				nbSlavesToDelete: 1,
+				primaryID:          redisPrimary2.ID,
+				primaryReplicas:    redis.Nodes{&redisReplica2, &redisReplica4},
+				replicas:           redis.Nodes{&redisReplica1, &redisReplica2, &redisReplica3, &redisReplica4},
+				nbReplicasToDelete: 1,
 			},
 		},
 		{
-			name:    "multiple slaves to delete",
-			want:    redis.Nodes{&redisSlave5, &redisSlave3},
+			name:    "multiple replicas to delete",
+			want:    redis.Nodes{&redisReplica5, &redisReplica3},
 			wantErr: false,
 			args: args{
 				cluster: &redis.Cluster{
 					Nodes: map[string]*redis.Node{
-						"master1": &redisMaster1,
-						"master2": &redisMaster2,
-						"master3": &redisMaster3,
-						"slave1":  &redisSlave1,
-						"slave2":  &redisSlave2,
-						"slave3":  &redisSlave3,
-						"slave4":  &redisSlave4,
-						"slave5":  &redisSlave5,
-						"slave6":  &redisSlave6,
+						"primary1": &redisPrimary1,
+						"primary2": &redisPrimary2,
+						"primary3": &redisPrimary3,
+						"replica1": &redisReplica1,
+						"replica2": &redisReplica2,
+						"replica3": &redisReplica3,
+						"replica4": &redisReplica4,
+						"replica5": &redisReplica5,
+						"replica6": &redisReplica6,
 					},
 					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
-				masterID:         redisMaster3.ID,
-				masterSlaves:     redis.Nodes{&redisSlave3, &redisSlave5, &redisSlave6},
-				slaves:           redis.Nodes{&redisSlave1, &redisSlave2, &redisSlave3, &redisSlave4, &redisSlave5, &redisSlave6},
-				nbSlavesToDelete: 2,
+				primaryID:          redisPrimary3.ID,
+				primaryReplicas:    redis.Nodes{&redisReplica3, &redisReplica5, &redisReplica6},
+				replicas:           redis.Nodes{&redisReplica1, &redisReplica2, &redisReplica3, &redisReplica4, &redisReplica5, &redisReplica6},
+				nbReplicasToDelete: 2,
 			},
 		},
 		{
-			name: "no slave to delete",
+			name: "no replica to delete",
 			args: args{
 				cluster: &redis.Cluster{
 					Nodes: map[string]*redis.Node{
-						"master1": &redisMaster1,
-						"master2": &redisMaster2,
-						"master3": &redisMaster3,
-						"slave1":  &redisSlave1,
-						"slave2":  &redisSlave2,
-						"slave3":  &redisSlave3,
+						"primary1": &redisPrimary1,
+						"primary2": &redisPrimary2,
+						"primary3": &redisPrimary3,
+						"replica1": &redisReplica1,
+						"replica2": &redisReplica2,
+						"replica3": &redisReplica3,
 					},
 					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
-				masterID:         redisMaster2.ID,
-				masterSlaves:     redis.Nodes{&redisSlave2, &redisSlave4},
-				slaves:           redis.Nodes{&redisSlave1, &redisSlave2, &redisSlave3},
-				nbSlavesToDelete: 0,
+				primaryID:          redisPrimary2.ID,
+				primaryReplicas:    redis.Nodes{&redisReplica2, &redisReplica4},
+				replicas:           redis.Nodes{&redisReplica1, &redisReplica2, &redisReplica3},
+				nbReplicasToDelete: 0,
 			},
 			want:    redis.Nodes{},
 			wantErr: false,
@@ -205,34 +205,34 @@ func Test_selectSlavesToDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := selectSlavesToDelete(tt.args.cluster, tt.args.masterID, tt.args.masterSlaves, tt.args.slaves, tt.args.nbSlavesToDelete)
+			got, err := selectReplicasToDelete(tt.args.cluster, tt.args.primaryID, tt.args.primaryReplicas, tt.args.replicas, tt.args.nbReplicasToDelete)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("selectSlavesToDelete() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("selectReplicasToDelete() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("selectSlavesToDelete() = %v, want %v", got, tt.want)
+				t.Errorf("selectReplicasToDelete() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func newRedisSlaveNode(id, zone, masterRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
-	node := newRedisNode(rapi.RedisClusterNodeRoleSlave, id, podName, nodeName, nil)
-	node.MasterRef = masterRef
-	role := "slave"
-	redisNode := redis.Node{ID: id, MasterReferent: masterRef, Zone: zone, Role: role, Pod: node.Pod}
+func newRedisReplicaNode(id, zone, primaryRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
+	node := newRedisNode(rapi.RedisClusterNodeRoleReplica, id, podName, nodeName, nil)
+	node.PrimaryRef = primaryRef
+	role := "replica"
+	redisNode := redis.Node{ID: id, PrimaryReferent: primaryRef, Zone: zone, Role: role, Pod: node.Pod}
 	return node, redisNode
 }
 
-func newRedisMasterNode(id, zone, podName, nodeName string, slots []string) (rapi.RedisClusterNode, redis.Node) {
-	role := "master"
+func newRedisPrimaryNode(id, zone, podName, nodeName string, slots []string) (rapi.RedisClusterNode, redis.Node) {
+	role := "primary"
 	slotsInt := redis.SlotSlice{}
 	for _, s := range slots {
 		i, _ := redis.DecodeSlot(s)
 		slotsInt = append(slotsInt, i)
 	}
-	node := newRedisNode(rapi.RedisClusterNodeRoleMaster, id, podName, nodeName, slots)
+	node := newRedisNode(rapi.RedisClusterNodeRolePrimary, id, podName, nodeName, slots)
 	redisNode := redis.Node{ID: id, Zone: zone, Slots: slotsInt, Role: role, Pod: node.Pod}
 	return node, redisNode
 }
@@ -264,8 +264,8 @@ func newNode(name, zone string) *kapiv1.Node {
 }
 
 func Test_newRedisCluster(t *testing.T) {
-	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
+	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
 	node1 := newNode("node1", "zone1")
 	node2 := newNode("node2", "zone2")
 	ctx := context.Background()
@@ -347,10 +347,10 @@ func Test_newRedisCluster(t *testing.T) {
 }
 
 func TestController_applyConfiguration(t *testing.T) {
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
-	redis3 := redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Zone: "zone3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{}}
-	redis4 := redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Zone: "zone1", Pod: newPod("pod4", "node1"), Slots: redis.SlotSlice{}}
-	redis1 := redis.Node{ID: "redis1", Role: "slave", MasterReferent: redis2.ID, IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
+	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis3 := redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Zone: "zone3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{}}
+	redis4 := redis.Node{ID: "redis4", Role: "primary", IP: "10.0.0.4", Zone: "zone1", Pod: newPod("pod4", "node1"), Slots: redis.SlotSlice{}}
+	redis1 := redis.Node{ID: "redis1", Role: "replica", PrimaryReferent: redis2.ID, IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
 	node1 := newNode("node1", "zone1")
 	node2 := newNode("node2", "zone2")
 	node3 := newNode("node3", "zone3")
@@ -392,13 +392,13 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfMaster:    rapi.NewInt32(1),
+						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},
 						Cluster: rapi.RedisClusterState{
-							NumberOfMasters:           1,
+							NumberOfPrimaries:         1,
 							MinReplicationFactor:      1,
 							MaxReplicationFactor:      1,
 							NumberOfPods:              2,
@@ -413,7 +413,7 @@ func TestController_applyConfiguration(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "new master and slave to apply",
+			name: "new primary and replica to apply",
 			args: args{
 				updateFakeAdminFunc: func(adm *admin.Admin) {
 					adm.GetClusterInfosRet = admin.ClusterInfosRetType{
@@ -436,13 +436,13 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfMaster:    rapi.NewInt32(2),
+						NumberOfPrimaries: rapi.NewInt32(2),
 						ReplicationFactor: rapi.NewInt32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},
 						Cluster: rapi.RedisClusterState{
-							NumberOfMasters:           1,
+							NumberOfPrimaries:         1,
 							MinReplicationFactor:      1,
 							MaxReplicationFactor:      1,
 							NumberOfPods:              4,
@@ -480,43 +480,43 @@ func TestController_applyConfiguration(t *testing.T) {
 }
 
 func Test_getOldNodesToRemove(t *testing.T) {
-	redis1 := &redis.Node{ID: "redis1", Role: "slave", MasterReferent: "redis2", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
-	redis2 := &redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
-	redis3 := &redis.Node{ID: "redis3", Role: "master", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{2}}
-	redis4 := &redis.Node{ID: "redis4", Role: "master", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: redis.SlotSlice{3}}
-	redis5 := &redis.Node{ID: "redis5", Role: "slave", MasterReferent: "redis3", IP: "10.0.0.5", Pod: newPod("pod5", "node5")}
-	redis6 := &redis.Node{ID: "redis6", Role: "slave", MasterReferent: "redis4", IP: "10.0.0.6", Pod: newPod("pod6", "node6")}
+	redis1 := &redis.Node{ID: "redis1", Role: "replica", PrimaryReferent: "redis2", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
+	redis2 := &redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis3 := &redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{2}}
+	redis4 := &redis.Node{ID: "redis4", Role: "primary", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: redis.SlotSlice{3}}
+	redis5 := &redis.Node{ID: "redis5", Role: "replica", PrimaryReferent: "redis3", IP: "10.0.0.5", Pod: newPod("pod5", "node5")}
+	redis6 := &redis.Node{ID: "redis6", Role: "replica", PrimaryReferent: "redis4", IP: "10.0.0.6", Pod: newPod("pod6", "node6")}
 
 	type args struct {
-		curMasters redis.Nodes
-		newMasters redis.Nodes
-		nodes      redis.Nodes
+		curPrimaries redis.Nodes
+		newPrimaries redis.Nodes
+		nodes        redis.Nodes
 	}
 	tests := []struct {
-		name               string
-		args               args
-		wantRemovedMasters redis.Nodes
-		wantRemoveSlaves   redis.Nodes
+		name                 string
+		args                 args
+		wantRemovedPrimaries redis.Nodes
+		wantRemoveReplicas   redis.Nodes
 	}{
 		{
 			name: "basic test",
 			args: args{
-				curMasters: redis.Nodes{redis2, redis3, redis4},
-				newMasters: redis.Nodes{redis2, redis3},
-				nodes:      redis.Nodes{redis1, redis2, redis3, redis4, redis5, redis6},
+				curPrimaries: redis.Nodes{redis2, redis3, redis4},
+				newPrimaries: redis.Nodes{redis2, redis3},
+				nodes:        redis.Nodes{redis1, redis2, redis3, redis4, redis5, redis6},
 			},
-			wantRemovedMasters: redis.Nodes{redis4},
-			wantRemoveSlaves:   redis.Nodes{redis6},
+			wantRemovedPrimaries: redis.Nodes{redis4},
+			wantRemoveReplicas:   redis.Nodes{redis6},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRemovedMasters, gotRemoveSlaves := getOldNodesToRemove(tt.args.curMasters, tt.args.newMasters, tt.args.nodes)
-			if !reflect.DeepEqual(gotRemovedMasters, tt.wantRemovedMasters) {
-				t.Errorf("getOldNodesToRemove() gotRemovedMasters = %v, want %v", gotRemovedMasters, tt.wantRemovedMasters)
+			gotRemovedPrimaries, gotRemoveReplicas := getOldNodesToRemove(tt.args.curPrimaries, tt.args.newPrimaries, tt.args.nodes)
+			if !reflect.DeepEqual(gotRemovedPrimaries, tt.wantRemovedPrimaries) {
+				t.Errorf("getOldNodesToRemove() gotRemovedPrimaries = %v, want %v", gotRemovedPrimaries, tt.wantRemovedPrimaries)
 			}
-			if !reflect.DeepEqual(gotRemoveSlaves, tt.wantRemoveSlaves) {
-				t.Errorf("getOldNodesToRemove() gotRemoveSlaves = %v, want %v", gotRemoveSlaves, tt.wantRemoveSlaves)
+			if !reflect.DeepEqual(gotRemoveReplicas, tt.wantRemoveReplicas) {
+				t.Errorf("getOldNodesToRemove() gotRemoveReplicas = %v, want %v", gotRemoveReplicas, tt.wantRemoveReplicas)
 			}
 		})
 	}

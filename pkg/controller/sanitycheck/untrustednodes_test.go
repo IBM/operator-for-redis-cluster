@@ -18,10 +18,10 @@ func TestFixUntrustedNodes(t *testing.T) {
 	pod2 := newPod("pod2", "node2", "10.0.0.2")
 	pod3 := newPod("pod3", "node3", "10.0.0.3")
 	pod4 := newPod("pod3", "node4", "10.0.0.4")
-	redis1 := redis.Node{ID: "redis1", Role: "slave", IP: "10.0.0.1", Pod: pod1}
-	redis2 := redis.Node{ID: "redis2", Role: "master", IP: "10.0.0.2", Pod: pod2, Slots: redis.SlotSlice{1}}
-	redisUntrusted := redis.Node{ID: "redis3", FailStatus: []string{string(redis.NodeStatusHandshake)}, Role: "master", IP: "10.0.0.3", Pod: pod3, Slots: redis.SlotSlice{}}
-	redis4 := redis.Node{ID: "redis4", Role: "slave", IP: "10.0.0.3", Pod: pod3}
+	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Pod: pod1}
+	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: pod2, Slots: redis.SlotSlice{1}}
+	redisUntrusted := redis.Node{ID: "redis3", FailStatus: []string{string(redis.NodeStatusHandshake)}, Role: "primary", IP: "10.0.0.3", Pod: pod3, Slots: redis.SlotSlice{}}
+	redis4 := redis.Node{ID: "redis4", Role: "replica", IP: "10.0.0.3", Pod: pod3}
 	ctx := context.Background()
 
 	type args struct {

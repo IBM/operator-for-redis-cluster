@@ -38,11 +38,11 @@ type AdminInterface interface {
 	// AttachNodeToCluster command use to connect a Node to the cluster
 	// the connection will be done on a random node part of the connection pool
 	AttachNodeToCluster(ctx context.Context, addr string) error
-	// AttachSlaveToMaster attach a slave to a master node
-	AttachSlaveToMaster(ctx context.Context, slave *Node, master *Node) error
-	// DetachSlave detach a slave to its master
-	DetachSlave(ctx context.Context, slave *Node) error
-	// StartFailover execute the failover of the Redis Master corresponding to the addr
+	// AttachReplicaToPrimary attach a replica to a primary node
+	AttachReplicaToPrimary(ctx context.Context, replica *Node, primary *Node) error
+	// DetachReplica detach a replica to its primary
+	DetachReplica(ctx context.Context, replica *Node) error
+	// StartFailover execute the failover of the Redis Primary corresponding to the addr
 	StartFailover(ctx context.Context, addr string) error
 	// ForgetNode execute the Redis command to force the cluster to forgot the the Node
 	ForgetNode(ctx context.Context, id string) error
@@ -136,7 +136,7 @@ func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 
 	a.Connections().Add(ctx, addr)
 
-	glog.Infof("Node %s attached properly", addr)
+	glog.Infof("node %s attached properly", addr)
 	return nil
 }
 
@@ -203,7 +203,7 @@ func (a *Admin) GetClusterInfosSelected(ctx context.Context, addrs []string) (*C
 	return infos, clusterErr
 }
 
-// StartFailover used to force the failover of a specific redis master node
+// StartFailover used to force the failover of a specific redis primary node
 func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
@@ -215,35 +215,35 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 		return err
 	}
 
-	if me.Node.Role != redisMasterRole {
-		// if not a Master dont failover
+	if me.Node.Role != redisPrimaryRole {
+		// if not a Primary dont failover
 		return nil
 	}
 
-	slaves, err := selectMySlaves(me.Node, me.Friends)
+	replicas, err := selectMyReplicas(me.Node, me.Friends)
 	if err != nil {
-		return fmt.Errorf("Unable to found associated slaves, err:%s", err)
+		return fmt.Errorf("Unable to found associated replicas, err:%s", err)
 	}
 
-	if len(slaves) == 0 {
-		return fmt.Errorf("Master id:%s dont have associated slave", me.Node.ID)
+	if len(replicas) == 0 {
+		return fmt.Errorf("Primary id:%s dont have associated replica", me.Node.ID)
 	}
 
 	if glog.V(3) {
-		for _, slave := range slaves {
-			glog.Info("- Slave: ", slave.ID)
+		for _, replica := range replicas {
+			glog.Info("- Replica: ", replica.ID)
 		}
 	}
 
 	failoverTriggered := false
-	for _, aSlave := range slaves {
-		var slaveClient ClientInterface
-		if slaveClient, err = a.Connections().Get(ctx, aSlave.IPPort()); err != nil {
+	for _, aReplica := range replicas {
+		var replicaClient ClientInterface
+		if replicaClient, err = a.Connections().Get(ctx, aReplica.IPPort()); err != nil {
 			continue
 		}
 		var resp string
-		cmdErr := slaveClient.DoCmd(ctx, &resp, "CLUSTER", "FAILOVER")
-		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, aSlave.IPPort(), "Unable to execute Failover"); err != nil {
+		cmdErr := replicaClient.DoCmd(ctx, &resp, "CLUSTER", "FAILOVER")
+		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, aReplica.IPPort(), "Unable to execute Failover"); err != nil {
 			continue
 		}
 		failoverTriggered = true
@@ -267,8 +267,8 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 
 		glog.Info("waiting failover to be complete...")
 		time.Sleep(time.Second) // TODO: implement back-off like logic
-		// we should wait until all slots have been moved to the new master
-		// this is the only way to know that we can stop this master with no impact on the cluster
+		// we should wait until all slots have been moved to the new primary
+		// this is the only way to know that we can stop this primary with no impact on the cluster
 	}
 
 	return nil
@@ -284,21 +284,21 @@ func (a *Admin) ForgetNode(ctx context.Context, id string) error {
 		}
 		c, err := a.Connections().Get(ctx, nodeAddr)
 		if err != nil {
-			glog.Errorf("Node %s cannot forget node %s: %v", nodeAddr, id, err)
+			glog.Errorf("node %s cannot forget node %s: %v", nodeAddr, id, err)
 			continue
 		}
 
-		if IsSlave(nodeinfos.Node) && nodeinfos.Node.MasterReferent == id {
-			a.DetachSlave(ctx, nodeinfos.Node)
-			glog.V(2).Infof("detach slave id: %s of master: %s", nodeinfos.Node.ID, id)
+		if IsReplica(nodeinfos.Node) && nodeinfos.Node.PrimaryReferent == id {
+			a.DetachReplica(ctx, nodeinfos.Node)
+			glog.V(2).Infof("detach replica id: %s of primary: %s", nodeinfos.Node.ID, id)
 		}
 		var resp string
 		err = c.DoCmd(ctx, &resp, "CLUSTER", "FORGET", id)
 		_ = a.Connections().ValidateResp(ctx, &resp, err, nodeAddr, "Unable to execute FORGET command")
-		glog.V(6).Infof("Node %s forgot node %s:%s", nodeinfos.Node.ID, id, resp)
+		glog.V(6).Infof("node %s forgot node %s:%s", nodeinfos.Node.ID, id, resp)
 	}
 
-	glog.Infof("Forget node %s complete", id)
+	glog.Infof("forget node %s complete", id)
 	return nil
 }
 
@@ -472,44 +472,44 @@ func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *Node, slots 
 	return keyCount, nil
 }
 
-// AttachSlaveToMaster attach a slave to a master node
-func (a *Admin) AttachSlaveToMaster(ctx context.Context, slave *Node, master *Node) error {
-	c, err := a.Connections().Get(ctx, slave.IPPort())
+// AttachReplicaToPrimary attach a replica to a primary node
+func (a *Admin) AttachReplicaToPrimary(ctx context.Context, replica *Node, primary *Node) error {
+	c, err := a.Connections().Get(ctx, replica.IPPort())
 	if err != nil {
 		return err
 	}
 	var resp string
-	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "REPLICATE", master.ID)
-	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, slave.IPPort(), "Unable to run command REPLICATE"); err != nil {
+	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "REPLICATE", primary.ID)
+	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "Unable to run command REPLICATE"); err != nil {
 		return err
 	}
 
-	slave.SetReferentMaster(master.ID)
-	slave.SetRole(redisSlaveRole)
+	replica.SetPrimaryReferent(primary.ID)
+	replica.SetRole(redisReplicaRole)
 
 	return nil
 }
 
-// DetachSlave use to detach a slave from a master
-func (a *Admin) DetachSlave(ctx context.Context, slave *Node) error {
-	c, err := a.Connections().Get(ctx, slave.IPPort())
+// DetachReplica use to detach a replica from a primary
+func (a *Admin) DetachReplica(ctx context.Context, replica *Node) error {
+	c, err := a.Connections().Get(ctx, replica.IPPort())
 	if err != nil {
-		glog.Errorf("unable to get the connection for slave ID:%s, addr:%s , err:%v", slave.ID, slave.IPPort(), err)
+		glog.Errorf("unable to get the connection for replica ID:%s, addr:%s , err:%v", replica.ID, replica.IPPort(), err)
 		return err
 	}
 	var resp string
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "RESET", ResetSoft)
-	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, slave.IPPort(), "Cannot attach node to cluster"); err != nil {
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "Cannot attach node to cluster"); err != nil {
 		return err
 	}
 
-	if err = a.AttachNodeToCluster(ctx, slave.IPPort()); err != nil {
-		glog.Errorf("[DetachSlave] unable to AttachNodeToCluster for slave with id: %s addr:%s", slave.ID, slave.IPPort())
+	if err = a.AttachNodeToCluster(ctx, replica.IPPort()); err != nil {
+		glog.Errorf("[DetachReplica] unable to AttachNodeToCluster for replica with id: %s addr:%s", replica.ID, replica.IPPort())
 		return err
 	}
 
-	slave.SetReferentMaster("")
-	slave.SetRole(redisMasterRole)
+	replica.SetPrimaryReferent("")
+	replica.SetRole(redisPrimaryRole)
 
 	return nil
 }
@@ -539,9 +539,9 @@ func (a *Admin) FlushAll(ctx context.Context) {
 	err = c.DoCmd(ctx, nil, "FLUSHALL")
 }
 
-func selectMySlaves(me *Node, nodes Nodes) (Nodes, error) {
+func selectMyReplicas(me *Node, nodes Nodes) (Nodes, error) {
 	return nodes.GetNodesByFunc(func(n *Node) bool {
-		return n.MasterReferent == me.ID
+		return n.PrimaryReferent == me.ID
 	})
 }
 

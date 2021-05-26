@@ -84,7 +84,7 @@ func (r *RedisNode) Run(stop <-chan struct{}) error {
 
 func initKubeConfig(c *Config) (*rest.Config, error) {
 	if len(c.KubeConfigFile) > 0 {
-		return clientcmd.BuildConfigFromFlags(c.Master, c.KubeConfigFile) // out of cluster config
+		return clientcmd.BuildConfigFromFlags(c.Primary, c.KubeConfigFile) // out of cluster config
 	}
 	return rest.InClusterConfig()
 }
@@ -92,7 +92,7 @@ func initKubeConfig(c *Config) (*rest.Config, error) {
 func (r *RedisNode) init() (*Node, error) {
 	// Too fast restart of redis-server can result in slots lost
 	// This is due to a possible bug in Redis. Redis doesn't check that the node ID behind an IP is still the same after a disconnection/reconnection.
-	// And so the the slave reconnects and syncs to an empty node.
+	// And so the the replica reconnects and syncs to an empty node.
 	// Therefore, we need to wait for the possible failover to finish.
 	// 2 * nodetimeout for failed state detection, voting, and safety
 	time.Sleep(r.config.RedisStartDelay)
@@ -200,7 +200,7 @@ func (r *RedisNode) isClusterInitialization(currentIP string) ([]string, bool) {
 	}
 
 	if len(nodesAddr) == 1 && nodesAddr[0] == net.JoinHostPort(currentIP, r.config.Redis.ServerPort) {
-		// Init Master cluster
+		// Init Primary cluster
 		initCluster = true
 	}
 

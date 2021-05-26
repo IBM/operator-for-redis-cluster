@@ -12,20 +12,20 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 )
 
-func TestAssignSlave(t *testing.T) {
+func TestAssignReplica(t *testing.T) {
 	// TODO currently only test there is no error, more accurate testing is needed
-	masterRole := "master"
-	slaveRole := "slave"
+	primaryRole := "primary"
+	replicaRole := "replica"
 	ctx := context.Background()
-	redisNode1 := &redis.Node{ID: "1", Role: masterRole, IP: "1.1.1.1", Zone: "zone1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: newPod("pod1", "vm1")}
-	redisNode2 := &redis.Node{ID: "2", Role: masterRole, IP: "1.1.1.2", Zone: "zone2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: newPod("pod2", "vm2")}
-	redisNode3 := &redis.Node{ID: "3", Role: slaveRole, MasterReferent: "1", IP: "1.1.1.3", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "vm3")}
-	redisNode4 := &redis.Node{ID: "4", Role: slaveRole, MasterReferent: "1", IP: "1.1.1.4", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "vm4")}
-	redisNode5 := &redis.Node{ID: "5", Role: slaveRole, MasterReferent: "1", IP: "1.1.1.5", Zone: "zone1", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod5", "vm5")}
-	redisNode6 := &redis.Node{ID: "6", Role: masterRole, IP: "1.1.1.6", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod6", "vm6")}
-	redisNode7 := &redis.Node{ID: "7", Role: masterRole, IP: "1.1.1.7", Zone: "zone1", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: newPod("pod7", "vm7")}
-	redisNode8 := &redis.Node{ID: "8", Role: slaveRole, MasterReferent: "7", IP: "1.1.1.8", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod8", "vm8")}
-	redisNode9 := &redis.Node{ID: "9", Role: slaveRole, MasterReferent: "7", IP: "1.1.1.9", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod9", "vm9")}
+	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, IP: "1.1.1.1", Zone: "zone1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: newPod("pod1", "vm1")}
+	redisNode2 := &redis.Node{ID: "2", Role: primaryRole, IP: "1.1.1.2", Zone: "zone2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: newPod("pod2", "vm2")}
+	redisNode3 := &redis.Node{ID: "3", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.3", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "vm3")}
+	redisNode4 := &redis.Node{ID: "4", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.4", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "vm4")}
+	redisNode5 := &redis.Node{ID: "5", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.5", Zone: "zone1", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod5", "vm5")}
+	redisNode6 := &redis.Node{ID: "6", Role: primaryRole, IP: "1.1.1.6", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod6", "vm6")}
+	redisNode7 := &redis.Node{ID: "7", Role: primaryRole, IP: "1.1.1.7", Zone: "zone1", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: newPod("pod7", "vm7")}
+	redisNode8 := &redis.Node{ID: "8", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.8", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod8", "vm8")}
+	redisNode9 := &redis.Node{ID: "9", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.9", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod9", "vm9")}
 
 	nodes := redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode4, redisNode5, redisNode6, redisNode7, redisNode8, redisNode9}
 
@@ -71,24 +71,24 @@ func TestAssignSlave(t *testing.T) {
 		},
 	}
 
-	err := DispatchSlave(ctx, c, nodes, 2, admin.NewFakeAdmin())
+	err := DispatchReplica(ctx, c, nodes, 2, admin.NewFakeAdmin())
 	if err != nil {
 		t.Errorf("Unexpected error returned: %v", err)
 	}
 }
 
 func TestClassifyNodes(t *testing.T) {
-	masterRole := "master"
-	slaveRole := "slave"
-	redisNode1 := &redis.Node{ID: "1", Role: masterRole, IP: "1.1.1.1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: newPod("pod1", "vm1")}
-	redisNode2 := &redis.Node{ID: "2", Role: masterRole, IP: "1.1.1.2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: newPod("pod2", "vm2")}
-	redisNode3 := &redis.Node{ID: "3", Role: slaveRole, MasterReferent: "1", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "vm3")}
-	redisNode4 := &redis.Node{ID: "4", Role: slaveRole, MasterReferent: "1", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "vm4")}
-	redisNode5 := &redis.Node{ID: "5", Role: slaveRole, MasterReferent: "1", IP: "1.1.1.5", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod5", "vm5")}
-	redisNode6 := &redis.Node{ID: "6", Role: masterRole, IP: "1.1.1.6", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod6", "vm6")}
-	redisNode7 := &redis.Node{ID: "7", Role: masterRole, IP: "1.1.1.7", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: newPod("pod7", "vm7")}
-	redisNode8 := &redis.Node{ID: "8", Role: slaveRole, MasterReferent: "7", IP: "1.1.1.8", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod8", "vm8")}
-	redisNode9 := &redis.Node{ID: "9", Role: slaveRole, MasterReferent: "7", IP: "1.1.1.9", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod9", "vm9")}
+	primaryRole := "primary"
+	replicaRole := "replica"
+	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, IP: "1.1.1.1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: newPod("pod1", "vm1")}
+	redisNode2 := &redis.Node{ID: "2", Role: primaryRole, IP: "1.1.1.2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: newPod("pod2", "vm2")}
+	redisNode3 := &redis.Node{ID: "3", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "vm3")}
+	redisNode4 := &redis.Node{ID: "4", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "vm4")}
+	redisNode5 := &redis.Node{ID: "5", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.5", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod5", "vm5")}
+	redisNode6 := &redis.Node{ID: "6", Role: primaryRole, IP: "1.1.1.6", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod6", "vm6")}
+	redisNode7 := &redis.Node{ID: "7", Role: primaryRole, IP: "1.1.1.7", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: newPod("pod7", "vm7")}
+	redisNode8 := &redis.Node{ID: "8", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.8", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod8", "vm8")}
+	redisNode9 := &redis.Node{ID: "9", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.9", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod9", "vm9")}
 
 	nodes := redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode4, redisNode5, redisNode6, redisNode7, redisNode8, redisNode9}
 
@@ -98,8 +98,8 @@ func TestClassifyNodes(t *testing.T) {
 	tests := []struct {
 		name            string
 		args            args
-		wantMasters     redis.Nodes
-		wantSlaves      redis.Nodes
+		wantPrimaries   redis.Nodes
+		wantReplicas    redis.Nodes
 		wantNodesNoRole redis.Nodes
 	}{
 		{
@@ -107,8 +107,8 @@ func TestClassifyNodes(t *testing.T) {
 			args: args{
 				nodes: redis.Nodes{},
 			},
-			wantMasters:     redis.Nodes{},
-			wantSlaves:      redis.Nodes{},
+			wantPrimaries:   redis.Nodes{},
+			wantReplicas:    redis.Nodes{},
 			wantNodesNoRole: redis.Nodes{},
 		},
 		{
@@ -116,22 +116,22 @@ func TestClassifyNodes(t *testing.T) {
 			args: args{
 				nodes: nodes,
 			},
-			wantMasters:     redis.Nodes{redisNode1, redisNode2, redisNode7},
-			wantSlaves:      redis.Nodes{redisNode3, redisNode4, redisNode5, redisNode8, redisNode9},
+			wantPrimaries:   redis.Nodes{redisNode1, redisNode2, redisNode7},
+			wantReplicas:    redis.Nodes{redisNode3, redisNode4, redisNode5, redisNode8, redisNode9},
 			wantNodesNoRole: redis.Nodes{redisNode6},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotMasters, gotSlaves, gotMastersWithNoSlots := ClassifyNodesByRole(tt.args.nodes)
-			if !reflect.DeepEqual(gotMasters, tt.wantMasters) {
-				t.Errorf("ClassifyNodes() gotMasters = %v, want %v", gotMasters, tt.wantMasters)
+			gotPrimaries, gotReplicas, gotPrimariesWithNoSlots := ClassifyNodesByRole(tt.args.nodes)
+			if !reflect.DeepEqual(gotPrimaries, tt.wantPrimaries) {
+				t.Errorf("ClassifyNodes() gotPrimaries = %v, want %v", gotPrimaries, tt.wantPrimaries)
 			}
-			if !reflect.DeepEqual(gotSlaves, tt.wantSlaves) {
-				t.Errorf("ClassifyNodes() gotSlaves = %v, want %v", gotSlaves, tt.wantSlaves)
+			if !reflect.DeepEqual(gotReplicas, tt.wantReplicas) {
+				t.Errorf("ClassifyNodes() gotReplicas = %v, want %v", gotReplicas, tt.wantReplicas)
 			}
-			if !reflect.DeepEqual(gotMastersWithNoSlots, tt.wantNodesNoRole) {
-				t.Errorf("ClassifyNodes() gotMastersWithNoSlots = %v, want %v", gotMastersWithNoSlots, tt.wantNodesNoRole)
+			if !reflect.DeepEqual(gotPrimariesWithNoSlots, tt.wantNodesNoRole) {
+				t.Errorf("ClassifyNodes() gotPrimariesWithNoSlots = %v, want %v", gotPrimariesWithNoSlots, tt.wantNodesNoRole)
 			}
 		})
 	}

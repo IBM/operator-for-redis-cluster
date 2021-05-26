@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -14,11 +13,15 @@ import (
 )
 
 const (
-	// DefaultRedisPort define the default Redis Port
+	// DefaultRedisPort define the default redis port
 	DefaultRedisPort = "6379"
-	// RedisMasterRole redis role master
+	// redisPrimaryRole redis primary role
+	redisPrimaryRole = "primary"
+	// redisMasterRole redis master role (same as primary)
 	redisMasterRole = "master"
-	// RedisSlaveRole redis role slave
+	// redisReplicaRole redis replica role
+	redisReplicaRole = "replica"
+	// redisSlaveRole redis slave role (same as replica)
 	redisSlaveRole = "slave"
 )
 
@@ -50,7 +53,7 @@ type Node struct {
 	Role            string
 	Zone            string
 	LinkState       string
-	MasterReferent  string
+	PrimaryReferent string
 	FailStatus      []string
 	PingSent        int64
 	PongRecv        int64
@@ -100,16 +103,16 @@ func (n *Node) SetRole(flags string) error {
 	n.Role = "" // reset value before setting the new one
 	vals := strings.Split(flags, ",")
 	for _, val := range vals {
-		switch val {
-		case redisMasterRole:
-			n.Role = redisMasterRole
-		case redisSlaveRole:
-			n.Role = redisSlaveRole
+		if val == redisPrimaryRole || val == redisMasterRole {
+			n.Role = redisPrimaryRole
+		}
+		if val == redisReplicaRole || val == redisSlaveRole {
+			n.Role = redisReplicaRole
 		}
 	}
 
 	if n.Role == "" {
-		return errors.New("Node SetRole failed")
+		return fmt.Errorf("SetRole failed for node %s", n.ID)
 	}
 
 	return nil
@@ -118,16 +121,16 @@ func (n *Node) SetRole(flags string) error {
 // GetRole returns the Redis Cluster Node's role
 func (n *Node) GetRole() v1.RedisClusterNodeRole {
 	switch n.Role {
-	case redisMasterRole:
-		return v1.RedisClusterNodeRoleMaster
-	case redisSlaveRole:
-		return v1.RedisClusterNodeRoleSlave
+	case redisPrimaryRole:
+		return v1.RedisClusterNodeRolePrimary
+	case redisReplicaRole:
+		return v1.RedisClusterNodeRoleReplica
 	default:
-		if n.MasterReferent != "" {
-			return v1.RedisClusterNodeRoleSlave
+		if n.PrimaryReferent != "" {
+			return v1.RedisClusterNodeRoleReplica
 		}
 		if len(n.Slots) > 0 {
-			return v1.RedisClusterNodeRoleMaster
+			return v1.RedisClusterNodeRolePrimary
 		}
 	}
 
@@ -137,9 +140,9 @@ func (n *Node) GetRole() v1.RedisClusterNodeRole {
 // String string representation of a Instance
 func (n *Node) String() string {
 	if n.ServerStartTime.IsZero() {
-		return fmt.Sprintf("{Redis ID: %s, role: %s, master: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d}", n.ID, n.GetRole(), n.MasterReferent, n.LinkState, n.FailStatus, n.IPPort(), SlotSlice(n.Slots), len(n.MigratingSlots), len(n.ImportingSlots))
+		return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), SlotSlice(n.Slots), len(n.MigratingSlots), len(n.ImportingSlots))
 	}
-	return fmt.Sprintf("{Redis ID: %s, role: %s, master: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d, ServerStartTime: %s}", n.ID, n.GetRole(), n.MasterReferent, n.LinkState, n.FailStatus, n.IPPort(), SlotSlice(n.Slots), len(n.MigratingSlots), len(n.ImportingSlots), n.ServerStartTime.Format("2006-01-02 15:04:05"))
+	return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d, ServerStartTime: %s}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), SlotSlice(n.Slots), len(n.MigratingSlots), len(n.ImportingSlots), n.ServerStartTime.Format("2006-01-02 15:04:05"))
 }
 
 // IPPort returns join Ip Port string
@@ -190,7 +193,7 @@ func (n *Node) SetLinkStatus(status string) error {
 	}
 
 	if n.LinkState == "" {
-		return errors.New("Node SetLinkStatus failed")
+		return fmt.Errorf("SetLinkStatus failed for node %s", n.ID)
 	}
 
 	return nil
@@ -216,13 +219,13 @@ func (n *Node) SetFailureStatus(flags string) {
 	}
 }
 
-// SetReferentMaster set the redis node parent referent
-func (n *Node) SetReferentMaster(ref string) {
-	n.MasterReferent = ""
+// SetPrimaryReferent set the redis node parent referent
+func (n *Node) SetPrimaryReferent(ref string) {
+	n.PrimaryReferent = ""
 	if ref == "-" {
 		return
 	}
-	n.MasterReferent = ref
+	n.PrimaryReferent = ref
 }
 
 // TotalSlots return the total number of slot
@@ -240,25 +243,25 @@ func (n *Node) HasStatus(flag string) bool {
 	return false
 }
 
-// IsMasterWithNoSlot anonymous function for searching Master Node with no slot
-var IsMasterWithNoSlot = func(n *Node) bool {
-	if (n.GetRole() == v1.RedisClusterNodeRoleMaster) && (n.TotalSlots() == 0) {
+// IsPrimaryWithNoSlot anonymous function for searching Primary Node with no slot
+var IsPrimaryWithNoSlot = func(n *Node) bool {
+	if (n.GetRole() == v1.RedisClusterNodeRolePrimary) && (n.TotalSlots() == 0) {
 		return true
 	}
 	return false
 }
 
-// IsMasterWithSlot anonymous function for searching Master Node withslot
-var IsMasterWithSlot = func(n *Node) bool {
-	if (n.GetRole() == v1.RedisClusterNodeRoleMaster) && (n.TotalSlots() > 0) {
+// IsPrimaryWithSlot anonymous function for searching Primary Node withslot
+var IsPrimaryWithSlot = func(n *Node) bool {
+	if (n.GetRole() == v1.RedisClusterNodeRolePrimary) && (n.TotalSlots() > 0) {
 		return true
 	}
 	return false
 }
 
-// IsSlave anonymous function for searching Slave Node
-var IsSlave = func(n *Node) bool {
-	return n.GetRole() == v1.RedisClusterNodeRoleSlave
+// IsReplica anonymous function for searching Replica Node
+var IsReplica = func(n *Node) bool {
+	return n.GetRole() == v1.RedisClusterNodeRoleReplica
 }
 
 // SortNodes sort Nodes and return the sorted Nodes

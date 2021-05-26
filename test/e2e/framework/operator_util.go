@@ -23,7 +23,7 @@ import (
 )
 
 // NewRedisCluster builds and returns a new RedisCluster instance
-func NewRedisCluster(name, namespace, tag string, nbMaster, replication int32) *rapi.RedisCluster {
+func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) *rapi.RedisCluster {
 	return &rapi.RedisCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       rapi.ResourceKind,
@@ -35,7 +35,7 @@ func NewRedisCluster(name, namespace, tag string, nbMaster, replication int32) *
 		},
 		Spec: rapi.RedisClusterSpec{
 			AdditionalLabels:  map[string]string{"foo": "bar"},
-			NumberOfMaster:    &nbMaster,
+			NumberOfPrimaries: &nbPrimary,
 			ReplicationFactor: &replication,
 			PodTemplate: &v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -167,8 +167,8 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 			return err
 		}
 
-		if cluster.Status.Cluster.NumberOfMasters != *cluster.Spec.NumberOfMaster {
-			return LogAndReturnErrorf("RedisCluster %s wrong configuration number of master spec: %d, current:%d", cluster.Name, *cluster.Spec.NumberOfMaster, cluster.Status.Cluster.NumberOfMasters)
+		if cluster.Status.Cluster.NumberOfPrimaries != *cluster.Spec.NumberOfPrimaries {
+			return LogAndReturnErrorf("RedisCluster %s has incorrect number of primary, expected: %d - current:%d", cluster.Name, *cluster.Spec.NumberOfPrimaries, cluster.Status.Cluster.NumberOfPrimaries)
 		}
 
 		if cluster.Spec.ReplicationFactor == nil {
@@ -176,15 +176,15 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 		}
 
 		if cluster.Status.Cluster.MinReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s wrong configuration replication factor: %v, current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MinReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s has incorrect min replication factor, expected: %v - current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MinReplicationFactor)
 		}
 
 		if cluster.Status.Cluster.MaxReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s wrong configuration number of master spec: %d, wanted: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s has incorrect max replication factor, expected: %d - current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
 		}
 
 		if cluster.Status.Cluster.Status != rapi.ClusterStatusOK {
-			return LogAndReturnErrorf("RedisCluster %s status not OK, current value:%s", cluster.Name, cluster.Status.Cluster.Status)
+			return LogAndReturnErrorf("RedisCluster %s status is not OK, current value: %s", cluster.Name, cluster.Status.Cluster.Status)
 		}
 
 		return nil
@@ -192,16 +192,16 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 }
 
 // HOUpdateConfigRedisCluster is an higher order func that returns the func to update the RedisCluster configuration
-func HOUpdateConfigRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCluster, nbmaster, replicas *int32) func() error {
+func HOUpdateConfigRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCluster, nbprimary, replicas *int32) func() error {
 	return func() error {
 		cluster, err := client.RedisoperatorV1().RedisClusters(rediscluster.Namespace).Get(rediscluster.Name, metav1.GetOptions{})
 		if err != nil {
 			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
 		}
-		if nbmaster != nil {
-			rediscluster.Spec.NumberOfMaster = nbmaster
-			cluster.Spec.NumberOfMaster = nbmaster
+		if nbprimary != nil {
+			rediscluster.Spec.NumberOfPrimaries = nbprimary
+			cluster.Spec.NumberOfPrimaries = nbprimary
 		}
 		if replicas != nil {
 			rediscluster.Spec.ReplicationFactor = replicas

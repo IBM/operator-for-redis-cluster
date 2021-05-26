@@ -73,9 +73,9 @@ func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterfa
 
 // manageRollingUpdate used to manage properly a cluster rolling update if the pod template spec has changed
 func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (bool, error) {
-	nbRequirePodForSpec := *cluster.Spec.NumberOfMaster * (1 + *cluster.Spec.ReplicationFactor)
+	nbRequiredPodForSpec := *cluster.Spec.NumberOfPrimaries * (1 + *cluster.Spec.ReplicationFactor)
 	nbPodByNodeMigration := 1 + *cluster.Spec.ReplicationFactor
-	nbPodToCreate := nbRequirePodForSpec + nbPodByNodeMigration - cluster.Status.Cluster.NumberOfPods
+	nbPodToCreate := nbRequiredPodForSpec + nbPodByNodeMigration - cluster.Status.Cluster.NumberOfPods
 	if nbPodToCreate > 0 {
 		for i := int32(0); i < nbPodToCreate; i++ {
 			_, err := c.podControl.CreatePod(cluster)
@@ -103,48 +103,48 @@ func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminI
 		}
 		return !comparePodSpecMD5Hash(clusterPodSpecHash, n.Pod)
 	})
-	newMasterNodes, newSlaveNodes, newMasterNodesNoSlots := clustering.ClassifyNodesByRole(newNodes)
-	oldMasterNodes, oldSlaveNodes, _ := clustering.ClassifyNodesByRole(oldNodes)
+	newPrimaryNodes, newReplicaNodes, newPrimaryNodesNoSlots := clustering.ClassifyNodesByRole(newNodes)
+	oldPrimaryNodes, oldReplicaNodes, _ := clustering.ClassifyNodesByRole(oldNodes)
 
-	selectedMasters, selectedNewMasters, err := clustering.SelectMastersToReplace(oldMasterNodes, newMasterNodes, newMasterNodesNoSlots, *cluster.Spec.NumberOfMaster, 1)
+	selectedPrimaries, selectedNewPrimaries, err := clustering.SelectPrimariesToReplace(oldPrimaryNodes, newPrimaryNodes, newPrimaryNodesNoSlots, *cluster.Spec.NumberOfPrimaries, 1)
 	if err != nil {
 		return false, err
 	}
-	currentSlaves := append(oldSlaveNodes, newSlaveNodes...)
-	futureSlaves := newMasterNodesNoSlots.FilterByFunc(func(n *redis.Node) bool {
-		for _, newMaster := range selectedNewMasters {
-			if n.ID == newMaster.ID {
+	currentReplicas := append(oldReplicaNodes, newReplicaNodes...)
+	futureReplicas := newPrimaryNodesNoSlots.FilterByFunc(func(n *redis.Node) bool {
+		for _, newPrimary := range selectedNewPrimaries {
+			if n.ID == newPrimary.ID {
 				return false
 			}
 		}
 		return true
 	})
 
-	masterToSlaves, err := clustering.PlaceSlaves(rCluster, selectedMasters, currentSlaves, futureSlaves, *cluster.Spec.ReplicationFactor)
+	primaryToReplicas, err := clustering.PlaceReplicas(rCluster, selectedPrimaries, currentReplicas, futureReplicas, *cluster.Spec.ReplicationFactor)
 	if err != nil {
-		glog.Errorf("unable to place slaves: %v", err)
+		glog.Errorf("unable to place replicas: %v", err)
 		return false, err
 	}
 	cluster.Status.Cluster.NodesPlacement = rapi.NodesPlacementInfoOptimal
 
-	if err = clustering.AttachSlavesToMaster(ctx, rCluster, admin, masterToSlaves); err != nil {
-		glog.Error("unable to dispatch slave on new master, err:", err)
+	if err = clustering.AttachReplicasToPrimary(ctx, rCluster, admin, primaryToReplicas); err != nil {
+		glog.Error("unable to dispatch replica on new primary, err:", err)
 		return false, err
 	}
 
-	currentMasters := append(oldMasterNodes, newMasterNodes...)
-	allMasters := append(currentMasters, selectedNewMasters...)
-	// now we can move slot from old master to new master
-	if err = clustering.DispatchSlotsToNewMasters(ctx, rCluster, admin, selectedMasters, currentMasters, allMasters); err != nil {
-		glog.Error("unable to dispatch slot on new master, err:", err)
+	currentPrimaries := append(oldPrimaryNodes, newPrimaryNodes...)
+	allPrimaries := append(currentPrimaries, selectedNewPrimaries...)
+	// now we can move slot from old primary to new primary
+	if err = clustering.DispatchSlotsToNewPrimaries(ctx, rCluster, admin, selectedPrimaries, currentPrimaries, allPrimaries); err != nil {
+		glog.Error("unable to dispatch slot on new primary, err:", err)
 		return false, err
 	}
 
-	removedMasters, removeSlaves := getOldNodesToRemove(currentMasters, selectedMasters, nodes)
+	removedPrimaries, removeReplicas := getOldNodesToRemove(currentPrimaries, selectedPrimaries, nodes)
 
-	nodesToDelete, err := detachAndForgetNodes(ctx, admin, removedMasters, removeSlaves)
+	nodesToDelete, err := detachAndForgetNodes(ctx, admin, removedPrimaries, removeReplicas)
 	if err != nil {
-		glog.Error("unable to detach and forget old masters and associated slaves, err:", err)
+		glog.Error("unable to detach and forget old primaries and associated replicas, err:", err)
 		return false, err
 	}
 
@@ -170,23 +170,23 @@ func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminIn
 		}
 	}
 
-	if slavesOfSlave, ok := checkSlavesOfSlave(cluster); !ok {
-		glog.V(6).Info("checkSlavesOfSlave NOT OK")
-		c.removeSlavesOfSlave(ctx, admin, cluster, nodes, slavesOfSlave)
+	if replicasOfReplica, ok := checkReplicasOfReplica(cluster); !ok {
+		glog.V(6).Info("checkReplicasOfReplica NOT OK")
+		c.removeReplicasOfReplica(ctx, admin, cluster, nodes, replicasOfReplica)
 		return true, nil
 	}
 
-	if nbMasterToDelete, ok := checkNumberOfMasters(cluster); !ok {
-		glog.V(6).Info("checkNumberOfMasters NOT OK")
-		if err := c.scaleDownMasters(ctx, admin, cluster, newCluster, nodes, nbMasterToDelete); err != nil {
+	if nbPrimaryToDelete, ok := checkNumberOfPrimaries(cluster); !ok {
+		glog.V(6).Info("checkNumberOfPrimaries NOT OK")
+		if err := c.scaleDownPrimaries(ctx, admin, cluster, newCluster, nodes, nbPrimaryToDelete); err != nil {
 			return false, err
 		}
 
 	}
 
-	if masterToSlaves, ok := checkReplicationFactor(cluster); !ok {
+	if primaryToReplicas, ok := checkReplicationFactor(cluster); !ok {
 		glog.V(6).Info("checkReplicationFactor NOT OK")
-		if err := c.reconcileReplicationFactor(ctx, admin, cluster, newCluster, nodes, masterToSlaves); err != nil {
+		if err := c.reconcileReplicationFactor(ctx, admin, cluster, newCluster, nodes, primaryToReplicas); err != nil {
 			return false, err
 		}
 	}
@@ -194,57 +194,57 @@ func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminIn
 	return false, nil
 }
 
-func (c *Controller) removeSlavesOfSlave(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, nodes redis.Nodes, slavesOfSlave map[string][]*rapi.RedisClusterNode) {
-	// Currently the algorithm assumes redis is able to attach a slave to another slave.
-	// In practice, we detach the slaves and the controller reassigns the slave to a master if needed.
-	for _, slaves := range slavesOfSlave {
-		for _, slave := range slaves {
-			node, err := nodes.GetNodeByID(slave.ID)
+func (c *Controller) removeReplicasOfReplica(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, nodes redis.Nodes, replicasOfReplica map[string][]*rapi.RedisClusterNode) {
+	// Currently the algorithm assumes redis is able to attach a replica to another replica.
+	// In practice, we detach the replicas and the controller reassigns the replica to a primary if needed.
+	for _, replicas := range replicasOfReplica {
+		for _, replica := range replicas {
+			node, err := nodes.GetNodeByID(replica.ID)
 			if err != nil {
-				glog.Errorf("unable to find node with ID %s: %v", slave.ID, err)
-			} else if err := admin.DetachSlave(ctx, node); err != nil {
-				glog.Errorf("unable to detach slave with ID %s: %v", node.ID, err)
-			} else if err := c.podControl.DeletePod(cluster, slave.PodName); err != nil {
-				glog.Errorf("unable to delete pod %s corresponding to slave with the ID %s: %v", slave.PodName, node.ID, err)
+				glog.Errorf("unable to find node with ID %s: %v", replica.ID, err)
+			} else if err := admin.DetachReplica(ctx, node); err != nil {
+				glog.Errorf("unable to detach replica with ID %s: %v", node.ID, err)
+			} else if err := c.podControl.DeletePod(cluster, replica.PodName); err != nil {
+				glog.Errorf("unable to delete pod %s corresponding to replica with the ID %s: %v", replica.PodName, node.ID, err)
 			}
 		}
 	}
 }
 
-func (c *Controller) scaleDownMasters(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, newCluster *redis.Cluster, nodes redis.Nodes, nbMasterToDelete int32) error {
-	newNumberOfMaster := cluster.Status.Cluster.NumberOfMasters
+func (c *Controller) scaleDownPrimaries(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, newCluster *redis.Cluster, nodes redis.Nodes, nbPrimaryToDelete int32) error {
+	newNumberOfPrimaries := cluster.Status.Cluster.NumberOfPrimaries
 
-	// Decrease the number of masters by one in order to limit the impact on the client
-	if nbMasterToDelete > 0 {
-		newNumberOfMaster--
+	// Decrease the number of primaries by one in order to limit the impact on the client
+	if nbPrimaryToDelete > 0 {
+		newNumberOfPrimaries--
 	}
 
-	// Create the new masters
-	newMasters, curMasters, allMaster, err := clustering.SelectMasters(newCluster, nodes, newNumberOfMaster)
+	// Create the new primaries
+	newPrimaries, currPrimaries, allPrimary, err := clustering.SelectPrimaries(newCluster, nodes, newNumberOfPrimaries)
 	if err != nil {
-		glog.Errorf("error while dispatching slots to masters: %v", err)
+		glog.Errorf("error while dispatching slots to primaries: %v", err)
 		cluster.Status.Cluster.Status = rapi.ClusterStatusKO
 		newCluster.Status = rapi.ClusterStatusKO
 		return err
 	}
 
-	// Dispatch slots to the new masters
-	if err = clustering.DispatchSlotsToNewMasters(ctx, newCluster, admin, newMasters, curMasters, allMaster); err != nil {
-		glog.Errorf("unable to dispatch slot to new master: %v", err)
+	// Dispatch slots to the new primaries
+	if err = clustering.DispatchSlotsToNewPrimaries(ctx, newCluster, admin, newPrimaries, currPrimaries, allPrimary); err != nil {
+		glog.Errorf("unable to dispatch slot to new primary: %v", err)
 		return err
 	}
 
-	// Get old masters and slaves to be removed
-	removedMasters, removeSlaves := getOldNodesToRemove(curMasters, newMasters, nodes)
+	// Get old primaries and replicas to be removed
+	removedPrimaries, removedReplicas := getOldNodesToRemove(currPrimaries, newPrimaries, nodes)
 
 	// Detach and forget nodes to be removed
-	if _, err = detachAndForgetNodes(ctx, admin, removedMasters, removeSlaves); err != nil {
-		glog.Errorf("unable to detach and forget old masters: %v", err)
+	if _, err = detachAndForgetNodes(ctx, admin, removedPrimaries, removedReplicas); err != nil {
+		glog.Errorf("unable to detach and forget old primaries: %v", err)
 		return err
 	}
 
 	// Delete nodes
-	nodesToDelete := append(removedMasters, removeSlaves...)
+	nodesToDelete := append(removedPrimaries, removedReplicas...)
 	var errs []error
 	for _, node := range nodesToDelete {
 		if node.Pod != nil {
@@ -259,37 +259,37 @@ func (c *Controller) scaleDownMasters(ctx context.Context, admin redis.AdminInte
 	return nil
 }
 
-func (c *Controller) reconcileReplicationFactor(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes, masterToSlaves map[string][]string) error {
+func (c *Controller) reconcileReplicationFactor(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes, primaryToReplicas map[string][]string) error {
 	var errs []error
-	var slaves redis.Nodes
-	for _, slaveIDs := range masterToSlaves {
-		for _, slaveID := range slaveIDs {
-			slave, err := rCluster.GetNodeByID(slaveID)
+	var replicas redis.Nodes
+	for _, replicaIDs := range primaryToReplicas {
+		for _, replicaID := range replicaIDs {
+			replica, err := rCluster.GetNodeByID(replicaID)
 			if err != nil {
 				errs = append(errs, err)
 			}
-			slaves = append(slaves, slave)
+			replicas = append(replicas, replica)
 		}
 	}
-	for masterID, slaveIDs := range masterToSlaves {
-		diff := int32(len(slaveIDs)) - *cluster.Spec.ReplicationFactor
+	for primaryID, replicaIDs := range primaryToReplicas {
+		diff := int32(len(replicaIDs)) - *cluster.Spec.ReplicationFactor
 		if diff < 0 {
-			// not enough slaves on this master
-			if err := c.attachSlavesToMaster(ctx, rCluster, admin, masterID, nodes, -diff); err != nil {
+			// not enough replicas on this primary
+			if err := c.attachReplicasToPrimary(ctx, rCluster, admin, primaryID, nodes, -diff); err != nil {
 				errs = append(errs, err)
 			}
 		}
 		if diff > 0 {
-			var slaveNodes redis.Nodes
-			for _, slaveID := range slaveIDs {
-				slave, err := rCluster.GetNodeByID(slaveID)
+			var replicaNodes redis.Nodes
+			for _, replicaID := range replicaIDs {
+				replica, err := rCluster.GetNodeByID(replicaID)
 				if err != nil {
 					errs = append(errs, err)
 				}
-				slaveNodes = append(slaveNodes, slave)
+				replicaNodes = append(replicaNodes, replica)
 			}
-			// too many slaves on this master
-			if err := c.removeSlavesFromMaster(ctx, admin, cluster, rCluster, masterID, slaveNodes, slaves, diff); err != nil {
+			// too many replicas on this primary
+			if err := c.removeReplicasFromPrimary(ctx, admin, cluster, rCluster, primaryID, replicaNodes, replicas, diff); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -297,15 +297,15 @@ func (c *Controller) reconcileReplicationFactor(ctx context.Context, admin redis
 	return errors.NewAggregate(errs)
 }
 
-func (c *Controller) removeSlavesFromMaster(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, newCluster *redis.Cluster, masterID string, slaves redis.Nodes, allSlaves redis.Nodes, diff int32) error {
+func (c *Controller) removeReplicasFromPrimary(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, newCluster *redis.Cluster, primaryID string, replicas redis.Nodes, allReplicas redis.Nodes, diff int32) error {
 	var errs []error
-	// select a slave to be removed
-	nodesToDelete, err := selectSlavesToDelete(newCluster, masterID, slaves, allSlaves, diff)
+	// select a replica to be removed
+	nodesToDelete, err := selectReplicasToDelete(newCluster, primaryID, replicas, allReplicas, diff)
 	if err != nil {
 		return err
 	}
 	for _, node := range nodesToDelete {
-		admin.DetachSlave(ctx, node)
+		admin.DetachReplica(ctx, node)
 		if node.Pod != nil {
 			if err := c.podControl.DeletePod(cluster, node.Pod.Name); err != nil {
 				errs = append(errs, err)
@@ -315,20 +315,20 @@ func (c *Controller) removeSlavesFromMaster(ctx context.Context, admin redis.Adm
 	return errors.NewAggregate(errs)
 }
 
-func (c *Controller) attachSlavesToMaster(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, masterID string, nodes redis.Nodes, diff int32) error {
+func (c *Controller) attachReplicasToPrimary(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, primaryID string, nodes redis.Nodes, diff int32) error {
 	var errs []error
-	// get the master node
-	master, err := nodes.GetNodeByID(masterID)
+	// get the primary node
+	primary, err := nodes.GetNodeByID(primaryID)
 	if err != nil {
 		return err
 	}
-	// find an available redis nodes to be the new slaves
-	slaves, err := getNewSlaves(cluster, nodes, diff)
+	// find an available redis nodes to be the new replicas
+	replicas, err := getNewReplicas(cluster, nodes, diff)
 	if err != nil {
 		return err
 	}
-	for _, slave := range slaves {
-		if err = admin.AttachSlaveToMaster(ctx, slave, master); err != nil {
+	for _, replica := range replicas {
+		if err = admin.AttachReplicaToPrimary(ctx, replica, primary); err != nil {
 			glog.Errorf("error during reconcileReplicationFactor")
 			errs = append(errs, err)
 		}
@@ -336,33 +336,33 @@ func (c *Controller) attachSlavesToMaster(ctx context.Context, cluster *redis.Cl
 	return errors.NewAggregate(errs)
 }
 
-func getOldNodesToRemove(curMasters, newMasters, nodes redis.Nodes) (removedMasters, removeSlaves redis.Nodes) {
-	removedMasters = redis.Nodes{}
-	for _, node := range curMasters {
-		if _, err := newMasters.GetNodeByID(node.ID); err != nil {
-			removedMasters = append(removedMasters, node)
+func getOldNodesToRemove(currPrimaries, newPrimaries, nodes redis.Nodes) (removedPrimaries, removeReplicas redis.Nodes) {
+	removedPrimaries = redis.Nodes{}
+	for _, node := range currPrimaries {
+		if _, err := newPrimaries.GetNodeByID(node.ID); err != nil {
+			removedPrimaries = append(removedPrimaries, node)
 		}
 	}
 
-	removeSlaves = redis.Nodes{}
-	for _, master := range removedMasters {
-		slaves := nodes.FilterByFunc(func(node *redis.Node) bool {
-			return redis.IsSlave(node) && (node.MasterReferent == master.ID)
+	removeReplicas = redis.Nodes{}
+	for _, primary := range removedPrimaries {
+		replicas := nodes.FilterByFunc(func(node *redis.Node) bool {
+			return redis.IsReplica(node) && (node.PrimaryReferent == primary.ID)
 		})
-		removeSlaves = append(removeSlaves, slaves...)
+		removeReplicas = append(removeReplicas, replicas...)
 	}
 
-	return removedMasters, removeSlaves
+	return removedPrimaries, removeReplicas
 }
 
-func detachAndForgetNodes(ctx context.Context, admin redis.AdminInterface, masters, slaves redis.Nodes) (redis.Nodes, error) {
-	for _, node := range slaves {
-		if err := admin.DetachSlave(ctx, node); err != nil {
-			glog.Errorf("unable to detach the slave with ID %s: %v", node.ID, err)
+func detachAndForgetNodes(ctx context.Context, admin redis.AdminInterface, primaries, replicas redis.Nodes) (redis.Nodes, error) {
+	for _, node := range replicas {
+		if err := admin.DetachReplica(ctx, node); err != nil {
+			glog.Errorf("unable to detach the replica with ID %s: %v", node.ID, err)
 		}
 	}
 
-	removedNodes := append(masters, slaves...)
+	removedNodes := append(primaries, replicas...)
 	for _, node := range removedNodes {
 		if err := admin.ForgetNode(ctx, node.ID); err != nil {
 			glog.Errorf("unable to forget the node with ID %s: %v", node.ID, err)
@@ -371,97 +371,97 @@ func detachAndForgetNodes(ctx context.Context, admin redis.AdminInterface, maste
 	return removedNodes, nil
 }
 
-func getNewSlaves(cluster *redis.Cluster, nodes redis.Nodes, nbSlavedNeeded int32) (redis.Nodes, error) {
+func getNewReplicas(cluster *redis.Cluster, nodes redis.Nodes, nbReplicadNeeded int32) (redis.Nodes, error) {
 	selection := redis.Nodes{}
-	currentSlaves := redis.Nodes{}
-	candidateSlaves := redis.Nodes{}
+	currentReplicas := redis.Nodes{}
+	candidateReplicas := redis.Nodes{}
 
-	if nbSlavedNeeded <= 0 {
+	if nbReplicadNeeded <= 0 {
 		return selection, nil
 	}
 
 	for _, node := range nodes {
-		if redis.IsSlave(node) {
-			currentSlaves = append(currentSlaves, node)
+		if redis.IsReplica(node) {
+			currentReplicas = append(currentReplicas, node)
 		}
-		if redis.IsMasterWithNoSlot(node) {
-			candidateSlaves = append(candidateSlaves, node)
+		if redis.IsPrimaryWithNoSlot(node) {
+			candidateReplicas = append(candidateReplicas, node)
 		}
 	}
 	nodeAdded := false
-	for len(selection) < int(nbSlavedNeeded) && !nodeAdded {
+	for len(selection) < int(nbReplicadNeeded) && !nodeAdded {
 		i := 0
-		for _, candidate := range candidateSlaves {
-			if clustering.ZonesBalanced(cluster, candidate, currentSlaves) {
+		for _, candidate := range candidateReplicas {
+			if clustering.ZonesBalanced(cluster, candidate, currentReplicas) {
 				nodeAdded = true
 				selection = append(selection, candidate)
 			} else {
-				candidateSlaves[i] = candidate
+				candidateReplicas[i] = candidate
 				i++
 			}
-			if len(selection) >= int(nbSlavedNeeded) {
+			if len(selection) >= int(nbReplicadNeeded) {
 				return selection, nil
 			}
 		}
-		candidateSlaves = candidateSlaves[:i]
+		candidateReplicas = candidateReplicas[:i]
 	}
 	if !nodeAdded {
-		for _, candidate := range candidateSlaves {
+		for _, candidate := range candidateReplicas {
 			selection = append(selection, candidate)
-			if len(selection) >= int(nbSlavedNeeded) {
+			if len(selection) >= int(nbReplicadNeeded) {
 				return selection, nil
 			}
 		}
 	}
-	return selection, fmt.Errorf("insufficient number of slaves - expected: %v, actual: %v", nbSlavedNeeded, len(selection))
+	return selection, fmt.Errorf("insufficient number of replicas - expected: %v, actual: %v", nbReplicadNeeded, len(selection))
 }
 
-func removeSlaveFromZone(slave *redis.Node, zoneToSlaves map[string]redis.Nodes) {
-	for zone, slaves := range zoneToSlaves {
-		for i, s := range slaves {
-			if slave == s {
-				zoneToSlaves[zone][i] = zoneToSlaves[zone][len(zoneToSlaves[zone])-1]
-				zoneToSlaves[zone] = zoneToSlaves[zone][:len(zoneToSlaves[zone])-1]
+func removeReplicaFromZone(replica *redis.Node, zoneToReplicas map[string]redis.Nodes) {
+	for zone, replicas := range zoneToReplicas {
+		for i, s := range replicas {
+			if replica == s {
+				zoneToReplicas[zone][i] = zoneToReplicas[zone][len(zoneToReplicas[zone])-1]
+				zoneToReplicas[zone] = zoneToReplicas[zone][:len(zoneToReplicas[zone])-1]
 				return
 			}
 		}
 	}
 }
 
-func selectSlavesToDelete(cluster *redis.Cluster, masterID string, masterSlaves redis.Nodes, allSlaves redis.Nodes, nbSlavesToDelete int32) (redis.Nodes, error) {
+func selectReplicasToDelete(cluster *redis.Cluster, primaryID string, primaryReplicas redis.Nodes, allReplicas redis.Nodes, nbReplicasToDelete int32) (redis.Nodes, error) {
 	selection := redis.Nodes{}
-	masterNode, err := cluster.GetNodeByID(masterID)
+	primaryNode, err := cluster.GetNodeByID(primaryID)
 	if err != nil {
 		return selection, err
 	}
-	for len(selection) < int(nbSlavesToDelete) {
-		if removeSlavesByZone(cluster, &selection, masterNode, masterSlaves, allSlaves, nbSlavesToDelete) {
+	for len(selection) < int(nbReplicasToDelete) {
+		if removeReplicasByZone(cluster, &selection, primaryNode, primaryReplicas, allReplicas, nbReplicasToDelete) {
 			return selection, nil
 		}
 	}
 	return selection, nil
 }
 
-func sameZoneAsMaster(selection *redis.Nodes, master *redis.Node, slaves redis.Nodes, zoneToSlaves map[string]redis.Nodes) bool {
-	for _, slave := range slaves {
-		if master.Zone == slave.Zone {
-			addToSelection(selection, slave, zoneToSlaves)
+func sameZoneAsPrimary(selection *redis.Nodes, primary *redis.Node, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes) bool {
+	for _, replica := range replicas {
+		if primary.Zone == replica.Zone {
+			addToSelection(selection, replica, zoneToReplicas)
 			return true
 		}
 	}
 	return false
 }
 
-func removeSlavesInLargestZone(selection *redis.Nodes, slaves redis.Nodes, zoneToSlaves map[string]redis.Nodes, nbSlavesToDelete int32) bool {
+func removeReplicasInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, nbReplicasToDelete int32) bool {
 	nodeAdded := false
-	largestZoneSize := largestZone(zoneToSlaves)
-	for _, slave := range slaves {
-		// check if this slave is in the largest zone and there are no other slave zones of equal size
-		if len(zoneToSlaves[slave.Zone]) == largestZoneSize && isLargestZone(zoneToSlaves, largestZoneSize) {
-			// add it to the selection of slaves to delete and remove it from zoneToSlaves
+	largestZoneSize := largestZone(zoneToReplicas)
+	for _, replica := range replicas {
+		// check if this replica is in the largest zone and there are no other replica zones of equal size
+		if len(zoneToReplicas[replica.Zone]) == largestZoneSize && isLargestZone(zoneToReplicas, largestZoneSize) {
+			// add it to the selection of replicas to delete and remove it from zoneToReplicas
 			nodeAdded = true
-			addToSelection(selection, slave, zoneToSlaves)
-			if len(*selection) == int(nbSlavesToDelete) {
+			addToSelection(selection, replica, zoneToReplicas)
+			if len(*selection) == int(nbReplicasToDelete) {
 				break
 			}
 		}
@@ -469,39 +469,39 @@ func removeSlavesInLargestZone(selection *redis.Nodes, slaves redis.Nodes, zoneT
 	return nodeAdded
 }
 
-func removeSlavesByZone(cluster *redis.Cluster, selection *redis.Nodes, master *redis.Node, masterSlaves redis.Nodes, allSlaves redis.Nodes, nbSlavesToDelete int32) bool {
-	zoneToSlaves := clustering.ZoneToNodes(cluster, masterSlaves)
-	nodeAdded := removeSlavesInLargestZone(selection, masterSlaves, zoneToSlaves, nbSlavesToDelete)
-	if len(*selection) == int(nbSlavesToDelete) {
+func removeReplicasByZone(cluster *redis.Cluster, selection *redis.Nodes, primary *redis.Node, primaryReplicas redis.Nodes, allReplicas redis.Nodes, nbReplicasToDelete int32) bool {
+	zoneToReplicas := clustering.ZoneToNodes(cluster, primaryReplicas)
+	nodeAdded := removeReplicasInLargestZone(selection, primaryReplicas, zoneToReplicas, nbReplicasToDelete)
+	if len(*selection) == int(nbReplicasToDelete) {
 		return true
 	}
 	if !nodeAdded {
-		// all slaves are in zones of equal size
-		if sameZoneAsMaster(selection, master, masterSlaves, zoneToSlaves) {
-			if len(*selection) == int(nbSlavesToDelete) {
+		// all replicas are in zones of equal size
+		if sameZoneAsPrimary(selection, primary, primaryReplicas, zoneToReplicas) {
+			if len(*selection) == int(nbReplicasToDelete) {
 				return true
 			}
 		}
-		// remove slaves that have been selected to be deleted from the list of all slaves
+		// remove replicas that have been selected to be deleted from the list of all replicas
 		i := 0
-		for _, slave := range allSlaves {
-			if !selectionContainsSlave(selection, slave) {
-				allSlaves[i] = slave
+		for _, replica := range allReplicas {
+			if !selectionContainsReplica(selection, replica) {
+				allReplicas[i] = replica
 				i++
 			}
 		}
-		allSlaves = allSlaves[:i]
-		// remove the slave in the largest zone cluster-wide
-		zoneToAllSlaves := clustering.ZoneToNodes(cluster, allSlaves)
-		removeSlavesInLargestZone(selection, masterSlaves, zoneToAllSlaves, nbSlavesToDelete)
-		if len(*selection) == int(nbSlavesToDelete) {
+		allReplicas = allReplicas[:i]
+		// remove the replica in the largest zone cluster-wide
+		zoneToAllReplicas := clustering.ZoneToNodes(cluster, allReplicas)
+		removeReplicasInLargestZone(selection, primaryReplicas, zoneToAllReplicas, nbReplicasToDelete)
+		if len(*selection) == int(nbReplicasToDelete) {
 			return true
 		}
-		// if we still do not have enough slaves, pick the first available
-		for _, slave := range masterSlaves {
-			if !selectionContainsSlave(selection, slave) {
-				addToSelection(selection, slave, zoneToSlaves)
-				if len(*selection) == int(nbSlavesToDelete) {
+		// if we still do not have enough replicas, pick the first available
+		for _, replica := range primaryReplicas {
+			if !selectionContainsReplica(selection, replica) {
+				addToSelection(selection, replica, zoneToReplicas)
+				if len(*selection) == int(nbReplicasToDelete) {
 					return true
 				}
 			}
@@ -510,9 +510,9 @@ func removeSlavesByZone(cluster *redis.Cluster, selection *redis.Nodes, master *
 	return false
 }
 
-func selectionContainsSlave(selection *redis.Nodes, slave *redis.Node) bool {
+func selectionContainsReplica(selection *redis.Nodes, replica *redis.Node) bool {
 	for _, s := range *selection {
-		if slave == s {
+		if replica == s {
 			return true
 		}
 	}
@@ -539,9 +539,9 @@ func largestZone(zoneToNodes map[string]redis.Nodes) int {
 	return largest
 }
 
-func addToSelection(selection *redis.Nodes, slave *redis.Node, zoneToSlaves map[string]redis.Nodes) {
-	*selection = append(*selection, slave)
-	removeSlaveFromZone(slave, zoneToSlaves)
+func addToSelection(selection *redis.Nodes, replica *redis.Node, zoneToReplicas map[string]redis.Nodes) {
+	*selection = append(*selection, replica)
+	removeReplicaFromZone(replica, zoneToReplicas)
 }
 
 // applyConfiguration apply new configuration if needed:
@@ -555,7 +555,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 
 	// Configuration
 	cReplicationFactor := *cluster.Spec.ReplicationFactor
-	cNbMaster := *cluster.Spec.NumberOfMaster
+	cNbPrimaries := *cluster.Spec.NumberOfPrimaries
 
 	newCluster, nodes, err := newRedisCluster(ctx, admin, cluster, c.kubeClient)
 	if err != nil {
@@ -600,28 +600,28 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		return false, err
 	}
 
-	// First, we select the new masters
-	newMasters, curMasters, allMasters, err := clustering.SelectMasters(newCluster, nodes, cNbMaster)
+	// First, we select the new primaries
+	newPrimaries, currPrimaries, allPrimaries, err := clustering.SelectPrimaries(newCluster, nodes, cNbPrimaries)
 	if err != nil {
-		glog.Errorf("cannot dispatch slots to masters: %v", err)
+		glog.Errorf("cannot dispatch slots to primaries: %v", err)
 		newCluster.Status = rapi.ClusterStatusKO
 		return false, err
 	}
-	if len(newMasters) != len(curMasters) {
+	if len(newPrimaries) != len(currPrimaries) {
 		hasChanged = true
 	}
 
-	// Second, select slave nodes
-	currentSlaveNodes := nodes.FilterByFunc(redis.IsSlave)
+	// Second, select replica nodes
+	currentReplicaNodes := nodes.FilterByFunc(redis.IsReplica)
 
-	// New slaves are currently masters with no slots
-	newSlaves := nodes.FilterByFunc(func(nodeA *redis.Node) bool {
-		for _, nodeB := range newMasters {
+	// New replicas are currently primaries with no slots
+	newReplicas := nodes.FilterByFunc(func(nodeA *redis.Node) bool {
+		for _, nodeB := range newPrimaries {
 			if nodeA.ID == nodeB.ID {
 				return false
 			}
 		}
-		for _, nodeB := range currentSlaveNodes {
+		for _, nodeB := range currentReplicaNodes {
 			if nodeA.ID == nodeB.ID {
 				return false
 			}
@@ -629,42 +629,42 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		return true
 	})
 
-	// Depending on whether we scale up or down, we will dispatch slaves before/after the dispatch of slots
-	if cNbMaster < int32(len(curMasters)) {
+	// Depending on whether we scale up or down, we will dispatch replicas before/after the dispatch of slots
+	if cNbPrimaries < int32(len(currPrimaries)) {
 		// this happens after a scale down of the cluster
-		// we should dispatch slots before dispatching slaves
-		if err := clustering.DispatchSlotsToNewMasters(ctx, newCluster, admin, newMasters, curMasters, allMasters); err != nil {
-			glog.Errorf("unable to dispatch slot on new master: %v", err)
+		// we should dispatch slots before dispatching replicas
+		if err := clustering.DispatchSlotsToNewPrimaries(ctx, newCluster, admin, newPrimaries, currPrimaries, allPrimaries); err != nil {
+			glog.Errorf("unable to dispatch slot on new primary: %v", err)
 			return false, err
 		}
 
-		// assign master/slave roles
-		newRedisSlavesByMaster, err := clustering.PlaceSlaves(newCluster, newMasters, currentSlaveNodes, newSlaves, cReplicationFactor)
+		// assign primary/replica roles
+		newRedisReplicasByPrimary, err := clustering.PlaceReplicas(newCluster, newPrimaries, currentReplicaNodes, newReplicas, cReplicationFactor)
 		if err != nil {
-			glog.Errorf("unable to place slaves: %v", err)
+			glog.Errorf("unable to place replicas: %v", err)
 			return false, err
 		}
 
-		if err := clustering.AttachSlavesToMaster(ctx, newCluster, admin, newRedisSlavesByMaster); err != nil {
-			glog.Errorf("unable to dispatch slave on new master: %v", err)
+		if err := clustering.AttachReplicasToPrimary(ctx, newCluster, admin, newRedisReplicasByPrimary); err != nil {
+			glog.Errorf("unable to dispatch replica on new primary: %v", err)
 			return false, err
 		}
 	} else {
-		// scaling up the number of masters or the number of masters hasn't changed
-		// assign master/slave roles
-		newRedisSlavesByMaster, err := clustering.PlaceSlaves(newCluster, newMasters, currentSlaveNodes, newSlaves, cReplicationFactor)
+		// scaling up the number of primaries or the number of primaries hasn't changed
+		// assign primary/replica roles
+		newRedisReplicasByPrimary, err := clustering.PlaceReplicas(newCluster, newPrimaries, currentReplicaNodes, newReplicas, cReplicationFactor)
 		if err != nil {
-			glog.Errorf("unable to place slaves: %v", err)
+			glog.Errorf("unable to place replicas: %v", err)
 			return false, err
 		}
 
-		if err := clustering.AttachSlavesToMaster(ctx, newCluster, admin, newRedisSlavesByMaster); err != nil {
-			glog.Errorf("unable to dispatch slave on new master: %v", err)
+		if err := clustering.AttachReplicasToPrimary(ctx, newCluster, admin, newRedisReplicasByPrimary); err != nil {
+			glog.Errorf("unable to dispatch replica on new primary: %v", err)
 			return false, err
 		}
 
-		if err := clustering.DispatchSlotsToNewMasters(ctx, newCluster, admin, newMasters, curMasters, allMasters); err != nil {
-			glog.Errorf("unable to dispatch slot on new master: %v", err)
+		if err := clustering.DispatchSlotsToNewPrimaries(ctx, newCluster, admin, newPrimaries, currPrimaries, allPrimaries); err != nil {
+			glog.Errorf("unable to dispatch slot on new primary: %v", err)
 			return false, err
 		}
 	}

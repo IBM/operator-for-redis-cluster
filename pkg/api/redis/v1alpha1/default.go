@@ -6,7 +6,7 @@ import (
 
 // IsRedisClusterDefaulted check if the RedisCluster is already defaulted
 func IsRedisClusterDefaulted(rc *RedisCluster) bool {
-	if rc.Spec.NumberOfMaster == nil {
+	if rc.Spec.NumberOfPrimaries == nil {
 		return false
 	}
 	if rc.Spec.ReplicationFactor == nil {
@@ -18,8 +18,8 @@ func IsRedisClusterDefaulted(rc *RedisCluster) bool {
 // DefaultRedisCluster defaults RedisCluster
 func DefaultRedisCluster(baseRedisCluster *RedisCluster) *RedisCluster {
 	rc := baseRedisCluster.DeepCopy()
-	if rc.Spec.NumberOfMaster == nil {
-		rc.Spec.NumberOfMaster = NewInt32(3)
+	if rc.Spec.NumberOfPrimaries == nil {
+		rc.Spec.NumberOfPrimaries = NewInt32(3)
 	}
 	if rc.Spec.ReplicationFactor == nil {
 		rc.Spec.ReplicationFactor = NewInt32(1)
@@ -29,7 +29,7 @@ func DefaultRedisCluster(baseRedisCluster *RedisCluster) *RedisCluster {
 		rc.Spec.PodTemplate = &kapiv1.PodTemplateSpec{}
 	}
 
-	rc.Status.Cluster.NumberOfMasters = 0
+	rc.Status.Cluster.NumberOfPrimaries = 0
 	rc.Status.Cluster.MinReplicationFactor = 0
 	rc.Status.Cluster.MaxReplicationFactor = 0
 	rc.Status.Cluster.NumberOfPods = 0

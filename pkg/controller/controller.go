@@ -400,7 +400,7 @@ func (c *Controller) buildClusterStatus(clusterInfos *redis.ClusterInfos, pods [
 	}
 	clusterStatus.LabelSelectorPath = podLabels.String()
 
-	min, max := getReplicationFactors(clusterStatus.NumberOfSlavesPerMaster)
+	min, max := getReplicationFactors(clusterStatus.NumberOfReplicasPerPrimary)
 	clusterStatus.MinReplicationFactor = int32(min)
 	clusterStatus.MaxReplicationFactor = int32(max)
 
@@ -409,10 +409,10 @@ func (c *Controller) buildClusterStatus(clusterInfos *redis.ClusterInfos, pods [
 	return clusterStatus, nil
 }
 
-func getReplicationFactors(numberOfSlavesPerMaster map[string]int) (int, int) {
+func getReplicationFactors(numberOfReplicasPerPrimary map[string]int) (int, int) {
 	minReplicationFactor := math.MaxInt32
 	maxReplicationFactor := 0
-	for _, i := range numberOfSlavesPerMaster {
+	for _, i := range numberOfReplicasPerPrimary {
 		if i > maxReplicationFactor {
 			maxReplicationFactor = i
 		}
@@ -420,7 +420,7 @@ func getReplicationFactors(numberOfSlavesPerMaster map[string]int) (int, int) {
 			minReplicationFactor = i
 		}
 	}
-	if len(numberOfSlavesPerMaster) == 0 {
+	if len(numberOfReplicasPerPrimary) == 0 {
 		minReplicationFactor = 0
 	}
 	return minReplicationFactor, maxReplicationFactor
@@ -433,13 +433,13 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod) 
 	clusterStatus.MaxReplicationFactor = 0
 	clusterStatus.MinReplicationFactor = 0
 	clusterStatus.NumberOfPods = int32(len(pods))
-	clusterStatus.NumberOfSlavesPerMaster = map[string]int{}
+	clusterStatus.NumberOfReplicasPerPrimary = map[string]int{}
 
 	numberOfPodsReady := int32(0)
 	numberOfRedisNodesRunning := int32(0)
-	numberOfMasters := int32(0)
-	numberOfMastersReady := int32(0)
-	numberOfSlavesPerMaster := map[string]int{}
+	numberOfPrimaries := int32(0)
+	numberOfPrimariesReady := int32(0)
+	numberOfReplicasPerPrimary := map[string]int{}
 
 	for _, p := range pods {
 		podReady := false
@@ -464,22 +464,22 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod) 
 		// only one redis node with a role per pod
 		if len(redisNodes) == 1 {
 			redisNode := redisNodes[0]
-			if redis.IsMasterWithSlot(redisNode) {
-				if _, ok := numberOfSlavesPerMaster[redisNode.ID]; !ok {
-					numberOfSlavesPerMaster[redisNode.ID] = 0
+			if redis.IsPrimaryWithSlot(redisNode) {
+				if _, ok := numberOfReplicasPerPrimary[redisNode.ID]; !ok {
+					numberOfReplicasPerPrimary[redisNode.ID] = 0
 				}
-				numberOfMasters++
+				numberOfPrimaries++
 				if podReady {
-					numberOfMastersReady++
+					numberOfPrimariesReady++
 				}
 			}
 
 			newNode.ID = redisNode.ID
 			newNode.Role = redisNode.GetRole()
 			newNode.Port = redisNode.Port
-			if redis.IsSlave(redisNode) && redisNode.MasterReferent != "" {
-				numberOfSlavesPerMaster[redisNode.MasterReferent] = numberOfSlavesPerMaster[redisNode.MasterReferent] + 1
-				newNode.MasterRef = redisNode.MasterReferent
+			if redis.IsReplica(redisNode) && redisNode.PrimaryReferent != "" {
+				numberOfReplicasPerPrimary[redisNode.PrimaryReferent] = numberOfReplicasPerPrimary[redisNode.PrimaryReferent] + 1
+				newNode.PrimaryRef = redisNode.PrimaryReferent
 			}
 			if len(redisNode.Slots) > 0 {
 				slots := redis.SlotRangesFromSlots(redisNode.Slots)
@@ -493,10 +493,10 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []*apiv1.Pod) 
 	}
 
 	clusterStatus.NumberOfRedisNodesRunning = numberOfRedisNodesRunning
-	clusterStatus.NumberOfMasters = numberOfMasters
-	clusterStatus.NumberOfMastersReady = numberOfMastersReady
+	clusterStatus.NumberOfPrimaries = numberOfPrimaries
+	clusterStatus.NumberOfPrimariesReady = numberOfPrimariesReady
 	clusterStatus.NumberOfPodsReady = numberOfPodsReady
-	clusterStatus.NumberOfSlavesPerMaster = numberOfSlavesPerMaster
+	clusterStatus.NumberOfReplicasPerPrimary = numberOfReplicasPerPrimary
 	clusterStatus.Status = rapi.ClusterStatusOK
 
 	return clusterStatus

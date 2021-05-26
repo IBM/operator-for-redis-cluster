@@ -1084,7 +1084,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
+              "expr": "redis_script_values{pod=~\"$primaries\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -1197,7 +1197,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
+              "expr": "redis_script_values{pod=~\"$primaries\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -1227,9 +1227,9 @@ data:
           {
             "allValue": null,
             "current": {
-              "text": "master",
+              "text": "primary",
               "value": [
-                  "master"
+                  "primary"
               ]
             },
             "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
@@ -1287,12 +1287,12 @@ data:
             "error": null,
             "hide": 0,
             "includeAll": true,
-            "label": "masters",
+            "label": "primaries",
             "multi": false,
-            "name": "masters",
+            "name": "primaries",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
+              "query": "label_values(redis_instance_info{role=\"primary\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,

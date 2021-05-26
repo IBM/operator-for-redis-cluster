@@ -70,7 +70,7 @@ func (c *ClientCluster) GetForKey(key string) (*radix.Client, error) {
 	return c.Client, c.Error
 }
 
-// GetEvery returns a single *radix.Client per master that the cluster currently
+// GetEvery returns a single *radix.Client per primary that the cluster currently
 // knows about. The map returned maps the address of the client to the client
 // itself. If there is an error retrieving any of the clients (for instance if a
 // new connection has to be made to get it) only that error is returned. Each

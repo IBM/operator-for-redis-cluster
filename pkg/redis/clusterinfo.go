@@ -99,7 +99,7 @@ func DecodeNodeInfos(input *string, addr string) *NodeInfos {
 			}
 			node.SetRole(values[2])
 			node.SetFailureStatus(values[2])
-			node.SetReferentMaster(values[3])
+			node.SetPrimaryReferent(values[3])
 			if i, err := strconv.ParseInt(values[4], 10, 64); err == nil {
 				node.PingSent = i
 			}
@@ -199,7 +199,7 @@ func (c ConfigSignature) String() string {
 func getConfigSignature(nodes Nodes) ConfigSignature {
 	signature := ConfigSignature{}
 	for _, node := range nodes {
-		if node.Role == redisMasterRole {
+		if node.Role == redisPrimaryRole {
 			signature[node.ID] = node.Slots
 		}
 	}

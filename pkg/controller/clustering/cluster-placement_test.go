@@ -10,14 +10,14 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-func TestPlaceMasters(t *testing.T) {
-	redisNode1 := &redis.Node{ID: "1", Role: "master", Zone: "zone1", IP: "1.1.1.1", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod1", "node1")}
-	redisNode2 := &redis.Node{ID: "2", Role: "master", Zone: "zone1", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "node1")}
-	redisNode3 := &redis.Node{ID: "3", Role: "master", Zone: "zone2", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "node2")}
-	redisNode4 := &redis.Node{ID: "4", Role: "master", Zone: "zone3", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "node3")}
+func TestPlacePrimaries(t *testing.T) {
+	redisNode1 := &redis.Node{ID: "1", Role: "primary", Zone: "zone1", IP: "1.1.1.1", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod1", "node1")}
+	redisNode2 := &redis.Node{ID: "2", Role: "primary", Zone: "zone1", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "node1")}
+	redisNode3 := &redis.Node{ID: "3", Role: "primary", Zone: "zone2", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "node2")}
+	redisNode4 := &redis.Node{ID: "4", Role: "primary", Zone: "zone3", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "node3")}
 
-	redisNode5 := &redis.Node{ID: "2", Role: "master", Zone: "zone2", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "node2")}
-	redisNode6 := &redis.Node{ID: "4", Role: "master", Zone: "zone2", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "node2")}
+	redisNode5 := &redis.Node{ID: "2", Role: "primary", Zone: "zone2", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "node2")}
+	redisNode6 := &redis.Node{ID: "4", Role: "primary", Zone: "zone2", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "node2")}
 
 	node1 := v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -44,14 +44,13 @@ func TestPlaceMasters(t *testing.T) {
 		},
 	}
 
-
 	kubeNodes := []v1.Node{node1, node2, node3}
 
 	type args struct {
-		cluster            *redis.Cluster
-		currentMaster      redis.Nodes
-		allPossibleMasters redis.Nodes
-		nbMaster           int32
+		cluster              *redis.Cluster
+		currentPrimary       redis.Nodes
+		allPossiblePrimaries redis.Nodes
+		nbPrimary            int32
 	}
 	tests := []struct {
 		name           string
@@ -61,7 +60,7 @@ func TestPlaceMasters(t *testing.T) {
 		wantError      bool
 	}{
 		{
-			name: "found 3 master on 3 nodes, discard node 2 since node 1 and node 2 are on the same k8s node",
+			name: "found 3 primary on 3 nodes, discard node 2 since node 1 and node 2 are on the same k8s node",
 			args: args{
 				cluster: &redis.Cluster{
 					Name:      "clustertest",
@@ -74,16 +73,16 @@ func TestPlaceMasters(t *testing.T) {
 					},
 					KubeNodes: kubeNodes,
 				},
-				currentMaster:      redis.Nodes{},
-				allPossibleMasters: redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode4},
-				nbMaster:           3,
+				currentPrimary:       redis.Nodes{},
+				allPossiblePrimaries: redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode4},
+				nbPrimary:            3,
 			},
 			want:           redis.Nodes{redisNode1, redisNode3, redisNode4},
 			wantBestEffort: false,
 			wantError:      false,
 		},
 		{
-			name: "best effort mode, 4 masters on 2 nodes",
+			name: "best effort mode, 4 primaries on 2 nodes",
 			args: args{
 				cluster: &redis.Cluster{
 					Name:      "clustertest",
@@ -96,9 +95,9 @@ func TestPlaceMasters(t *testing.T) {
 					},
 					KubeNodes: []v1.Node{node1, node2},
 				},
-				currentMaster:      redis.Nodes{},
-				allPossibleMasters: redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode6},
-				nbMaster:           4,
+				currentPrimary:       redis.Nodes{},
+				allPossiblePrimaries: redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode6},
+				nbPrimary:            4,
 			},
 			want:           redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode6},
 			wantBestEffort: true,
@@ -116,9 +115,9 @@ func TestPlaceMasters(t *testing.T) {
 					},
 					KubeNodes: kubeNodes,
 				},
-				currentMaster:      redis.Nodes{},
-				allPossibleMasters: redis.Nodes{redisNode1, redisNode5},
-				nbMaster:           3,
+				currentPrimary:       redis.Nodes{},
+				allPossiblePrimaries: redis.Nodes{redisNode1, redisNode5},
+				nbPrimary:            3,
 			},
 			want:           redis.Nodes{redisNode1, redisNode5},
 			wantBestEffort: true,
@@ -128,17 +127,17 @@ func TestPlaceMasters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := tt.args.cluster
-			gotNodes, gotBestEffort, gotError := PlaceMasters(c, tt.args.currentMaster, tt.args.allPossibleMasters, tt.args.nbMaster)
+			gotNodes, gotBestEffort, gotError := PlacePrimaries(c, tt.args.currentPrimary, tt.args.allPossiblePrimaries, tt.args.nbPrimary)
 			gotNodes = gotNodes.SortNodes()
 			tt.want = tt.want.SortNodes()
 			if gotBestEffort != tt.wantBestEffort {
-				t.Errorf("SmartMastersPlacement() best effort :%v, want:%v", gotBestEffort, tt.wantBestEffort)
+				t.Errorf("SmartPrimariesPlacement() best effort :%v, want:%v", gotBestEffort, tt.wantBestEffort)
 			}
 			if (gotError != nil && !tt.wantError) || (tt.wantError && gotError == nil) {
-				t.Errorf("SmartMastersPlacement() return error:%v, want:%v", gotError, tt.wantError)
+				t.Errorf("SmartPrimariesPlacement() return error:%v, want:%v", gotError, tt.wantError)
 			}
 			if !reflect.DeepEqual(gotNodes, tt.want) {
-				t.Errorf("SmartMastersPlacement() = %v, want %v", gotNodes, tt.want)
+				t.Errorf("SmartPrimariesPlacement() = %v, want %v", gotNodes, tt.want)
 			}
 		})
 	}

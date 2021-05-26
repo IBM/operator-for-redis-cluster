@@ -67,10 +67,10 @@ type Admin struct {
 	CountKeysInSlotRet map[string]CountKeysInSlotRetType
 	// MigrateKeysRet map of returned error for MigrateKeys function
 	MigrateKeysRet map[string]MigrateKeyRetType
-	// AttachSlaveToMasterRet map of returned error for AttachSlaveToMaster function
-	AttachSlaveToMasterRet map[string]error
-	// DetachSlaveToMasterRet map of returned error for DetachSlave function
-	DetachSlaveToMasterRet map[string]error
+	// AttachReplicaToPrimaryRet map of returned error for AttachReplicaToPrimary function
+	AttachReplicaToPrimaryRet map[string]error
+	// DetachReplicaToPrimaryRet map of returned error for DetachReplica function
+	DetachReplicaToPrimaryRet map[string]error
 	// ResetRet map of returned error for FlushAndReset function
 	FlushAndResetRet map[string]error
 	cnx              *Connections
@@ -93,8 +93,8 @@ func NewFakeAdmin() *Admin {
 		GetKeysInSlotRet:           make(map[string]GetKeysInSlotRetType),
 		CountKeysInSlotRet:         make(map[string]CountKeysInSlotRetType),
 		MigrateKeysRet:             make(map[string]MigrateKeyRetType),
-		AttachSlaveToMasterRet:     make(map[string]error),
-		DetachSlaveToMasterRet:     make(map[string]error),
+		AttachReplicaToPrimaryRet:  make(map[string]error),
+		DetachReplicaToPrimaryRet:  make(map[string]error),
 		FlushAndResetRet:           make(map[string]error),
 		cnx:                        &Connections{},
 	}
@@ -142,7 +142,7 @@ func (a *Admin) GetClusterInfosSelected(ctx context.Context, addr []string) (*re
 	return a.GetClusterInfosSelectedRet.ClusterInfos, a.GetClusterInfosSelectedRet.Err
 }
 
-// StartFailover used to force the failover of a specific redis master node
+// StartFailover used to force the failover of a specific redis primary node
 func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 	val, ok := a.StartFailoverRet[addr]
 	if !ok {
@@ -223,18 +223,18 @@ func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *redis.Node, 
 	return val.Nb, val.Err
 }
 
-// AttachSlaveToMaster attach a slave to a master node
-func (a *Admin) AttachSlaveToMaster(ctx context.Context, slave *redis.Node, master *redis.Node) error {
-	val, ok := a.AttachSlaveToMasterRet[master.ID]
+// AttachReplicaToPrimary attach a replica to a primary node
+func (a *Admin) AttachReplicaToPrimary(ctx context.Context, replica *redis.Node, primary *redis.Node) error {
+	val, ok := a.AttachReplicaToPrimaryRet[primary.ID]
 	if !ok {
 		val = nil
 	}
 	return val
 }
 
-// DetachSlave detach a slave to its master
-func (a *Admin) DetachSlave(ctx context.Context, slave *redis.Node) error {
-	val, ok := a.DetachSlaveToMasterRet[slave.ID]
+// DetachReplica detach a replica to its primary
+func (a *Admin) DetachReplica(ctx context.Context, replica *redis.Node) error {
+	val, ok := a.DetachReplicaToPrimaryRet[replica.ID]
 	if !ok {
 		val = nil
 	}

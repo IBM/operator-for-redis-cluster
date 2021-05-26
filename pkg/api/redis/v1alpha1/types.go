@@ -45,7 +45,7 @@ type RedisClusterList struct {
 
 // RedisClusterSpec contains RedisCluster specification
 type RedisClusterSpec struct {
-	NumberOfMaster    *int32 `json:"numberOfMaster,omitempty"`
+	NumberOfPrimaries *int32 `json:"numberOfPrimaries,omitempty"`
 	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
 
 	// ServiceName name used to create the kubernetes service that fronts the RedisCluster nodes.
@@ -58,7 +58,7 @@ type RedisClusterSpec struct {
 	// NodeSelector determines which kubernetes nodes to use when scheduling pods
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// ZoneAwareReplication spreads master and slave nodes across all available zones
+	// ZoneAwareReplication spreads primary and replica nodes across all available zones
 	ZoneAwareReplication ZoneAwareReplication `json:"zoneAwareReplication,omitempty"`
 
 	// Labels for created redis-cluster (deployment, rs, pod) (if any)
@@ -102,12 +102,12 @@ type RedisClusterCondition struct {
 
 // RedisClusterState represent the Redis Cluster status
 type RedisClusterState struct {
-	Status                  ClusterStatus  `json:"status"`
-	NumberOfMasters         int32          `json:"numberOfMaster,omitempty"`
-	NumberOfMastersReady    int32          `json:"numberOfMastersReady,omitempty"`
-	NumberOfSlavesPerMaster map[string]int `json:"numberOfSlavesPerMaster,omitempty"`
-	MinReplicationFactor    int32          `json:"minReplicationFactor,omitempty"`
-	MaxReplicationFactor    int32          `json:"maxReplicationFactor,omitempty"`
+	Status                     ClusterStatus  `json:"status"`
+	NumberOfPrimaries          int32          `json:"numberOfPrimaries,omitempty"`
+	NumberOfPrimariesReady     int32          `json:"numberOfPrimariesReady,omitempty"`
+	NumberOfReplicasPerPrimary map[string]int `json:"numberOfReplicasPerPrimary,omitempty"`
+	MinReplicationFactor       int32          `json:"minReplicationFactor,omitempty"`
+	MaxReplicationFactor       int32          `json:"maxReplicationFactor,omitempty"`
 
 	NodesPlacement NodesPlacementInfo `json:"nodesPlacementInfo,omitempty"`
 
@@ -124,7 +124,7 @@ type RedisClusterState struct {
 func (s RedisClusterState) String() string {
 	output := ""
 	output += fmt.Sprintf("status:%s\n", s.Status)
-	output += fmt.Sprintf("NumberOfMasters:%d\n", s.NumberOfMasters)
+	output += fmt.Sprintf("NumberOfPrimaries:%d\n", s.NumberOfPrimaries)
 	output += fmt.Sprintf("MinReplicationFactor:%d\n", s.MinReplicationFactor)
 	output += fmt.Sprintf("MaxReplicationFactor:%d\n", s.MaxReplicationFactor)
 	output += fmt.Sprintf("NodesPlacement:%s\n\n", s.NodesPlacement)
@@ -146,30 +146,30 @@ type ZoneAwareReplication struct {
 
 const (
 	// NodesPlacementInfoBestEffort the cluster nodes placement is in best effort,
-	// it means you can have 2 (or more) masters on the same kubernetes node
+	// it means you can have 2 (or more) primaries on the same kubernetes node
 	NodesPlacementInfoBestEffort NodesPlacementInfo = "BestEffort"
 	// NodesPlacementInfoOptimal the cluster nodes placement is optimal,
-	// it means one master per kubernetes node
+	// it means one primary per kubernetes node
 	NodesPlacementInfoOptimal NodesPlacementInfo = "Optimal"
 )
 
 // RedisClusterNode represent a RedisCluster Node
 type RedisClusterNode struct {
-	ID        string               `json:"id"`
-	Role      RedisClusterNodeRole `json:"role"`
-	IP        string               `json:"ip"`
-	Port      string               `json:"port"`
-	Slots     []string             `json:"slots,omitempty"`
-	MasterRef string               `json:"masterRef,omitempty"`
-	PodName   string               `json:"podName"`
-	Pod       *kapiv1.Pod          `json:"-"`
+	ID         string               `json:"id"`
+	Role       RedisClusterNodeRole `json:"role"`
+	IP         string               `json:"ip"`
+	Port       string               `json:"port"`
+	Slots      []string             `json:"slots,omitempty"`
+	PrimaryRef string               `json:"primaryRef,omitempty"`
+	PodName    string               `json:"podName"`
+	Pod        *kapiv1.Pod          `json:"-"`
 }
 
 func (n RedisClusterNode) String() string {
-	if n.Role != RedisClusterNodeRoleSlave {
-		return fmt.Sprintf("(Master:%s, Addr:%s:%s, PodName:%s, Slots:%v)", n.ID, n.IP, n.Port, n.PodName, n.Slots)
+	if n.Role != RedisClusterNodeRoleReplica {
+		return fmt.Sprintf("(Primary:%s, Addr:%s:%s, PodName:%s, Slots:%v)", n.ID, n.IP, n.Port, n.PodName, n.Slots)
 	}
-	return fmt.Sprintf("(Slave:%s, Addr:%s:%s, PodName:%s, MasterRef:%s)", n.ID, n.IP, n.Port, n.PodName, n.MasterRef)
+	return fmt.Sprintf("(Replica:%s, Addr:%s:%s, PodName:%s, PrimaryRef:%s)", n.ID, n.IP, n.Port, n.PodName, n.PrimaryRef)
 }
 
 // RedisClusterConditionType is the type of RedisClusterCondition
@@ -190,10 +190,10 @@ const (
 type RedisClusterNodeRole string
 
 const (
-	// RedisClusterNodeRoleMaster RedisCluster Master node role
-	RedisClusterNodeRoleMaster RedisClusterNodeRole = "Master"
-	// RedisClusterNodeRoleSlave RedisCluster Master node role
-	RedisClusterNodeRoleSlave RedisClusterNodeRole = "Slave"
+	// RedisClusterNodeRolePrimary RedisCluster Primary node role
+	RedisClusterNodeRolePrimary RedisClusterNodeRole = "Primary"
+	// RedisClusterNodeRoleReplica RedisCluster Primary node role
+	RedisClusterNodeRoleReplica RedisClusterNodeRole = "Replica"
 	// RedisClusterNodeRoleNone None node role
 	RedisClusterNodeRoleNone RedisClusterNodeRole = "None"
 )
