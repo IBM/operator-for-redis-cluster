@@ -3928,8 +3928,8 @@ spec:
     subresources:
       scale:
         labelSelectorPath: .status.cluster.labelSelectorPath
-        specReplicasPath: .spec.numberOfMaster
-        statusReplicasPath: .status.cluster.numberOfMastersReady
+        specReplicasPath: .spec.numberOfPrimaries
+        statusReplicasPath: .status.cluster.numberOfPrimariesReady
 status:
   acceptedNames:
     kind: ""

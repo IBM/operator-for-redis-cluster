@@ -17,7 +17,7 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:scope=Namespaced,shortName=rdc
-// +kubebuilder:subresource:scale:specpath=.spec.numberOfMaster,statuspath=.status.cluster.numberOfMastersReady,selectorpath=.status.cluster.labelSelectorPath
+// +kubebuilder:subresource:scale:specpath=.spec.numberOfPrimaries,statuspath=.status.cluster.numberOfPrimariesReady,selectorpath=.status.cluster.labelSelectorPath
 type RedisCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object's metadata.
