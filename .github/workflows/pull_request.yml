@@ -162,7 +162,7 @@ jobs:
       
       - name: Run e2e tests
         id: e2e
-        run: go test ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
+        run: go test -timeout 30m ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
 
       - name: Capture logs if e2e failed
         if: ${{ always() && steps.e2e.outcome == 'failure' }}
