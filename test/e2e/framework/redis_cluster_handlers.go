@@ -9,8 +9,8 @@ import (
 
 	"github.com/onsi/gomega"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
 
 	v1 "k8s.io/api/core/v1"
@@ -23,17 +23,17 @@ import (
 )
 
 // NewRedisCluster builds and returns a new RedisCluster instance
-func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) *rapi.RedisCluster {
-	return &rapi.RedisCluster{
+func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) *v1alpha1.RedisCluster {
+	return &v1alpha1.RedisCluster{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       rapi.ResourceKind,
-			APIVersion: redis.GroupName + "/" + rapi.ResourceVersion,
+			Kind:       v1alpha1.ResourceKind,
+			APIVersion: rapi.GroupName + "/" + v1alpha1.ResourceVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: rapi.RedisClusterSpec{
+		Spec: v1alpha1.RedisClusterSpec{
 			AdditionalLabels:  map[string]string{"foo": "bar"},
 			NumberOfPrimaries: &nbPrimary,
 			ReplicationFactor: &replication,
@@ -111,7 +111,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 	}
 }
 
-// BuildAndSetClients builds and initilize rediscluster and kube client
+// BuildAndSetClients builds and initializes RedisCluster and kube client
 func BuildAndSetClients() (versioned.Interface, clientset.Interface) {
 	f, err := NewFramework()
 	gomega.Ω(err).ShouldNot(gomega.HaveOccurred())
@@ -128,8 +128,8 @@ func BuildAndSetClients() (versioned.Interface, clientset.Interface) {
 	return redisClient, kubeClient
 }
 
-// HOCreateRedisCluster is an higher order func that returns the func to create a RedisCluster
-func HOCreateRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCluster, namespace string) func() error {
+// CreateRedisClusterFunc returns the func to create a RedisCluster
+func CreateRedisClusterFunc(client versioned.Interface, rediscluster *v1alpha1.RedisCluster, namespace string) func() error {
 	return func() error {
 		if _, err := client.RedisoperatorV1().RedisClusters(namespace).Create(rediscluster); err != nil {
 			glog.Warningf("cannot create RedisCluster %s/%s: %v", namespace, rediscluster.Name, err)
@@ -140,12 +140,12 @@ func HOCreateRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCl
 	}
 }
 
-// HOUpdateRedisCluster is an higher order func that returns the func to update a RedisCluster
-func HOUpdateRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCluster, namespace string) func() error {
+// UpdateRedisClusterFunc returns the func to update a RedisCluster
+func UpdateRedisClusterFunc(client versioned.Interface, rediscluster *v1alpha1.RedisCluster, namespace string) func() error {
 	return func() error {
 		cluster, err := client.RedisoperatorV1().RedisClusters(rediscluster.Namespace).Get(rediscluster.Name, metav1.GetOptions{})
 		if err != nil {
-			Logf("Cannot get rediscluster:%v", err)
+			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
 		}
 		cluster.Spec = rediscluster.Spec
@@ -158,12 +158,12 @@ func HOUpdateRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCl
 	}
 }
 
-// HOIsRedisClusterStarted is an higher order func that returns the func that checks whether RedisCluster is started and configured properly
-func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.RedisCluster, namespace string) func() error {
+// IsRedisClusterStartedFunc returns the func that checks whether or not the RedisCluster is started and configured properly
+func IsRedisClusterStartedFunc(client versioned.Interface, rediscluster *v1alpha1.RedisCluster) func() error {
 	return func() error {
 		cluster, err := client.RedisoperatorV1().RedisClusters(rediscluster.Namespace).Get(rediscluster.Name, metav1.GetOptions{})
 		if err != nil {
-			Logf("Cannot get rediscluster:%v", err)
+			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
 		}
 
@@ -183,7 +183,7 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 			return LogAndReturnErrorf("RedisCluster %s has incorrect max replication factor, expected: %d - current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
 		}
 
-		if cluster.Status.Cluster.Status != rapi.ClusterStatusOK {
+		if cluster.Status.Cluster.Status != v1alpha1.ClusterStatusOK {
 			return LogAndReturnErrorf("RedisCluster %s status is not OK, current value: %s", cluster.Name, cluster.Status.Cluster.Status)
 		}
 
@@ -191,17 +191,17 @@ func HOIsRedisClusterStarted(client versioned.Interface, rediscluster *rapi.Redi
 	}
 }
 
-// HOUpdateConfigRedisCluster is an higher order func that returns the func to update the RedisCluster configuration
-func HOUpdateConfigRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCluster, nbprimary, replicas *int32) func() error {
+// UpdateConfigRedisClusterFunc returns the func to update the RedisCluster configuration
+func UpdateConfigRedisClusterFunc(client versioned.Interface, rediscluster *v1alpha1.RedisCluster, nbPrimary, replicas *int32) func() error {
 	return func() error {
 		cluster, err := client.RedisoperatorV1().RedisClusters(rediscluster.Namespace).Get(rediscluster.Name, metav1.GetOptions{})
 		if err != nil {
 			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
 		}
-		if nbprimary != nil {
-			rediscluster.Spec.NumberOfPrimaries = nbprimary
-			cluster.Spec.NumberOfPrimaries = nbprimary
+		if nbPrimary != nil {
+			rediscluster.Spec.NumberOfPrimaries = nbPrimary
+			cluster.Spec.NumberOfPrimaries = nbPrimary
 		}
 		if replicas != nil {
 			rediscluster.Spec.ReplicationFactor = replicas
@@ -217,14 +217,62 @@ func HOUpdateConfigRedisCluster(client versioned.Interface, rediscluster *rapi.R
 	}
 }
 
-// HOIsPodSpecUpdated use to check if a all the RedisCluster pod have the new PodSpec
-func HOIsPodSpecUpdated(client clientset.Interface, rediscluster *rapi.RedisCluster, imageTag string) func() error {
+// ZonesBalancedFunc checks if the RedisCluster node's zones are balanced
+func ZonesBalancedFunc(kubeClient clientset.Interface, redisClient versioned.Interface, rediscluster *v1alpha1.RedisCluster) func() error {
+	return func() error {
+		zoneToPrimaries := make(map[string][]v1alpha1.RedisClusterNode)
+		zoneToReplicas := make(map[string][]v1alpha1.RedisClusterNode)
+		idToPrimary := make(map[string]v1alpha1.RedisClusterNode)
+		ctx := context.Background()
+
+		cluster, err := redisClient.RedisoperatorV1().RedisClusters(rediscluster.Namespace).Get(rediscluster.Name, metav1.GetOptions{})
+		if err != nil {
+			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			return err
+		}
+		nodes := cluster.Status.Cluster.Nodes
+		labelSelector := labels.Set(cluster.Spec.NodeSelector).String()
+
+		nodeList, err := kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+		if err != nil {
+			return LogAndReturnErrorf("error getting k8s nodes with label selector %s", labelSelector)
+		}
+		kubeNodes := nodeList.Items
+		zones := getZonesFromKubeNodes(kubeNodes)
+		for _, node := range nodes {
+			pod, err := kubeClient.CoreV1().Pods(cluster.Namespace).Get(ctx, node.PodName, metav1.GetOptions{})
+			if err != nil {
+				return LogAndReturnErrorf("error getting pod for redis node %s", node.ID)
+			}
+			addNodeToMaps(node, pod.Spec.NodeName, kubeNodes, idToPrimary, zoneToPrimaries, zoneToReplicas)
+		}
+		// check for primary and replica in the same zone
+		if int(*cluster.Spec.ReplicationFactor) < len(zones) {
+			for zone, replicas := range zoneToReplicas {
+				for _, node := range replicas {
+					if sameZone(node, zone, idToPrimary, kubeNodes) {
+						return LogAndReturnErrorf("primary node cannot be in the same zone as a replica node if RF < number of zones")
+					}
+				}
+			}
+		}
+		// check for large zone skew
+		if err = zonesSkewed(zoneToPrimaries, zoneToReplicas); err != nil {
+			return err
+		}
+		Logf("RedisCluster node zones are balanced")
+		return nil
+	}
+}
+
+// IsPodSpecUpdatedFunc checks if all RedisCluster pods have the new PodSpec
+func IsPodSpecUpdatedFunc(client clientset.Interface, rediscluster *v1alpha1.RedisCluster, imageTag string) func() error {
 	return func() error {
 		labelSet := labels.Set{}
-		labelSet[rapi.ClusterNameLabelKey] = rediscluster.Name
+		labelSet[v1alpha1.ClusterNameLabelKey] = rediscluster.Name
 		podList, err := client.CoreV1().Pods(rediscluster.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSet.AsSelector().String()})
 		if err != nil {
-			LogAndReturnErrorf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			return LogAndReturnErrorf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 		}
 
 		for _, pod := range podList.Items {
@@ -251,8 +299,8 @@ func HOIsPodSpecUpdated(client clientset.Interface, rediscluster *rapi.RedisClus
 	}
 }
 
-// HOCreateRedisNodeServiceAccount  is an higher order func that returns the func to create the serviceaccount associated with the redis-node pod.
-func HOCreateRedisNodeServiceAccount(client clientset.Interface, rediscluster *rapi.RedisCluster) func() error {
+// CreateRedisNodeServiceAccountFunc returns the func to create the service account associated with the redis node
+func CreateRedisNodeServiceAccountFunc(client clientset.Interface, rediscluster *v1alpha1.RedisCluster) func() error {
 	return func() error {
 		_, err := client.CoreV1().ServiceAccounts(rediscluster.Namespace).Get(context.Background(), "redis-node", metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
@@ -314,9 +362,9 @@ func HOCreateRedisNodeServiceAccount(client clientset.Interface, rediscluster *r
 	}
 }
 
-// HOIsRedisClusterPodDisruptionBudgetCreated is an higher order func that returns the func that checks whether PodDisruptionBudget associated to the
-// the RedisCluster have been created properly.
-func HOIsRedisClusterPodDisruptionBudgetCreated(client clientset.Interface, rediscluster *rapi.RedisCluster) func() error {
+// IsPodDisruptionBudgetCreatedFunc returns the func that checks if the PodDisruptionBudget
+// associated with the the RedisCluster has been created properly.
+func IsPodDisruptionBudgetCreatedFunc(client clientset.Interface, rediscluster *v1alpha1.RedisCluster) func() error {
 	return func() error {
 		_, err := client.PolicyV1beta1().PodDisruptionBudgets(rediscluster.Namespace).Get(context.Background(), rediscluster.Name, metav1.GetOptions{})
 		if err != nil {

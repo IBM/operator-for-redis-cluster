@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/golang/glog"
 	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/apimachinery/pkg/util/errors"
@@ -261,25 +261,31 @@ func (c *Controller) scaleDownPrimaries(ctx context.Context, admin redis.AdminIn
 
 func (c *Controller) reconcileReplicationFactor(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes, primaryToReplicas map[string][]string) error {
 	var errs []error
-	var replicas redis.Nodes
+	var currentReplicas redis.Nodes
 	for _, replicaIDs := range primaryToReplicas {
 		for _, replicaID := range replicaIDs {
 			replica, err := rCluster.GetNodeByID(replicaID)
 			if err != nil {
 				errs = append(errs, err)
 			}
-			replicas = append(replicas, replica)
+			currentReplicas = append(currentReplicas, replica)
 		}
 	}
 	for primaryID, replicaIDs := range primaryToReplicas {
 		diff := int32(len(replicaIDs)) - *cluster.Spec.ReplicationFactor
 		if diff < 0 {
 			// not enough replicas on this primary
-			if err := c.attachReplicasToPrimary(ctx, rCluster, admin, primaryID, nodes, -diff); err != nil {
+			// get the primary node
+			primary, err := nodes.GetNodeByID(primaryID)
+			if err != nil {
+				return err
+			}
+			if err := c.attachReplicasToPrimary(ctx, admin, rCluster.GetZones(), primary, nodes, -diff); err != nil {
 				errs = append(errs, err)
 			}
 		}
 		if diff > 0 {
+			// too many replicas on this primary
 			var replicaNodes redis.Nodes
 			for _, replicaID := range replicaIDs {
 				replica, err := rCluster.GetNodeByID(replicaID)
@@ -288,8 +294,7 @@ func (c *Controller) reconcileReplicationFactor(ctx context.Context, admin redis
 				}
 				replicaNodes = append(replicaNodes, replica)
 			}
-			// too many replicas on this primary
-			if err := c.removeReplicasFromPrimary(ctx, admin, cluster, rCluster, primaryID, replicaNodes, replicas, diff); err != nil {
+			if err := c.removeReplicasFromPrimary(ctx, admin, cluster, rCluster, primaryID, replicaNodes, currentReplicas, diff); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -315,15 +320,10 @@ func (c *Controller) removeReplicasFromPrimary(ctx context.Context, admin redis.
 	return errors.NewAggregate(errs)
 }
 
-func (c *Controller) attachReplicasToPrimary(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, primaryID string, nodes redis.Nodes, diff int32) error {
+func (c *Controller) attachReplicasToPrimary(ctx context.Context, admin redis.AdminInterface, zones []string, primary *redis.Node, nodes redis.Nodes, diff int32) error {
 	var errs []error
-	// get the primary node
-	primary, err := nodes.GetNodeByID(primaryID)
-	if err != nil {
-		return err
-	}
 	// find an available redis nodes to be the new replicas
-	replicas, err := getNewReplicas(cluster, nodes, diff)
+	replicas, err := selectNewReplicasByZone(zones, primary, nodes, diff)
 	if err != nil {
 		return err
 	}
@@ -371,12 +371,12 @@ func detachAndForgetNodes(ctx context.Context, admin redis.AdminInterface, prima
 	return removedNodes, nil
 }
 
-func getNewReplicas(cluster *redis.Cluster, nodes redis.Nodes, nbReplicadNeeded int32) (redis.Nodes, error) {
+func selectNewReplicasByZone(zones []string, primary *redis.Node, nodes redis.Nodes, nbReplicasNeeded int32) (redis.Nodes, error) {
 	selection := redis.Nodes{}
 	currentReplicas := redis.Nodes{}
 	candidateReplicas := redis.Nodes{}
 
-	if nbReplicadNeeded <= 0 {
+	if nbReplicasNeeded <= 0 {
 		return selection, nil
 	}
 
@@ -388,32 +388,27 @@ func getNewReplicas(cluster *redis.Cluster, nodes redis.Nodes, nbReplicadNeeded 
 			candidateReplicas = append(candidateReplicas, node)
 		}
 	}
-	nodeAdded := false
-	for len(selection) < int(nbReplicadNeeded) && !nodeAdded {
-		i := 0
-		for _, candidate := range candidateReplicas {
-			if clustering.ZonesBalanced(cluster, candidate, currentReplicas) {
-				nodeAdded = true
-				selection = append(selection, candidate)
-			} else {
-				candidateReplicas[i] = candidate
-				i++
-			}
-			if len(selection) >= int(nbReplicadNeeded) {
-				return selection, nil
-			}
+
+	zoneToReplicas := clustering.ZoneToNodes(zones, candidateReplicas)
+	zoneIndex := clustering.GetZoneIndex(zones, primary.Zone, currentReplicas)
+	numEmptyZones := 0
+	// iterate while zones are non-empty and the number of replicas is less than RF
+	for numEmptyZones < len(zones) && len(selection) < int(nbReplicasNeeded) {
+		zone := zones[zoneIndex]
+		zoneReplicas := zoneToReplicas[zone]
+		if len(zoneReplicas) > 0 {
+			// append replica to primary and remove from map
+			selection = append(selection, zoneReplicas[0])
+			zoneToReplicas[zone] = zoneReplicas[1:]
+		} else {
+			numEmptyZones++
 		}
-		candidateReplicas = candidateReplicas[:i]
+		zoneIndex = (zoneIndex + 1) % len(zones)
 	}
-	if !nodeAdded {
-		for _, candidate := range candidateReplicas {
-			selection = append(selection, candidate)
-			if len(selection) >= int(nbReplicadNeeded) {
-				return selection, nil
-			}
-		}
+	if len(selection) < int(nbReplicasNeeded) {
+		return selection, fmt.Errorf("insufficient number of replicas for primary %s, expected: %v, actual: %v", primary.ID, int(nbReplicasNeeded), len(selection))
 	}
-	return selection, fmt.Errorf("insufficient number of replicas - expected: %v, actual: %v", nbReplicadNeeded, len(selection))
+	return selection, nil
 }
 
 func removeReplicaFromZone(replica *redis.Node, zoneToReplicas map[string]redis.Nodes) {
@@ -435,54 +430,51 @@ func selectReplicasToDelete(cluster *redis.Cluster, primaryID string, primaryRep
 		return selection, err
 	}
 	for len(selection) < int(nbReplicasToDelete) {
-		if removeReplicasByZone(cluster, &selection, primaryNode, primaryReplicas, allReplicas, nbReplicasToDelete) {
+		if removeReplicasByZone(cluster.GetZones(), &selection, primaryNode, primaryReplicas, allReplicas, nbReplicasToDelete) {
 			return selection, nil
 		}
 	}
 	return selection, nil
 }
 
-func sameZoneAsPrimary(selection *redis.Nodes, primary *redis.Node, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes) bool {
-	for _, replica := range replicas {
+func sameZoneAsPrimary(primary *redis.Node, replicas redis.Nodes) int {
+	for i, replica := range replicas {
 		if primary.Zone == replica.Zone {
-			addToSelection(selection, replica, zoneToReplicas)
+			return i
+		}
+	}
+	return -1
+}
+
+func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes) bool {
+	largestZone := largestZoneSize(zoneToReplicas)
+	for _, replica := range replicas {
+		// check if this replica is in the largest zone and there are no other replica zones of equal size
+		if len(zoneToReplicas[replica.Zone]) == largestZone && isLargestZone(zoneToReplicas, largestZone) {
+			// add it to the selection of replicas to delete and remove it from zoneToReplicas
+			*selection = append(*selection, replica)
+			removeReplicaFromZone(replica, zoneToReplicas)
 			return true
 		}
 	}
 	return false
 }
 
-func removeReplicasInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, nbReplicasToDelete int32) bool {
-	nodeAdded := false
-	largestZoneSize := largestZone(zoneToReplicas)
-	for _, replica := range replicas {
-		// check if this replica is in the largest zone and there are no other replica zones of equal size
-		if len(zoneToReplicas[replica.Zone]) == largestZoneSize && isLargestZone(zoneToReplicas, largestZoneSize) {
-			// add it to the selection of replicas to delete and remove it from zoneToReplicas
-			nodeAdded = true
-			addToSelection(selection, replica, zoneToReplicas)
-			if len(*selection) == int(nbReplicasToDelete) {
-				break
-			}
+func removeReplicasByZone(zones []string, selection *redis.Nodes, primary *redis.Node, replicas redis.Nodes, allReplicas redis.Nodes, nbReplicasToDelete int32) bool {
+	zoneToReplicas := clustering.ZoneToNodes(zones, replicas)
+	if !replicaInLargestZone(selection, replicas, zoneToReplicas) {
+		if len(*selection) == int(nbReplicasToDelete) {
+			return true
 		}
-	}
-	return nodeAdded
-}
-
-func removeReplicasByZone(cluster *redis.Cluster, selection *redis.Nodes, primary *redis.Node, primaryReplicas redis.Nodes, allReplicas redis.Nodes, nbReplicasToDelete int32) bool {
-	zoneToReplicas := clustering.ZoneToNodes(cluster, primaryReplicas)
-	nodeAdded := removeReplicasInLargestZone(selection, primaryReplicas, zoneToReplicas, nbReplicasToDelete)
-	if len(*selection) == int(nbReplicasToDelete) {
-		return true
-	}
-	if !nodeAdded {
 		// all replicas are in zones of equal size
-		if sameZoneAsPrimary(selection, primary, primaryReplicas, zoneToReplicas) {
+		if i := sameZoneAsPrimary(primary, replicas); i != -1 {
+			*selection = append(*selection, replicas[i])
+			removeReplicaFromZone(replicas[i], zoneToReplicas)
 			if len(*selection) == int(nbReplicasToDelete) {
 				return true
 			}
 		}
-		// remove replicas that have been selected to be deleted from the list of all replicas
+		// remove selected replicas
 		i := 0
 		for _, replica := range allReplicas {
 			if !selectionContainsReplica(selection, replica) {
@@ -492,15 +484,16 @@ func removeReplicasByZone(cluster *redis.Cluster, selection *redis.Nodes, primar
 		}
 		allReplicas = allReplicas[:i]
 		// remove the replica in the largest zone cluster-wide
-		zoneToAllReplicas := clustering.ZoneToNodes(cluster, allReplicas)
-		removeReplicasInLargestZone(selection, primaryReplicas, zoneToAllReplicas, nbReplicasToDelete)
+		zoneToAllReplicas := clustering.ZoneToNodes(zones, allReplicas)
+		replicaInLargestZone(selection, replicas, zoneToAllReplicas)
 		if len(*selection) == int(nbReplicasToDelete) {
 			return true
 		}
 		// if we still do not have enough replicas, pick the first available
-		for _, replica := range primaryReplicas {
+		for _, replica := range replicas {
 			if !selectionContainsReplica(selection, replica) {
-				addToSelection(selection, replica, zoneToReplicas)
+				*selection = append(*selection, replica)
+				removeReplicaFromZone(replica, zoneToReplicas)
 				if len(*selection) == int(nbReplicasToDelete) {
 					return true
 				}
@@ -529,7 +522,7 @@ func isLargestZone(zoneToNodes map[string]redis.Nodes, largestZone int) bool {
 	return count == 1
 }
 
-func largestZone(zoneToNodes map[string]redis.Nodes) int {
+func largestZoneSize(zoneToNodes map[string]redis.Nodes) int {
 	largest := 0
 	for _, nodes := range zoneToNodes {
 		if len(nodes) > largest {
@@ -537,11 +530,6 @@ func largestZone(zoneToNodes map[string]redis.Nodes) int {
 		}
 	}
 	return largest
-}
-
-func addToSelection(selection *redis.Nodes, replica *redis.Node, zoneToReplicas map[string]redis.Nodes) {
-	*selection = append(*selection, replica)
-	removeReplicaFromZone(replica, zoneToReplicas)
 }
 
 // applyConfiguration apply new configuration if needed:
@@ -554,8 +542,8 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	hasChanged := false
 
 	// Configuration
-	cReplicationFactor := *cluster.Spec.ReplicationFactor
-	cNbPrimaries := *cluster.Spec.NumberOfPrimaries
+	currReplicationFactor := *cluster.Spec.ReplicationFactor
+	currNbPrimaries := *cluster.Spec.NumberOfPrimaries
 
 	newCluster, nodes, err := newRedisCluster(ctx, admin, cluster, c.kubeClient)
 	if err != nil {
@@ -601,7 +589,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	}
 
 	// First, we select the new primaries
-	newPrimaries, currPrimaries, allPrimaries, err := clustering.SelectPrimaries(newCluster, nodes, cNbPrimaries)
+	newPrimaries, currPrimaries, allPrimaries, err := clustering.SelectPrimaries(newCluster, nodes, currNbPrimaries)
 	if err != nil {
 		glog.Errorf("cannot dispatch slots to primaries: %v", err)
 		newCluster.Status = rapi.ClusterStatusKO
@@ -630,7 +618,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	})
 
 	// Depending on whether we scale up or down, we will dispatch replicas before/after the dispatch of slots
-	if cNbPrimaries < int32(len(currPrimaries)) {
+	if currNbPrimaries < int32(len(currPrimaries)) {
 		// this happens after a scale down of the cluster
 		// we should dispatch slots before dispatching replicas
 		if err := clustering.DispatchSlotsToNewPrimaries(ctx, newCluster, admin, newPrimaries, currPrimaries, allPrimaries); err != nil {
@@ -639,7 +627,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		}
 
 		// assign primary/replica roles
-		newRedisReplicasByPrimary, err := clustering.PlaceReplicas(newCluster, newPrimaries, currentReplicaNodes, newReplicas, cReplicationFactor)
+		newRedisReplicasByPrimary, err := clustering.PlaceReplicas(newCluster, newPrimaries, currentReplicaNodes, newReplicas, currReplicationFactor)
 		if err != nil {
 			glog.Errorf("unable to place replicas: %v", err)
 			return false, err
@@ -652,7 +640,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	} else {
 		// scaling up the number of primaries or the number of primaries hasn't changed
 		// assign primary/replica roles
-		newRedisReplicasByPrimary, err := clustering.PlaceReplicas(newCluster, newPrimaries, currentReplicaNodes, newReplicas, cReplicationFactor)
+		newRedisReplicasByPrimary, err := clustering.PlaceReplicas(newCluster, newPrimaries, currentReplicaNodes, newReplicas, currReplicationFactor)
 		if err != nil {
 			glog.Errorf("unable to place replicas: %v", err)
 			return false, err
@@ -687,10 +675,16 @@ func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *r
 	// now we can trigger the rebalance
 	nodes := infos.GetNodes()
 
-	// build redis cluster vision
+	// build redis cluster
 	rCluster := redis.NewCluster(cluster.Name, cluster.Namespace)
 	rCluster.NodeSelector = cluster.Spec.NodeSelector
-	rCluster.KubeNodes = getKubeNodes(ctx, kubeClient, rCluster.NodeSelector)
+	labelSelector := labels.Set(rCluster.NodeSelector).String()
+	nodeList, err := kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		glog.Errorf("error getting k8s nodes with label selector %s", labelSelector)
+		return nil, nil, err
+	}
+	rCluster.KubeNodes = nodeList.Items
 	for _, node := range nodes {
 		rCluster.Nodes[node.ID] = node
 	}
@@ -708,20 +702,4 @@ func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *r
 	}
 
 	return rCluster, nodes, nil
-}
-
-func getKubeNodes(ctx context.Context, kubeClient kubernetes.Interface, nodeSelector map[string]string) []v1.Node {
-	options := metav1.ListOptions{}
-	labelSelector := ""
-	if len(nodeSelector) > 0 {
-		labelSelector = labels.FormatLabels(nodeSelector)
-	}
-	if labelSelector != "" {
-		options.LabelSelector = labelSelector
-	}
-	nodeList, err := kubeClient.CoreV1().Nodes().List(ctx, options)
-	if err != nil {
-		glog.Errorf("Error getting nodes with label selector %s: %v", labelSelector, err)
-	}
-	return nodeList.Items
 }

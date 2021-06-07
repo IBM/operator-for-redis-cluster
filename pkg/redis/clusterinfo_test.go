@@ -81,7 +81,7 @@ func TestNodeDecodeRedisInfoOnePrimary(t *testing.T) {
 	}
 
 	if len(n.Slots) != (10922 - 5461 + 1) {
-		t.Errorf("Primary should have %d slots", 10922 - 5461 + 1)
+		t.Errorf("Primary should have %d slots", 10922-5461+1)
 	}
 }
 

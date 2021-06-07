@@ -133,10 +133,10 @@ func buildPodStatus(rc *v1.RedisCluster) string {
 	specReplication := *rc.Spec.ReplicationFactor
 	podWanted := (1 + specReplication) * specPrimary
 
-	pod := rc.Status.Cluster.NumberOfPods
-	podReady := rc.Status.Cluster.NumberOfPodsReady
+	numPods := rc.Status.Cluster.NumberOfPods
+	numPodsReady := rc.Status.Cluster.NumberOfPodsReady
 
-	return fmt.Sprintf("%d/%d/%d", podReady, pod, podWanted)
+	return fmt.Sprintf("%d/%d/%d", numPodsReady, numPods, podWanted)
 }
 
 func buildPrimaryStatus(rc *v1.RedisCluster) string {

@@ -3818,7 +3818,7 @@ spec:
                     type: integer
                   nodes:
                     items:
-                      description: RedisClusterNode represent a RedisCluster Node
+                      description: RedisClusterNode represent a RedisCluster node
                       properties:
                         id:
                           type: string

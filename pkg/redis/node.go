@@ -45,7 +45,7 @@ const (
 	NodeStatusNoFlags = "noflags"
 )
 
-// Node Represent a Redis Node
+// Node represents a Redis Node
 type Node struct {
 	ID              string
 	IP              string
@@ -103,10 +103,10 @@ func (n *Node) SetRole(flags string) error {
 	n.Role = "" // reset value before setting the new one
 	vals := strings.Split(flags, ",")
 	for _, val := range vals {
-		if val == redisPrimaryRole || val == redisMasterRole {
+		switch val {
+		case redisMasterRole, redisPrimaryRole:
 			n.Role = redisPrimaryRole
-		}
-		if val == redisReplicaRole || val == redisSlaveRole {
+		case redisSlaveRole, redisReplicaRole:
 			n.Role = redisReplicaRole
 		}
 	}
@@ -121,9 +121,9 @@ func (n *Node) SetRole(flags string) error {
 // GetRole returns the Redis Cluster Node's role
 func (n *Node) GetRole() v1.RedisClusterNodeRole {
 	switch n.Role {
-	case redisPrimaryRole:
+	case redisMasterRole, redisPrimaryRole:
 		return v1.RedisClusterNodeRolePrimary
-	case redisReplicaRole:
+	case redisSlaveRole, redisReplicaRole:
 		return v1.RedisClusterNodeRoleReplica
 	default:
 		if n.PrimaryReferent != "" {
@@ -170,6 +170,7 @@ func (n *Node) ToAPINode() v1.RedisClusterNode {
 		ID:      n.ID,
 		IP:      n.IP,
 		PodName: n.Pod.Name,
+		Pod:     n.Pod,
 		Role:    n.GetRole(),
 		Slots:   []string{},
 	}

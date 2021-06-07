@@ -16,16 +16,18 @@ import (
 
 func Test_getNewReplicas(t *testing.T) {
 	_, redisPrimary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
-	_, redisReplica1 := newRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod2", "node2")
-	_, futureReplica := newRedisPrimaryNode("futureReplica", "zone1", "pod3", "node1", []string{})
 
-	node1 := newNode("node1", "zone1")
-	node2 := newNode("node2", "zone2")
+	_, redisReplica1 := newRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod2", "node2")
+	_, redisReplica2 := newRedisPrimaryNode("replica2", "zone3", "pod3", "node3", []string{})
+	_, redisReplica3 := newRedisPrimaryNode("replica3", "zone1", "pod4", "node1", []string{})
+	_, redisReplica4 := newRedisPrimaryNode("replica4", "zone2", "pod5", "node2", []string{})
+
 
 	type args struct {
-		cluster          *redis.Cluster
+		zones            []string
+		primary          *redis.Node
 		nodes            redis.Nodes
-		nbReplicadNeeded int32
+		nbReplicasNeeded int32
 	}
 	tests := []struct {
 		name    string
@@ -34,48 +36,70 @@ func Test_getNewReplicas(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "no replica to search",
+			name: "no replicas needed",
 			args: args{
-				cluster: &redis.Cluster{
-					Nodes: map[string]*redis.Node{
-						"primary1": &redisPrimary1,
-						"replica1": &redisReplica1,
-					},
-					KubeNodes: []kapiv1.Node{*node1, *node2},
-				},
-				nbReplicadNeeded: 0,
-				nodes:            redis.Nodes{&redisPrimary1, &redisPrimary1},
+				zones:            []string{"zone1", "zone2"},
+				primary:          &redisPrimary1,
+				nodes:            redis.Nodes{&redisPrimary1, &redisReplica1},
+				nbReplicasNeeded: 0,
 			},
 			want:    redis.Nodes{},
 			wantErr: false,
 		},
 		{
-			name: "search one replica",
+			name: "one replica in same zone",
 			args: args{
-				cluster: &redis.Cluster{
-					Nodes: map[string]*redis.Node{
-						"primary1":      &redisPrimary1,
-						"replica1":      &redisReplica1,
-						"futureReplica": &futureReplica,
-					},
-					KubeNodes: []kapiv1.Node{*node1, *node2},
-				},
-				nbReplicadNeeded: 1,
-				nodes:            redis.Nodes{&redisPrimary1, &redisPrimary1, &futureReplica},
+				zones:            []string{"zone1", "zone2"},
+				primary:          &redisPrimary1,
+				nodes:            redis.Nodes{&redisPrimary1, &redisReplica1, &redisReplica3},
+				nbReplicasNeeded: 1,
 			},
-			want:    redis.Nodes{&futureReplica},
+			want:    redis.Nodes{&redisReplica3},
+			wantErr: false,
+		},
+		{
+			name: "one replica in different zone",
+			args: args{
+				zones:            []string{"zone1", "zone2", "zone3"},
+				primary:          &redisPrimary1,
+				nodes:            redis.Nodes{&redisPrimary1, &redisReplica1, &redisReplica2},
+				nbReplicasNeeded: 1,
+			},
+			want:    redis.Nodes{&redisReplica2},
+			wantErr: false,
+		},
+		{
+			name: "one replica in different zone, one in same zone",
+			args: args{
+				zones:            []string{"zone1", "zone2", "zone3"},
+				primary:          &redisPrimary1,
+				nodes:            redis.Nodes{&redisPrimary1, &redisReplica1, &redisReplica2, &redisReplica3},
+				nbReplicasNeeded: 2,
+			},
+			want:    redis.Nodes{&redisReplica2, &redisReplica3},
+			wantErr: false,
+		},
+		{
+			name: "two replicas in different zones",
+			args: args{
+				zones:            []string{"zone1", "zone2", "zone3"},
+				primary:          &redisPrimary1,
+				nodes:            redis.Nodes{&redisPrimary1, &redisReplica2, &redisReplica3, &redisReplica4},
+				nbReplicasNeeded: 2,
+			},
+			want:    redis.Nodes{&redisReplica4, &redisReplica2},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getNewReplicas(tt.args.cluster, tt.args.nodes, tt.args.nbReplicadNeeded)
+			got, err := selectNewReplicasByZone(tt.args.zones, tt.args.primary, tt.args.nodes, tt.args.nbReplicasNeeded)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getNewReplicas() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("selectNewReplicasByZone() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getNewReplicas() = %v, want %v", got, tt.want)
+				t.Errorf("selectNewReplicasByZone() = %v, want %v", got, tt.want)
 			}
 		})
 	}

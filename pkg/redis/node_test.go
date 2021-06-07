@@ -45,8 +45,11 @@ func TestNode_ToAPINode(t *testing.T) {
 				Slots: SlotSlice{},
 			},
 			want: rapi.RedisClusterNode{
-				ID:      "id1",
-				IP:      "1.2.3.4",
+				ID: "id1",
+				IP: "1.2.3.4",
+				Pod: &kapiv1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "NS1"},
+				},
 				PodName: "name1",
 				Role:    rapi.RedisClusterNodeRoleNone,
 				Slots:   []string{},
@@ -63,8 +66,11 @@ func TestNode_ToAPINode(t *testing.T) {
 				Slots: SlotSlice{Slot(1), Slot(2)},
 			},
 			want: rapi.RedisClusterNode{
-				ID:      "id1",
-				IP:      "1.2.3.4",
+				ID: "id1",
+				IP: "1.2.3.4",
+				Pod: &kapiv1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "NS1"},
+				},
 				PodName: "name1",
 				Role:    rapi.RedisClusterNodeRolePrimary,
 				Slots:   []string{},
@@ -82,8 +88,11 @@ func TestNode_ToAPINode(t *testing.T) {
 				Slots:           SlotSlice{},
 			},
 			want: rapi.RedisClusterNode{
-				ID:      "id1",
-				IP:      "1.2.3.4",
+				ID: "id1",
+				IP: "1.2.3.4",
+				Pod: &kapiv1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "NS1"},
+				},
 				PodName: "name1",
 				Role:    rapi.RedisClusterNodeRoleReplica,
 				Slots:   []string{},

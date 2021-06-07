@@ -16,11 +16,12 @@ const (
 func PlacePrimaries(cluster *redis.Cluster, currentPrimaries redis.Nodes, candidatePrimaries redis.Nodes, nbPrimary int32) (redis.Nodes, bool, error) {
 	selection := redis.Nodes{}
 	selection = append(selection, currentPrimaries...)
+	zones := cluster.GetZones()
 
 	// in case of scale down, we use the required number of primaries instead of
 	// current number of primaries to limit the size of the selection
 	if len(selection) > int(nbPrimary) {
-		selectedPrimaries, err := selectPrimariesByZone(cluster, selection, nbPrimary)
+		selectedPrimaries, err := selectPrimariesByZone(zones, selection, nbPrimary)
 		if err != nil {
 			glog.Errorf("Error selecting primaries by zone: %v", err)
 		}
@@ -30,10 +31,10 @@ func PlacePrimaries(cluster *redis.Cluster, currentPrimaries redis.Nodes, candid
 	nodeToCandidatePrimaries := k8sNodeToRedisNodes(cluster, candidatePrimaries)
 	nodeToCurrentPrimaries := k8sNodeToRedisNodes(cluster, currentPrimaries)
 
-	return addPrimaries(cluster, selection, nodeToCurrentPrimaries, nodeToCandidatePrimaries, nbPrimary)
+	return addPrimaries(zones, selection, nodeToCurrentPrimaries, nodeToCandidatePrimaries, nbPrimary)
 }
 
-func addPrimaries(cluster *redis.Cluster, primaries redis.Nodes, nodeToCurrentPrimaries map[string]redis.Nodes, nodeToCandidatePrimaries map[string]redis.Nodes, nbPrimary int32) (redis.Nodes, bool, error) {
+func addPrimaries(zones []string, primaries redis.Nodes, nodeToCurrentPrimaries map[string]redis.Nodes, nodeToCandidatePrimaries map[string]redis.Nodes, nbPrimary int32) (redis.Nodes, bool, error) {
 	bestEffort := false
 	// iterate until we have the requested number of primaries or we reach best effort
 	for len(primaries) < int(nbPrimary) {
@@ -45,7 +46,7 @@ func addPrimaries(cluster *redis.Cluster, primaries redis.Nodes, nodeToCurrentPr
 			}
 			// iterate over candidate primaries and choose one that preserves zone balance between primary nodes
 			for i, candidate := range candidates {
-				if ZonesBalanced(cluster, candidate, primaries) {
+				if ZonesBalanced(zones, candidate, primaries) {
 					glog.Infof("- add node: %s to the primary selection", candidate.ID)
 					// Add the candidate to the primaries list
 					primaries = append(primaries, candidate)
@@ -79,8 +80,7 @@ func addPrimaries(cluster *redis.Cluster, primaries redis.Nodes, nodeToCurrentPr
 	return primaries, bestEffort, fmt.Errorf("insufficient number of redis nodes for the requested number of primaries")
 }
 
-func ZoneToNodes(cluster *redis.Cluster, nodes redis.Nodes) map[string]redis.Nodes {
-	zones := cluster.GetZones()
+func ZoneToNodes(zones []string, nodes redis.Nodes) map[string]redis.Nodes {
 	zoneToNodes := make(map[string]redis.Nodes)
 	for _, zone := range zones {
 		zoneToNodes[zone] = redis.Nodes{}
@@ -91,9 +91,9 @@ func ZoneToNodes(cluster *redis.Cluster, nodes redis.Nodes) map[string]redis.Nod
 	return zoneToNodes
 }
 
-func selectPrimariesByZone(cluster *redis.Cluster, primaries redis.Nodes, nbPrimary int32) (redis.Nodes, error) {
+func selectPrimariesByZone(zones []string, primaries redis.Nodes, nbPrimary int32) (redis.Nodes, error) {
 	selection := redis.Nodes{}
-	zoneToNodes := ZoneToNodes(cluster, primaries)
+	zoneToNodes := ZoneToNodes(zones, primaries)
 	for len(selection) < int(nbPrimary) {
 		for zone, nodes := range zoneToNodes {
 			if len(nodes) > 0 {
@@ -108,11 +108,11 @@ func selectPrimariesByZone(cluster *redis.Cluster, primaries redis.Nodes, nbPrim
 	return selection, fmt.Errorf("insufficient number of redis nodes for the requested number of primaries")
 }
 
-func ZonesBalanced(cluster *redis.Cluster, candidate *redis.Node, nodes redis.Nodes) bool {
+func ZonesBalanced(zones []string, candidate *redis.Node, nodes redis.Nodes) bool {
 	if len(nodes) == 0 {
 		return true
 	}
-	zoneToNodes := ZoneToNodes(cluster, nodes)
+	zoneToNodes := ZoneToNodes(zones, nodes)
 	smallestZoneSize := math.MaxInt32
 	for _, zoneNodes := range zoneToNodes {
 		if len(zoneNodes) < smallestZoneSize {
@@ -125,7 +125,7 @@ func ZonesBalanced(cluster *redis.Cluster, candidate *redis.Node, nodes redis.No
 // PlaceReplicas selects replica redis nodes by spreading out the replicas across zones as much as possible.
 func PlaceReplicas(cluster *redis.Cluster, primaries, oldReplicas, newReplicas redis.Nodes, replicationFactor int32) (map[string]redis.Nodes, error) {
 	removeOldReplicas(&oldReplicas, &newReplicas)
-	zoneToReplicas := ZoneToNodes(cluster, newReplicas)
+	zoneToReplicas := ZoneToNodes(cluster.GetZones(), newReplicas)
 	primaryToReplicas := generatePrimaryToReplicas(primaries, oldReplicas, zoneToReplicas, replicationFactor)
 	err := addReplicasToPrimariesByZone(cluster, primaryToReplicas, zoneToReplicas, replicationFactor)
 	if err != nil {
@@ -192,13 +192,7 @@ func addReplicasToPrimariesByZone(cluster *redis.Cluster, primaryToReplicas map[
 
 func addReplicasToPrimary(zones []string, primary *redis.Node, currentReplicas redis.Nodes, primaryToReplicas map[string]redis.Nodes, zoneToReplicas map[string]redis.Nodes, replicationFactor int32) error {
 	// calculate zone index for primary node
-	zoneIndex := 0
-	for i, zone := range zones {
-		if primary.Zone == zone {
-			zoneIndex = (i + len(currentReplicas) + 1) % len(zones)
-			break
-		}
-	}
+	zoneIndex := GetZoneIndex(zones, primary.Zone, currentReplicas)
 	numEmptyZones := 0
 	// iterate while zones are non-empty and the number of replicas is less than RF
 	for numEmptyZones < len(zones) && len(primaryToReplicas[primary.ID]) < int(replicationFactor) {
@@ -215,9 +209,17 @@ func addReplicasToPrimary(zones []string, primary *redis.Node, currentReplicas r
 	}
 	if len(primaryToReplicas[primary.ID]) < int(replicationFactor) {
 		return fmt.Errorf("insufficient number of replicas for primary %s, expected: %v, actual: %v", primary.ID, int(replicationFactor), len(primaryToReplicas[primary.ID]))
-
 	}
 	return nil
+}
+
+func GetZoneIndex(zones []string, primaryZone string, replicas redis.Nodes) int {
+	for i, zone := range zones {
+		if primaryZone == zone {
+			return (i + len(replicas) + 1) % len(zones)
+		}
+	}
+	return 0
 }
 
 // k8sNodeToRedisNodes returns a mapping from kubernetes nodes to a list of redis nodes that will be hosted on that node

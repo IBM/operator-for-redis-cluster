@@ -153,7 +153,7 @@ const (
 	NodesPlacementInfoOptimal NodesPlacementInfo = "Optimal"
 )
 
-// RedisClusterNode represent a RedisCluster Node
+// RedisClusterNode represent a RedisCluster node
 type RedisClusterNode struct {
 	ID         string               `json:"id"`
 	Role       RedisClusterNodeRole `json:"role"`
