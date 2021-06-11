@@ -6,7 +6,7 @@ numberOfPrimaries: 3
 replicationFactor: 1
 
 image:
-  repository: us.icr.io/icm-docker-images/icm-redis-redisnode
+  repository: us.icr.io/icm-docker-images/icm-redis-node
   # Overrides the image tag whose default is the chart appVersion
   tag: ""
   pullPolicy: IfNotPresent

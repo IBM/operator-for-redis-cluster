@@ -51,7 +51,7 @@ You can create a branch for your changes and try to build from the source as you
 ```console
 $ make build
 CGO_ENABLED=0 go build -i -installsuffix cgo -ldflags '-w' -o bin/operator ./cmd/operator
-CGO_ENABLED=0 go build -i -installsuffix cgo -ldflags '-w' -o bin/redisnode ./cmd/redisnode
+CGO_ENABLED=0 go build -i -installsuffix cgo -ldflags '-w' -o bin/node ./cmd/node
 ```
 
 When you are satisfied with the changes, we suggest you run:
@@ -97,7 +97,7 @@ $ eval $(minikube docker-env)
 # this will configure your docker cli, to target the minikube docker deamon
 $ make TAG=latest container
 CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/operator/operator ./cmd/operator/main.go
-CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/redisnode/redisnode ./cmd/redisnode/main.go
+CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/node/node ./cmd/node/main.go
 $ make TAG=4.0 container
 ...
 $ helm install --wait --name op chart/redis-operator

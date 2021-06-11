@@ -25,7 +25,7 @@ func main() {
 	rn := redisnode.NewRedisNode(config)
 
 	if err := run(rn); err != nil {
-		glog.Errorf("RedisNode returns an error:%v", err)
+		glog.Errorf("redis-node returned an error:%v", err)
 		os.Exit(1)
 	}
 

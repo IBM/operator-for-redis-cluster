@@ -7,7 +7,7 @@ PREFIX=us.icr.io/icm-docker-images/
 
 SOURCES := $(shell find . ! -name "*_test.go" -name '*.go')
 
-CMDBINS := operator redisnode
+CMDBINS := operator node
 CRD_OPTIONS ?= "crd:crdVersions=v1,trivialVersions=false"
 
 ifeq (,$(shell go env GOBIN))

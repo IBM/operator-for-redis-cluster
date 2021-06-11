@@ -62,18 +62,18 @@ jobs:
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Build cluster-node image
+      - name: Build redis-node image
         uses: docker/build-push-action@v2
         with:
-          file: Dockerfile.redisnode
-          tags: icm-redis-cluster-node:local
-          outputs: type=docker,dest=icm-redis-cluster-node.tar
+          file: Dockerfile.node
+          tags: icm-redis-node:local
+          outputs: type=docker,dest=icm-redis-node.tar
 
       - name: Upload cluster-node image artifact
         uses: actions/upload-artifact@v2
         with:
-          name: icm-redis-cluster-node
-          path: icm-redis-cluster-node.tar
+          name: icm-redis-node
+          path: icm-redis-node.tar
           retention-days: 1
 
 
@@ -137,7 +137,7 @@ jobs:
       - name: Download cluster-node image artifact
         uses: actions/download-artifact@v2
         with:
-          name: icm-redis-cluster-node
+          name: icm-redis-node
 
       - name: Setup Go
         uses: actions/setup-go@v2
@@ -155,8 +155,8 @@ jobs:
       - name: Load Images to KIND
         run: |
           kind load image-archive icm-redis-operator.tar icm-redis-operator:local
-          kind load image-archive icm-redis-cluster-node.tar icm-redis-cluster-node:local
-          kind load image-archive icm-redis-cluster-node.tar icm-redis-cluster-node:new
+          kind load image-archive icm-redis-node.tar icm-redis-node:local
+          kind load image-archive icm-redis-node.tar icm-redis-node:new
     
       - name: Install icm-redis-operator with Helm
         run: helm install icm-redis-operator charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local --set logLevel=6

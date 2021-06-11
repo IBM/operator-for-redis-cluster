@@ -52,7 +52,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 					Containers: []v1.Container{
 						{
 							Name:            "redis",
-							Image:           fmt.Sprintf("icm-redis-cluster-node:%s", tag),
+							Image:           fmt.Sprintf("icm-redis-node:%s", tag),
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Args: []string{
 								"--v=6",

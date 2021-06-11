@@ -18,7 +18,7 @@ At this point you have your redis process running, each node is aware of each ot
 
 In order to configure properly the different redis-servers and setup the redis cluster, we introduce the `Redis-Operator`.
 
-The `redis-operator` is watching a new kink of Custom-Resource `RedisCluster` that stores the redis-cluster configuration: number of primaries, and the replication factor (number of replicas by primary) and the pod template. Then the `redis-operator` tries to apply this configuration to the set of redis-server processes. If the number of redis-servers doesn't correspond to the provided configuration, the manager scales the redis-node pods to obtain the proper number of redis-nodes.
+The `redis-operator` is watching a new kink of Custom-Resource `RedisCluster` that stores the redis-cluster configuration: number of primaries, and the replication factor (number of replicas by primary) and the pod template. Then the `redis-operator` tries to apply this configuration to the set of redis-server processes. If the number of redis-servers doesn't correspond to the provided configuration, the manager scales the node pods to obtain the proper number of nodes.
 
 Then reconciliation is constantly done between the state of the cluster and the configuration stored in the `RedisCluster` CR.
 
@@ -86,7 +86,7 @@ docs available [here](kubectl-plugin.md).
 cd $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
 make container
 CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/operator/operator ./cmd/operator/main.go
-CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/redisnode/redisnode ./cmd/redisnode/main.go
+CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/node/node ./cmd/node/main.go
 ```
 
 you can define the docker images tag by adding the variable "VERSION"

@@ -65,7 +65,7 @@ jobs:
         uses: docker/metadata-action@v3
         id: meta
         with:
-          images: us.icr.io/icm-docker-images/icm-redis-cluster-node
+          images: us.icr.io/icm-docker-images/icm-redis-node
           tags: type=ref,event=tag
 
       - name: Setup Buildx
@@ -78,10 +78,10 @@ jobs:
           username: ${{ env.ICR_USERNAME }}
           password: ${{ env.ICR_PASSWORD }}
 
-      - name: Build and push cluster-node image
+      - name: Build and push redis-node image
         uses: docker/build-push-action@v2
         with:
-          file: Dockerfile.redisnode
+          file: Dockerfile.node
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
