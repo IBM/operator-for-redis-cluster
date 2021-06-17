@@ -130,7 +130,6 @@ func Test_fixNodesNotMeetFunc(t *testing.T) {
 
 type listIds []string
 type meetNodesTest struct {
-	t    *testing.T
 	meet map[string]listIds
 }
 

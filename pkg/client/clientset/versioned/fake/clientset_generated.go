@@ -46,18 +46,18 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		}
 	}
 
-	fakePtr := testing.Fake{}
+	fakePtr := &testing.Fake{}
 	fakePtr.AddReactor("*", "*", testing.ObjectReaction(o))
 	fakePtr.AddWatchReactor("*", testing.DefaultWatchReactor(watch.NewFake(), nil))
 
-	return &Clientset{fakePtr, &fakediscovery.FakeDiscovery{Fake: &fakePtr}}
+	return &Clientset{fakePtr, &fakediscovery.FakeDiscovery{Fake: fakePtr}}
 }
 
 // Clientset implements clientset.Interface. Meant to be embedded into a
 // struct to get a default implementation. This makes faking out just the method
 // you want to test easier.
 type Clientset struct {
-	testing.Fake
+	*testing.Fake
 	discovery *fakediscovery.FakeDiscovery
 }
 
@@ -69,10 +69,10 @@ var _ clientset.Interface = &Clientset{}
 
 // RedisoperatorV1 retrieves the RedisoperatorV1Client
 func (c *Clientset) RedisoperatorV1() redisoperatorv1.RedisoperatorV1Interface {
-	return &fakeredisoperatorv1.FakeRedisoperatorV1{Fake: &c.Fake}
+	return &fakeredisoperatorv1.FakeRedisoperatorV1{Fake: c.Fake}
 }
 
 // Redisoperator retrieves the RedisoperatorV1Client
 func (c *Clientset) Redisoperator() redisoperatorv1.RedisoperatorV1Interface {
-	return &fakeredisoperatorv1.FakeRedisoperatorV1{Fake: &c.Fake}
+	return &fakeredisoperatorv1.FakeRedisoperatorV1{Fake: c.Fake}
 }

@@ -60,7 +60,7 @@ func nodesMeet(ctx context.Context, admin redis.AdminInterface, node1, node2 *re
 	if err != nil {
 		return fmt.Errorf("[Sanity] unable get connection for node:%s, err:%v", node1.IPPort(), err)
 	}
-	if err = c.DoCmd(nil, "CLUSTER", "MEET", node2.IP, node2.Port); err != nil {
+	if err = c.DoCmd(ctx, "CLUSTER", "MEET", node2.IP, node2.Port); err != nil {
 		return fmt.Errorf("[Sanity] unable to execute the cluster meet command, err:%v", err)
 	}
 	return nil

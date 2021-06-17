@@ -9,10 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	//kapi "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake"
@@ -172,20 +168,6 @@ func TestSplitMainCluster(t *testing.T) {
 		if !reflect.DeepEqual(other, tc.toFixClusters) {
 			t.Errorf("[Case %d] Unexpected result for to fix clusters, expected %v, got %v", i, tc.toFixClusters, other)
 		}
-	}
-}
-
-// newCluster generate a new Cluster struct
-func newCluster(replicaFactor int32, nbPrimary int32) *rapi.RedisCluster {
-	return &rapi.RedisCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "",
-		},
-		Spec: rapi.RedisClusterSpec{
-			NumberOfPrimaries: &nbPrimary,
-			ReplicationFactor: &replicaFactor,
-		},
 	}
 }
 

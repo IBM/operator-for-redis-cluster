@@ -275,6 +275,7 @@ func IsPodSpecUpdatedFunc(client clientset.Interface, rediscluster *v1alpha1.Red
 			return LogAndReturnErrorf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 		}
 
+		withOldTag := make([]string, 0)
 		for _, pod := range podList.Items {
 			found := false
 			for _, container := range pod.Spec.Containers {
@@ -282,16 +283,21 @@ func IsPodSpecUpdatedFunc(client clientset.Interface, rediscluster *v1alpha1.Red
 					found = true
 					splitString := strings.Split(container.Image, ":")
 					if len(splitString) != 2 {
-						LogAndReturnErrorf("unable to get the tag from the container.Image:%s", container.Image)
+						return LogAndReturnErrorf("unable to get the tag from the container.Image:%s", container.Image)
 					}
 					if splitString[1] != imageTag {
-						LogAndReturnErrorf("current container.Image have a wrong tag:%s, want:%s", splitString[1], imageTag)
+						withOldTag = append(withOldTag, pod.Name)
+						Logf("current pod %q container.Image have a wrong tag:%s, want:%s", pod.Name, splitString[1], imageTag)
 					}
 				}
 			}
 			if !found {
-				LogAndReturnErrorf("unable to found the container with name: redis")
+				return LogAndReturnErrorf("unable to find the container with name: redis")
 			}
+		}
+
+		if len(withOldTag) > 0 {
+			return LogAndReturnErrorf("%d of %d pods have old tags: %v:", len(withOldTag), len(podList.Items), withOldTag)
 		}
 
 		Logf("RedisCluster podSpec updated properly")

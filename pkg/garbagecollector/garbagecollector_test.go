@@ -129,8 +129,7 @@ func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {
 					pod := createPodWithLabels("testpod", map[string]string{
 						rapi.ClusterNameLabelKey: "",
 					})
-					var pods runtime.Object
-					pods = &corev1.PodList{
+					pods := &corev1.PodList{
 						Items: []corev1.Pod{
 							pod,
 						}}
@@ -148,8 +147,7 @@ func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {
 					svc := createServiceWithLabels("testservice", map[string]string{
 						rapi.ClusterNameLabelKey: "",
 					})
-					var svcs runtime.Object
-					svcs = &corev1.ServiceList{
+					svcs := &corev1.ServiceList{
 						Items: []corev1.Service{
 							svc,
 						}}
@@ -167,8 +165,7 @@ func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {
 					pod := createPodWithLabels("testpod", map[string]string{
 						rapi.ClusterNameLabelKey: "foo",
 					})
-					var pods runtime.Object
-					pods = &corev1.PodList{
+					pods := &corev1.PodList{
 						Items: []corev1.Pod{
 							pod,
 						}}

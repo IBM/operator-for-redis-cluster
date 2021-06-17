@@ -2,6 +2,7 @@ package e2e
 
 import (
 	goflag "flag"
+	"github.com/golang/glog"
 	"os"
 	"testing"
 
@@ -19,7 +20,11 @@ func TestMain(m *testing.M) {
 	pflag.StringVar(&framework.FrameworkContext.ImageTag, "image-tag", "local", "image tag")
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
-	goflag.CommandLine.Parse([]string{})
+	err := goflag.CommandLine.Parse([]string{})
+	if err != nil {
+		glog.Errorf("failed to parse args: %v", err)
+		os.Exit(1)
+	}
 
 	os.Exit(m.Run())
 }

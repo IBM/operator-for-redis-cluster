@@ -46,7 +46,10 @@ func TestExecProcess(t *testing.T) {
 
 	go func() {
 		<-synchro
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		if err != nil {
+			t.Errorf("Should not have returned an error: %v", err)
+		}
 	}()
 
 	err := ExecProcess(tp)

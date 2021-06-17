@@ -33,7 +33,6 @@ import (
 
 var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
-var parameterCodec = runtime.NewParameterCodec(scheme)
 
 func init() {
 	v1.AddToGroupVersion(scheme, schema.GroupVersion{Version: "v1"})
@@ -55,6 +54,8 @@ func init() {
 // After this, RawExtensions in Kubernetes types will serialize kube-aggregator types
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
-	rapi.AddToScheme(scheme)
-
+	err := rapi.AddToScheme(scheme)
+	if err != nil {
+		panic(err)
+	}
 }

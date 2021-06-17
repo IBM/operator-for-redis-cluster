@@ -1,7 +1,9 @@
 package e2e
 
 import (
+	"fmt"
 	api "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 
@@ -16,7 +18,10 @@ import (
 )
 
 func deleteRedisCluster(client versioned.Interface, rediscluster *rapi.RedisCluster) {
-	client.Redisoperator().RedisClusters(rediscluster.Namespace).Delete(rediscluster.Name, &metav1.DeleteOptions{})
+	err := client.RedisoperatorV1().RedisClusters(rediscluster.Namespace).Delete(rediscluster.Name, &metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		Fail(fmt.Sprintf("Error when deleting rediscluster: %v", err))
+	}
 }
 
 var redisClient versioned.Interface
@@ -28,6 +33,10 @@ const clusterNs = api.NamespaceDefault
 
 var _ = BeforeSuite(func() {
 	redisClient, kubeClient = framework.BuildAndSetClients()
+})
+
+var _ = AfterSuite(func() {
+	deleteRedisCluster(redisClient, rediscluster)
 })
 
 var _ = Describe("RedisCluster CRUD operations", func() {

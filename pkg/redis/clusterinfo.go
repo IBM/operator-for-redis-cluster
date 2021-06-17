@@ -97,7 +97,10 @@ func DecodeNodeInfos(input *string, addr string) *NodeInfos {
 			} else {
 				glog.Errorf("Error while decoding node info for node '%s', cannot split ip:port ('%s'): %v", node.ID, values[1], err)
 			}
-			node.SetRole(values[2])
+			err := node.SetRole(values[2])
+			if err != nil {
+				glog.Errorf("Couldn't set role %q: %v", values[2], err)
+			}
 			node.SetFailureStatus(values[2])
 			node.SetPrimaryReferent(values[3])
 			if i, err := strconv.ParseInt(values[4], 10, 64); err == nil {
@@ -109,7 +112,10 @@ func DecodeNodeInfos(input *string, addr string) *NodeInfos {
 			if i, err := strconv.ParseInt(values[6], 10, 64); err == nil {
 				node.ConfigEpoch = i
 			}
-			node.SetLinkStatus(values[7])
+			err = node.SetLinkStatus(values[7])
+			if err != nil {
+				glog.Errorf("Can't set link status %q: %v", values[7], err)
+			}
 
 			for _, slot := range values[8:] {
 				if s, importing, migrating, err := DecodeSlotRange(slot); err == nil {

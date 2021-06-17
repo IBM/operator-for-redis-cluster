@@ -200,7 +200,10 @@ func (cnx *AdminConnections) Reconnect(ctx context.Context, addr string) error {
 // fail silently
 func (cnx *AdminConnections) AddAll(ctx context.Context, addrs []string) {
 	for _, addr := range addrs {
-		cnx.Add(ctx, addr)
+		err := cnx.Add(ctx, addr)
+		if err != nil {
+			glog.Errorf("Can't connect to %s: %v", addr, err)
+		}
 	}
 }
 
@@ -257,13 +260,19 @@ func (cnx *AdminConnections) handleError(ctx context.Context, addr string, err e
 		return false
 	} else if netError, ok := err.(net.Error); ok && netError.Timeout() {
 		// timeout, reconnect
-		cnx.Reconnect(ctx, addr)
+		err := cnx.Reconnect(ctx, addr)
+		if err != nil {
+			glog.Errorf("Can't reconnect to %s", addr)
+		}
 		return true
 	}
 	switch err.(type) {
 	case *net.OpError:
 		// connection refused, reconnect
-		cnx.Reconnect(ctx, addr)
+		err := cnx.Reconnect(ctx, addr)
+		if err != nil {
+			glog.Errorf("Can't reconnect to %s", addr)
+		}
 		return true
 	}
 	return false

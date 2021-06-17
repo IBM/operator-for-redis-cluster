@@ -20,7 +20,11 @@ func main() {
 
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
-	goflag.CommandLine.Parse([]string{})
+	err := goflag.CommandLine.Parse([]string{})
+	if err != nil {
+		glog.Errorf("goflag.CommandLine.Parse failed: %v", err)
+		os.Exit(1)
+	}
 
 	rn := redisnode.NewRedisNode(config)
 
@@ -36,7 +40,5 @@ func run(rn *redisnode.RedisNode) error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go signal.HandleSignal(cancelFunc)
 
-	rn.Run(ctx.Done())
-
-	return nil
+	return rn.Run(ctx.Done())
 }

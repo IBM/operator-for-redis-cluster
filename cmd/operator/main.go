@@ -34,7 +34,10 @@ func main() {
 	}
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
-	goflag.CommandLine.Parse([]string{})
+	err := goflag.CommandLine.Parse([]string{})
+	if err != nil {
+		glog.Fatalf("Failed to parse args: %v", err)
+	}
 
 	op := operator.NewRedisOperator(config)
 
@@ -42,8 +45,18 @@ func main() {
 	go signal.HandleSignal(cancel)
 
 	glog.Infof("Leader election enabled: %v", config.LeaderElectionEnabled)
-	go op.RunHttpServer(ctx.Done())
-	go op.RunMetricsServer(ctx.Done())
+	go func() {
+		err := op.RunHttpServer(ctx.Done())
+		if err != nil {
+			glog.Errorf("failed to run http server: %v", err)
+		}
+	}()
+	go func() {
+		err := op.RunMetricsServer(ctx.Done())
+		if err != nil {
+			glog.Errorf("failed to run metrics server: %v", err)
+		}
+	}()
 	if config.LeaderElectionEnabled {
 		runLeaderElection(ctx, op, config)
 	} else {

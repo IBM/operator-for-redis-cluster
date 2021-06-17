@@ -133,7 +133,10 @@ func GenerateMD5Spec(spec *kapiv1.PodSpec) (string, error) {
 		return "", err
 	}
 	hash := md5.New()
-	io.Copy(hash, bytes.NewReader(b))
+	_, err = io.Copy(hash, bytes.NewReader(b))
+	if err != nil {
+		return "", err
+	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 

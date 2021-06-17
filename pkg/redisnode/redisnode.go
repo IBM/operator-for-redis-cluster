@@ -68,7 +68,12 @@ func (r *RedisNode) Run(stop <-chan struct{}) error {
 		return err
 	}
 
-	go r.runHttpServer(stop)
+	go func() {
+		err := r.runHttpServer(stop)
+		if err != nil {
+			glog.Errorf("Failed to run HTTP server: %v", err)
+		}
+	}()
 
 	node, err = r.run(node)
 	if err != nil {
@@ -135,7 +140,10 @@ func (r *RedisNode) init() (*Node, error) {
 		glog.Fatal("Unable to update the configuration file, err:", err)
 	}
 
-	me.ClearDataFolder() // may be needed if container crashes and restart at the same place
+	err = me.ClearDataFolder() // may be needed if container crashes and restart at the same place
+	if err != nil {
+		glog.Errorf("Unable to clear data folder, err: %v", err)
+	}
 
 	r.httpServer = &http.Server{Addr: r.config.HTTPServerAddr}
 	if err := r.configureHealth(ctx); err != nil {
@@ -179,7 +187,11 @@ func (r *RedisNode) run(me *Node) (*Node, error) {
 	}
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFunc()
-	wait.PollUntil(2*time.Second, configFunc, ctx.Done())
+	err := wait.PollUntil(2*time.Second, configFunc, ctx.Done())
+	if err != nil {
+		glog.Errorf("Failed polling: %v", err)
+		return nil, err
+	}
 
 	glog.Infof("RedisNode: Running properly")
 	return me, nil

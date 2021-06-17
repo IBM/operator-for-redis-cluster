@@ -134,7 +134,10 @@ func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 		}
 	}
 
-	a.Connections().Add(ctx, addr)
+	err = a.Connections().Add(ctx, addr)
+	if err != nil {
+		return err
+	}
 
 	glog.Infof("node %s attached properly", addr)
 	return nil
@@ -289,7 +292,11 @@ func (a *Admin) ForgetNode(ctx context.Context, id string) error {
 		}
 
 		if IsReplica(nodeinfos.Node) && nodeinfos.Node.PrimaryReferent == id {
-			a.DetachReplica(ctx, nodeinfos.Node)
+			err = a.DetachReplica(ctx, nodeinfos.Node)
+			if err != nil {
+				glog.Errorf("unable to detach replica %q of primary %q", nodeinfos.Node.ID, id)
+				return err
+			}
 			glog.V(2).Infof("detach replica id: %s of primary: %s", nodeinfos.Node.ID, id)
 		}
 		var resp string
@@ -468,7 +475,7 @@ func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *Node, slots 
 			}
 		}
 	}
-	glog.Infof("MigrateKeys of %d slots from %s to %+v completed in %s", len(slots), addr, dest, time.Now().Sub(start))
+	glog.Infof("MigrateKeys of %d slots from %s to %+v completed in %s", len(slots), addr, dest, time.Since(start))
 	return keyCount, nil
 }
 
@@ -485,9 +492,7 @@ func (a *Admin) AttachReplicaToPrimary(ctx context.Context, replica *Node, prima
 	}
 
 	replica.SetPrimaryReferent(primary.ID)
-	replica.SetRole(redisReplicaRole)
-
-	return nil
+	return replica.SetRole(redisReplicaRole)
 }
 
 // DetachReplica use to detach a replica from a primary
@@ -509,9 +514,7 @@ func (a *Admin) DetachReplica(ctx context.Context, replica *Node) error {
 	}
 
 	replica.SetPrimaryReferent("")
-	replica.SetRole(redisPrimaryRole)
-
-	return nil
+	return replica.SetRole(redisPrimaryRole)
 }
 
 // FlushAndReset flush the cluster and reset the cluster configuration of the node. Commands are piped, to ensure no items arrived between flush and reset
@@ -537,6 +540,9 @@ func (a *Admin) FlushAll(ctx context.Context) {
 		return
 	}
 	err = c.DoCmd(ctx, nil, "FLUSHALL")
+	if err != nil {
+		glog.Errorf("FLUSHALL failed: %v", err)
+	}
 }
 
 func selectMyReplicas(me *Node, nodes Nodes) (Nodes, error) {

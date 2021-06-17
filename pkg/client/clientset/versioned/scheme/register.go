@@ -55,6 +55,8 @@ func init() {
 // After this, RawExtensions in Kubernetes types will serialize kube-aggregator types
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
-	rapi.AddToScheme(scheme)
-
+	err := rapi.AddToScheme(scheme)
+	if err != nil {
+		panic(err)
+	}
 }

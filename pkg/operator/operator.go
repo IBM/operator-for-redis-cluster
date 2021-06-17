@@ -108,7 +108,10 @@ func (op *RedisOperator) runGC(stop <-chan struct{}) {
 			}
 		}, garbagecollector.Interval, stop)
 		// run garbage collection before stopping the process
-		op.GC.CollectRedisClusterGarbage()
+		err := op.GC.CollectRedisClusterGarbage()
+		if err != nil {
+			glog.Errorf("collecting rediscluster pods and services: %v", err)
+		}
 	}()
 }
 

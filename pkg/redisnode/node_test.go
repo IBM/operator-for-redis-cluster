@@ -82,7 +82,10 @@ cluster-node-timeout 321`,
 				t.Errorf("Couldn' t create temporary config file: %v", err)
 			}
 			defer os.RemoveAll(podInfoTempDir)
-			memLimitFile.Write([]byte(tc.podRequestLimit))
+			_, err = memLimitFile.Write([]byte(tc.podRequestLimit))
+			if err != nil {
+				t.Errorf("Couldn't write to temporary config file: %v", err)
+			}
 			memLimitFile.Close()
 
 			var additionalConfigFileNames []string
@@ -93,7 +96,10 @@ cluster-node-timeout 321`,
 					t.Errorf("Couldn' t create temporary config file: %v", createerr)
 				}
 				additionalConfigFileNames = append(additionalConfigFileNames, configFile.Name())
-				configFile.Write([]byte(additionalConfigContent))
+				_, err = configFile.Write([]byte(additionalConfigContent))
+				if err != nil {
+					t.Errorf("Couldn't write to temporary config file: %v", err)
+				}
 				defer os.RemoveAll(redisConfDir)
 				configFile.Close()
 			}
@@ -144,8 +150,20 @@ func TestAdminCommands(t *testing.T) {
 	defer node.Clear()
 
 	// all methods below simply call the fake admin, test currently only improves coverage
-	node.InitRedisCluster(ctx, "1.1.1.1")
-	node.AttachNodeToCluster(ctx, "1.1.1.1")
-	node.ForgetNode(ctx)
-	node.StartFailover(ctx)
+	err := node.InitRedisCluster(ctx, "1.1.1.1")
+	if err != nil {
+		t.Errorf("InitRedisCluster failed: %s", err)
+	}
+	err = node.AttachNodeToCluster(ctx, "1.1.1.1")
+	if err != nil {
+		t.Errorf("AttachNodeToCluster failed: %s", err)
+	}
+	err = node.ForgetNode(ctx)
+	if err != nil {
+		t.Errorf("ForgetNode failed: %s", err)
+	}
+	err = node.StartFailover(ctx)
+	if err != nil {
+		t.Errorf("StartFailover failed: %s", err)
+	}
 }

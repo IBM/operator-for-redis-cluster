@@ -310,7 +310,11 @@ func (c *Controller) removeReplicasFromPrimary(ctx context.Context, admin redis.
 		return err
 	}
 	for _, node := range nodesToDelete {
-		admin.DetachReplica(ctx, node)
+		err := admin.DetachReplica(ctx, node)
+		if err != nil {
+			errs = append(errs, err)
+		}
+
 		if node.Pod != nil {
 			if err := c.podControl.DeletePod(cluster, node.Pod.Name); err != nil {
 				errs = append(errs, err)
