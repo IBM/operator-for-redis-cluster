@@ -14,7 +14,7 @@ rules:
   resources: ["leases"]
   verbs: ["*"]
 - apiGroups: [""]
-  resources: ["pods", "services"]
+  resources: ["pods", "services", "configmaps"]
   verbs: ["*"]
 - apiGroups: [""]
   resources: ["nodes"]
