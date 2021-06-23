@@ -3,7 +3,7 @@ package clustering
 import (
 	"context"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/golang/glog"
 )

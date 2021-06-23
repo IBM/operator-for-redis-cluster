@@ -1,58 +1,24 @@
 package garbagecollector
 
 import (
-	"fmt"
-	"net/http"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-	core "k8s.io/client-go/testing"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
-	redis "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis"
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
-	rfake "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned/fake"
-	rclister "github.com/TheWeatherCompany/icm-redis-operator/pkg/client/listers/redis/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	cfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 )
 
-type FakeRedisClusterLister struct {
-	rediscluster []*rapi.RedisCluster
-}
-
-func (f FakeRedisClusterLister) List(labels.Selector) (ret []*rapi.RedisCluster, err error) {
-	return f.rediscluster, nil
-}
-
-func (f FakeRedisClusterLister) RedisClusters(namespace string) rclister.RedisClusterNamespaceLister {
-	return &FakeRedisClusterNamespaceLister{
-		namespace: namespace,
-		Lister:    f,
-	}
-}
-
-type FakeRedisClusterNamespaceLister struct {
-	namespace string
-	Lister    FakeRedisClusterLister
-}
-
-func (f FakeRedisClusterNamespaceLister) List(labels.Selector) (ret []*rapi.RedisCluster, err error) {
-	return []*rapi.RedisCluster{}, nil
-}
-
-func (f FakeRedisClusterNamespaceLister) Get(name string) (*rapi.RedisCluster, error) {
-	for i := range f.Lister.rediscluster {
-		if f.Lister.rediscluster[i].Name == name {
-			return f.Lister.rediscluster[i], nil
-		}
-	}
-	return nil, newRedisClusterNotFoundError(name)
-}
-
 func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(rapi.AddToScheme(scheme))
+
 	tests := map[string]struct {
 		TweakGarbageCollector func(*GarbageCollector) *GarbageCollector
 		errorMessage          string
@@ -62,45 +28,36 @@ func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {
 			//   2 to be removed 2 (no rediscluster)
 			//   2 to be preserved (found rediscluster)
 			TweakGarbageCollector: func(gc *GarbageCollector) *GarbageCollector {
-				fakeClient := &fake.Clientset{}
-				fakeClient.AddReactor("list", "pods", func(action core.Action) (bool, runtime.Object, error) {
-					pods := &corev1.PodList{
-						Items: []corev1.Pod{
-							createPodWithLabels("testpod1", map[string]string{
-								rapi.ClusterNameLabelKey: "rediscluster1",
-							}),
-							createPodWithLabels("testpod2", map[string]string{
-								rapi.ClusterNameLabelKey: "rediscluster1",
-							}),
-							createPodWithLabels("testpod3", map[string]string{
-								rapi.ClusterNameLabelKey: "rediscluster2",
-							}),
-							createPodWithLabels("testpod4", map[string]string{
-								rapi.ClusterNameLabelKey: "rediscluster2",
-							}),
-						},
-					}
-					return true, pods, nil
-				})
-				fakeClient.AddReactor("list", "services", func(action core.Action) (bool, runtime.Object, error) {
-					svcs := &corev1.ServiceList{
-						Items: []corev1.Service{
-							createServiceWithLabels("testsvc1", map[string]string{
-								rapi.ClusterNameLabelKey: "rediscluster1",
-							}),
-							createServiceWithLabels("testsvc2", map[string]string{
-								rapi.ClusterNameLabelKey: "rediscluster2",
-							}),
-						},
-					}
-					return true, svcs, nil
-				})
-				gc.kubeClient = fakeClient
-				gc.rcLister = &FakeRedisClusterLister{
-					rediscluster: []*rapi.RedisCluster{
-						createRedisCluster("rediscluster2"),
+				fakeClient := cfake.NewClientBuilder()
+				fakeClient.WithScheme(scheme)
+				fakeClient.WithLists(&corev1.PodList{
+					Items: []corev1.Pod{
+						createPodWithLabels("testpod1", map[string]string{
+							rapi.ClusterNameLabelKey: "rediscluster1",
+						}),
+						createPodWithLabels("testpod2", map[string]string{
+							rapi.ClusterNameLabelKey: "rediscluster1",
+						}),
+						createPodWithLabels("testpod3", map[string]string{
+							rapi.ClusterNameLabelKey: "rediscluster2",
+						}),
+						createPodWithLabels("testpod4", map[string]string{
+							rapi.ClusterNameLabelKey: "rediscluster2",
+						}),
 					},
-				}
+				})
+				fakeClient.WithLists(&corev1.ServiceList{
+					Items: []corev1.Service{
+						createServiceWithLabels("testsvc1", map[string]string{
+							rapi.ClusterNameLabelKey: "rediscluster1",
+						}),
+						createServiceWithLabels("testsvc2", map[string]string{
+							rapi.ClusterNameLabelKey: "rediscluster2",
+						}),
+					},
+				})
+				fakeClient.WithObjects(createRedisCluster("rediscluster2"))
+				gc.kubeClient = fakeClient.Build()
 				return gc
 			},
 			errorMessage: "",
@@ -108,70 +65,44 @@ func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {
 		"no pods and services": {
 			errorMessage: "",
 		},
-		"error getting pods and services": {
-			TweakGarbageCollector: func(gc *GarbageCollector) *GarbageCollector {
-				fakeClient := &fake.Clientset{}
-				fakeClient.AddReactor("list", "pods", func(action core.Action) (bool, runtime.Object, error) {
-					return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
-				})
-				fakeClient.AddReactor("list", "services", func(action core.Action) (bool, runtime.Object, error) {
-					return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
-				})
-				gc.kubeClient = fakeClient
-				return gc
-			},
-			errorMessage: "[unable to list rediscluster pods to be collected: pods \"pods\" not found, unable to list rediscluster services to be collected: services \"services\" not found]",
-		},
 		"error getting pod with label without value": {
 			TweakGarbageCollector: func(gc *GarbageCollector) *GarbageCollector {
-				fakeClient := &fake.Clientset{}
-				fakeClient.AddReactor("list", "pods", func(action core.Action) (bool, runtime.Object, error) {
-					pod := createPodWithLabels("testpod", map[string]string{
-						rapi.ClusterNameLabelKey: "",
-					})
-					pods := &corev1.PodList{
-						Items: []corev1.Pod{
-							pod,
-						}}
-					return true, pods, nil
+				fakeClient := cfake.NewClientBuilder()
+				fakeClient.WithScheme(scheme)
+				fakeClient.WithLists(&corev1.PodList{
+					Items: []corev1.Pod{
+						createPodWithLabels("testpod", map[string]string{rapi.ClusterNameLabelKey: ""}),
+					},
 				})
-				gc.kubeClient = fakeClient
+				gc.kubeClient = fakeClient.Build()
 				return gc
 			},
 			errorMessage: "Unable to find rediscluster name for pod: /testpod",
 		},
 		"error getting service with label without value": {
 			TweakGarbageCollector: func(gc *GarbageCollector) *GarbageCollector {
-				fakeClient := &fake.Clientset{}
-				fakeClient.AddReactor("list", "services", func(action core.Action) (bool, runtime.Object, error) {
-					svc := createServiceWithLabels("testservice", map[string]string{
-						rapi.ClusterNameLabelKey: "",
-					})
-					svcs := &corev1.ServiceList{
-						Items: []corev1.Service{
-							svc,
-						}}
-					return true, svcs, nil
+				fakeClient := cfake.NewClientBuilder()
+				fakeClient.WithScheme(scheme)
+				fakeClient.WithLists(&corev1.ServiceList{
+					Items: []corev1.Service{
+						createServiceWithLabels("testservice", map[string]string{rapi.ClusterNameLabelKey: ""}),
+					},
 				})
-				gc.kubeClient = fakeClient
+				gc.kubeClient = fakeClient.Build()
 				return gc
 			},
 			errorMessage: "Unable to find rediscluster name for service: /testservice",
 		},
 		"no rediscluster found for pod": {
 			TweakGarbageCollector: func(gc *GarbageCollector) *GarbageCollector {
-				fakeClient := &fake.Clientset{}
-				fakeClient.AddReactor("list", "pods", func(action core.Action) (bool, runtime.Object, error) {
-					pod := createPodWithLabels("testpod", map[string]string{
-						rapi.ClusterNameLabelKey: "foo",
-					})
-					pods := &corev1.PodList{
-						Items: []corev1.Pod{
-							pod,
-						}}
-					return true, pods, nil
+				fakeClient := cfake.NewClientBuilder()
+				fakeClient.WithScheme(scheme)
+				fakeClient.WithLists(&corev1.PodList{
+					Items: []corev1.Pod{
+						createPodWithLabels("testpod", map[string]string{rapi.ClusterNameLabelKey: "foo"}),
+					},
 				})
-				gc.kubeClient = fakeClient
+				gc.kubeClient = fakeClient.Build()
 				return gc
 			},
 			errorMessage: "",
@@ -179,12 +110,7 @@ func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {
 	}
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
-			GC := &GarbageCollector{
-				kubeClient: fake.NewSimpleClientset(),
-				rcClient:   rfake.NewSimpleClientset(),
-				rcLister:   FakeRedisClusterLister{},
-				rcSynced:   func() bool { return true },
-			}
+			GC := NewGarbageCollector(cfake.NewClientBuilder().Build())
 			if tt.TweakGarbageCollector != nil {
 				GC = tt.TweakGarbageCollector(GC)
 			}
@@ -226,19 +152,4 @@ func createRedisCluster(name string) *rapi.RedisCluster {
 			Name: name,
 		},
 	}
-}
-
-func newRedisClusterNotFoundError(name string) *apierrors.StatusError {
-	return &apierrors.StatusError{
-		ErrStatus: metav1.Status{
-			Status: metav1.StatusFailure,
-			Code:   http.StatusNotFound,
-			Reason: metav1.StatusReasonNotFound,
-			Details: &metav1.StatusDetails{
-				Group: redis.GroupName,
-				Kind:  rapi.ResourcePlural + "." + redis.GroupName,
-				Name:  name,
-			},
-			Message: fmt.Sprintf("%s %q not found", rapi.ResourcePlural+"."+redis.GroupName, name),
-		}}
 }

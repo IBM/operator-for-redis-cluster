@@ -2,17 +2,18 @@ package controller
 
 import (
 	"context"
-	"fmt"
+
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	policyv1 "k8s.io/api/policy/v1beta1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 
@@ -28,12 +29,12 @@ type PodDisruptionBudgetsControlInterface interface {
 
 // PodDisruptionBudgetsControl contains all information for managing Kube PodDisruptionBudgets
 type PodDisruptionBudgetsControl struct {
-	KubeClient clientset.Interface
+	KubeClient client.Client
 	Recorder   record.EventRecorder
 }
 
 // NewPodDisruptionBudgetsControl builds and returns new PodDisruptionBudgetsControl instance
-func NewPodDisruptionBudgetsControl(client clientset.Interface, rec record.EventRecorder) *PodDisruptionBudgetsControl {
+func NewPodDisruptionBudgetsControl(client client.Client, rec record.EventRecorder) *PodDisruptionBudgetsControl {
 	ctrl := &PodDisruptionBudgetsControl{
 		KubeClient: client,
 		Recorder:   rec,
@@ -44,20 +45,29 @@ func NewPodDisruptionBudgetsControl(client clientset.Interface, rec record.Event
 
 // GetRedisClusterPodDisruptionBudget used to retrieve the Kubernetes PodDisruptionBudget associated to the RedisCluster
 func (s *PodDisruptionBudgetsControl) GetRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) (*policyv1.PodDisruptionBudget, error) {
-	PodDisruptionBudgetName := redisCluster.Name
-	pdb, err := s.KubeClient.PolicyV1beta1().PodDisruptionBudgets(redisCluster.Namespace).Get(context.Background(), PodDisruptionBudgetName, metav1.GetOptions{})
+	pdbName := types.NamespacedName{
+		Namespace: redisCluster.Namespace,
+		Name:      redisCluster.Name,
+	}
+	pdb := &policyv1.PodDisruptionBudget{}
+	err := s.KubeClient.Get(context.Background(), pdbName, pdb)
 	if err != nil {
 		return nil, err
 	}
-	if pdb.Name != PodDisruptionBudgetName {
-		return nil, fmt.Errorf("Couldn't find PodDisruptionBudget named %s", PodDisruptionBudgetName)
-	}
+
 	return pdb, nil
 }
 
 // DeleteRedisClusterPodDisruptionBudget used to delete the Kubernetes PodDisruptionBudget linked to the Redis Cluster
 func (s *PodDisruptionBudgetsControl) DeleteRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) error {
-	return s.KubeClient.PolicyV1beta1().PodDisruptionBudgets(redisCluster.Namespace).Delete(context.Background(), redisCluster.Name, metav1.DeleteOptions{})
+	pdb := &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: redisCluster.Namespace,
+			Name:      redisCluster.Name,
+		},
+	}
+
+	return s.KubeClient.Delete(context.Background(), pdb)
 }
 
 // CreateRedisClusterPodDisruptionBudget used to create the Kubernetes PodDisruptionBudget needed to access the Redis Cluster
@@ -82,6 +92,7 @@ func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redi
 			Labels:          desiredlabels,
 			Annotations:     desiredAnnotations,
 			Name:            PodDisruptionBudgetName,
+			Namespace:       redisCluster.Namespace,
 			OwnerReferences: []metav1.OwnerReference{pod.BuildOwnerReference(redisCluster)},
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
@@ -89,5 +100,10 @@ func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redi
 			Selector:       &labelSelector,
 		},
 	}
-	return s.KubeClient.PolicyV1beta1().PodDisruptionBudgets(redisCluster.Namespace).Create(context.Background(), newPodDisruptionBudget, metav1.CreateOptions{})
+	err = s.KubeClient.Create(context.Background(), newPodDisruptionBudget)
+	if err != nil {
+		return nil, err
+	}
+
+	return newPodDisruptionBudget, nil
 }

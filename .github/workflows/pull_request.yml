@@ -26,7 +26,7 @@ jobs:
       - name: Go Lint
         uses: golangci/golangci-lint-action@v2
         with:
-          args: --timeout=5m
+          args: --timeout=5m --enable exportloopref
           skip-pkg-cache: true
           skip-build-cache: true
           skip-go-installation: true

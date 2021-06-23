@@ -8,7 +8,7 @@ import (
 	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 )
@@ -18,10 +18,10 @@ func TestFixUntrustedNodes(t *testing.T) {
 	pod2 := newPod("pod2", "node2", "10.0.0.2")
 	pod3 := newPod("pod3", "node3", "10.0.0.3")
 	pod4 := newPod("pod3", "node4", "10.0.0.4")
-	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Pod: pod1}
-	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: pod2, Slots: redis.SlotSlice{1}}
-	redisUntrusted := redis.Node{ID: "redis3", FailStatus: []string{string(redis.NodeStatusHandshake)}, Role: "primary", IP: "10.0.0.3", Pod: pod3, Slots: redis.SlotSlice{}}
-	redis4 := redis.Node{ID: "redis4", Role: "replica", IP: "10.0.0.3", Pod: pod3}
+	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Pod: &pod1}
+	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: &pod2, Slots: redis.SlotSlice{1}}
+	redisUntrusted := redis.Node{ID: "redis3", FailStatus: []string{string(redis.NodeStatusHandshake)}, Role: "primary", IP: "10.0.0.3", Pod: &pod3, Slots: redis.SlotSlice{}}
+	redis4 := redis.Node{ID: "redis4", Role: "replica", IP: "10.0.0.3", Pod: &pod3}
 	ctx := context.Background()
 
 	type args struct {
@@ -46,7 +46,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 					return fakeAdmin
 				},
 				podControl: &Fakecontrol{
-					pods: []*kapiv1.Pod{pod1, pod2},
+					pods: []kapiv1.Pod{pod1, pod2},
 				},
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
@@ -71,7 +71,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 					return fakeAdmin
 				},
 				podControl: &Fakecontrol{
-					pods: []*kapiv1.Pod{pod1, pod2},
+					pods: []kapiv1.Pod{pod1, pod2},
 				},
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
@@ -96,7 +96,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 					return fakeAdmin
 				},
 				podControl: &Fakecontrol{
-					pods: []*kapiv1.Pod{pod1, pod2, pod3},
+					pods: []kapiv1.Pod{pod1, pod2, pod3},
 				},
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
@@ -122,7 +122,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 
 					return fakeAdmin
 				},
-				podControl: newFakecontrol([]*kapiv1.Pod{pod1, pod2, pod3}),
+				podControl: newFakecontrol([]kapiv1.Pod{pod1, pod2, pod3}),
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
 				},
@@ -145,7 +145,7 @@ func TestFixUntrustedNodes(t *testing.T) {
 
 					return fakeAdmin
 				},
-				podControl: newFakecontrol([]*kapiv1.Pod{pod1, pod2, pod4}),
+				podControl: newFakecontrol([]kapiv1.Pod{pod1, pod2, pod4}),
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
 				},
@@ -185,12 +185,12 @@ func TestFixUntrustedNodes(t *testing.T) {
 
 // Fakecontrol fake control
 type Fakecontrol struct {
-	pods         []*kapiv1.Pod
+	pods         []kapiv1.Pod
 	pod          *kapiv1.Pod
 	isPodDeleted map[string]bool
 }
 
-func newFakecontrol(pods []*kapiv1.Pod) *Fakecontrol {
+func newFakecontrol(pods []kapiv1.Pod) *Fakecontrol {
 	return &Fakecontrol{
 		pods:         pods,
 		isPodDeleted: map[string]bool{},
@@ -198,7 +198,7 @@ func newFakecontrol(pods []*kapiv1.Pod) *Fakecontrol {
 }
 
 // GetRedisClusterPods return list of Pod attached to a RedisCluster
-func (f *Fakecontrol) GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]*kapiv1.Pod, error) {
+func (f *Fakecontrol) GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]kapiv1.Pod, error) {
 	return f.pods, nil
 }
 
@@ -219,6 +219,6 @@ func (f *Fakecontrol) DeletePodNow(redisCluster *rapi.RedisCluster, podName stri
 	return nil
 }
 
-func newPod(name, vmName, ip string) *kapiv1.Pod {
-	return &kapiv1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name}, Spec: kapiv1.PodSpec{NodeName: vmName}, Status: kapiv1.PodStatus{PodIP: ip}}
+func newPod(name, vmName, ip string) kapiv1.Pod {
+	return kapiv1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name}, Spec: kapiv1.PodSpec{NodeName: vmName}, Status: kapiv1.PodStatus{PodIP: ip}}
 }

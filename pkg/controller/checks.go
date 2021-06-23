@@ -7,7 +7,7 @@ import (
 
 	kapi "k8s.io/api/core/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 
@@ -65,12 +65,12 @@ func compareStatus(old, new *rapi.RedisClusterState) bool {
 }
 
 // filterLostNodes divides pods into lost and other
-func filterLostNodes(pods []*kapi.Pod) (ok []*kapi.Pod, ko []*kapi.Pod) {
-	for _, pod := range pods {
+func filterLostNodes(pods []kapi.Pod) (ok []kapi.Pod, ko []kapi.Pod) {
+	for i, pod := range pods {
 		if pod.Status.Reason == "NodeLost" {
-			ko = append(ko, pod)
+			ko = append(ko, pods[i])
 		} else {
-			ok = append(ok, pod)
+			ok = append(ok, pods[i])
 		}
 	}
 	return ok, ko
@@ -286,12 +286,12 @@ func shouldDeleteNodes(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, bo
 		return uselessNodes, false
 	}
 
-	for _, node := range cluster.Status.Cluster.Nodes {
+	for i, node := range cluster.Status.Cluster.Nodes {
 		if node.Role == rapi.RedisClusterNodeRolePrimary && len(node.Slots) == 0 {
-			uselessNodes = append(uselessNodes, &node)
+			uselessNodes = append(uselessNodes, &cluster.Status.Cluster.Nodes[i])
 		}
 		if node.Role == rapi.RedisClusterNodeRoleNone {
-			uselessNodes = append(uselessNodes, &node)
+			uselessNodes = append(uselessNodes, &cluster.Status.Cluster.Nodes[i])
 		}
 	}
 

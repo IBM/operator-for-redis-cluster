@@ -7,7 +7,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/errors"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 

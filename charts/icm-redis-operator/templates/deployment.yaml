@@ -55,7 +55,7 @@ spec:
           {{- toYaml . | nindent 12 }}
           {{- end }}
           ports:
-            - name: http
+            - name: health
               containerPort: 8086
               protocol: TCP
             - name: metrics

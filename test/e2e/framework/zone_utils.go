@@ -4,7 +4,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -45,7 +45,7 @@ func getZone(nodeName string, kubeNodes []corev1.Node) string {
 	return redis.UnknownZone
 }
 
-func getZoneSkew(zoneToNodes map[string][]v1alpha1.RedisClusterNode) int {
+func getZoneSkew(zoneToNodes map[string][]rapi.RedisClusterNode) int {
 	if len(zoneToNodes) == 0 {
 		return 0
 	}
@@ -62,7 +62,7 @@ func getZoneSkew(zoneToNodes map[string][]v1alpha1.RedisClusterNode) int {
 	return largestZoneSize - smallestZoneSize
 }
 
-func zonesSkewed(zoneToPrimaries map[string][]v1alpha1.RedisClusterNode, zoneToReplicas map[string][]v1alpha1.RedisClusterNode) error {
+func zonesSkewed(zoneToPrimaries map[string][]rapi.RedisClusterNode, zoneToReplicas map[string][]rapi.RedisClusterNode) error {
 	primarySkew := getZoneSkew(zoneToPrimaries)
 	replicaSkew := getZoneSkew(zoneToReplicas)
 	if primarySkew > 2 {
@@ -74,7 +74,7 @@ func zonesSkewed(zoneToPrimaries map[string][]v1alpha1.RedisClusterNode, zoneToR
 	return nil
 }
 
-func sameZone(node v1alpha1.RedisClusterNode, zone string, idToPrimary map[string]v1alpha1.RedisClusterNode, kubeNodes []corev1.Node) bool {
+func sameZone(node rapi.RedisClusterNode, zone string, idToPrimary map[string]rapi.RedisClusterNode, kubeNodes []corev1.Node) bool {
 	if primary, ok := idToPrimary[node.PrimaryRef]; ok {
 		if primary.Pod != nil {
 			primaryZone := getZone(primary.Pod.Spec.NodeName, kubeNodes)
@@ -86,13 +86,13 @@ func sameZone(node v1alpha1.RedisClusterNode, zone string, idToPrimary map[strin
 	return false
 }
 
-func addNodeToMaps(node v1alpha1.RedisClusterNode, nodeName string, kubeNodes []corev1.Node, idToPrimary map[string]v1alpha1.RedisClusterNode, zoneToPrimaries, zoneToReplicas map[string][]v1alpha1.RedisClusterNode) {
+func addNodeToMaps(node rapi.RedisClusterNode, nodeName string, kubeNodes []corev1.Node, idToPrimary map[string]rapi.RedisClusterNode, zoneToPrimaries, zoneToReplicas map[string][]rapi.RedisClusterNode) {
 	nodeZone := getZone(nodeName, kubeNodes)
-	if node.Role == v1alpha1.RedisClusterNodeRolePrimary {
+	if node.Role == rapi.RedisClusterNodeRolePrimary {
 		zoneToPrimaries[nodeZone] = append(zoneToPrimaries[nodeZone], node)
 		idToPrimary[node.ID] = node
 	}
-	if node.Role == v1alpha1.RedisClusterNodeRoleReplica {
+	if node.Role == rapi.RedisClusterNodeRoleReplica {
 		zoneToReplicas[nodeZone] = append(zoneToReplicas[nodeZone], node)
 	}
 }

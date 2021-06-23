@@ -72,7 +72,7 @@ func addPrimaries(zones []string, primaries redis.Nodes, nodeToCurrentPrimaries 
 	}
 	glog.Infof("- bestEffort %v", bestEffort)
 	for _, primary := range primaries {
-		glog.Infof("- Primary %s, ip:%s", primary.ID, primary.IP)
+		glog.Infof("- Primary %s, ip: %s", primary.ID, primary.IP)
 	}
 	if len(primaries) >= int(nbPrimary) {
 		return primaries, bestEffort, nil
@@ -124,7 +124,7 @@ func ZonesBalanced(zones []string, candidate *redis.Node, nodes redis.Nodes) boo
 
 // PlaceReplicas selects replica redis nodes by spreading out the replicas across zones as much as possible.
 func PlaceReplicas(cluster *redis.Cluster, primaries, oldReplicas, newReplicas redis.Nodes, replicationFactor int32) (map[string]redis.Nodes, error) {
-	removeOldReplicas(&oldReplicas, &newReplicas)
+	newReplicas = removeOldReplicas(oldReplicas, newReplicas)
 	zoneToReplicas := ZoneToNodes(cluster.GetZones(), newReplicas)
 	primaryToReplicas := generatePrimaryToReplicas(primaries, oldReplicas, zoneToReplicas, replicationFactor)
 	err := addReplicasToPrimariesByZone(cluster, primaryToReplicas, zoneToReplicas, replicationFactor)
@@ -134,21 +134,29 @@ func PlaceReplicas(cluster *redis.Cluster, primaries, oldReplicas, newReplicas r
 	return primaryToReplicas, nil
 }
 
-func removeOldReplicas(oldReplicas, newReplicas *redis.Nodes) {
+func containsReplica(replicas redis.Nodes, replica *redis.Node) bool {
+	for _, r := range replicas {
+		if r == replica {
+			return true
+		}
+	}
+	return false
+}
+
+func removeOldReplicas(oldReplicas, newReplicas redis.Nodes) redis.Nodes {
 	// be sure that no oldReplicas are present in newReplicas
-	for _, newReplica := range *newReplicas {
-		for _, oldReplica := range *oldReplicas {
-			if newReplica.ID == oldReplica.ID {
-				removeIDFunc := func(node *redis.Node) bool {
-					return node.ID == newReplica.ID
-				}
-				newReplicas.FilterByFunc(removeIDFunc)
-				if glog.V(4) {
-					glog.Warningf("removing old replica with id %s from list of new replicas", newReplica.ID)
-				}
+	i := 0
+	for _, newReplica := range newReplicas {
+		if !containsReplica(oldReplicas, newReplica) {
+			newReplicas[i] = newReplica
+			i++
+		} else {
+			if glog.V(4) {
+				glog.Warningf("removing old replica with id %s from list of new replicas", newReplica.ID)
 			}
 		}
 	}
+	return newReplicas[:i]
 }
 
 func generatePrimaryToReplicas(primaries, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, replicationFactor int32) map[string]redis.Nodes {
@@ -156,15 +164,14 @@ func generatePrimaryToReplicas(primaries, replicas redis.Nodes, zoneToReplicas m
 	for _, node := range primaries {
 		primaryToReplicas[node.ID] = redis.Nodes{}
 	}
-	for _, replica := range replicas {
-		for _, primary := range primaries {
+	for _, primary := range primaries {
+		for _, replica := range replicas {
 			if replica.PrimaryReferent == primary.ID {
 				if len(primaryToReplicas[primary.ID]) < int(replicationFactor) {
 					// primary of this replica is among the new primary nodes
 					primaryToReplicas[primary.ID] = append(primaryToReplicas[primary.ID], replica)
-					break
 				} else {
-					zoneToReplicas[primary.Zone] = append(primaryToReplicas[primary.Zone], replica)
+					zoneToReplicas[replica.Zone] = append(zoneToReplicas[replica.Zone], replica)
 				}
 			}
 		}

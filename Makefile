@@ -47,6 +47,9 @@ container: $(addprefix container-,$(CMDBINS))
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role output:rbac:none paths="./..." output:crd:artifacts:config=charts/icm-redis-operator/crds/
 
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object paths="./..."
+
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
@@ -76,14 +79,6 @@ push: $(addprefix push-,$(CMDBINS))
 clean:
 	rm -f ${ARTIFACT_OPERATOR}
 
-# Install all the build and lint dependencies
-setup:
-	go get -u github.com/alecthomas/gometalinter
-	gometalinter --install
-	echo "make check" > .git/hooks/pre-commit
-	chmod +x .git/hooks/pre-commit
-.PHONY: setup
-
 # gofmt and goimports all go files
 fmt:
 	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
@@ -91,13 +86,7 @@ fmt:
 
 # Run all the linters
 lint:
-	gometalinter --vendor ./... -e pkg/client -e _generated -e test --deadline 15m -D gocyclo -D errcheck -D aligncheck -D maligned -D gas
+	golangci-lint run --enable exportloopref
 .PHONY: lint
-
-# Run only fast linters
-lint-fast:
-	gometalinter --fast --vendor ./... -e pkg/client -e _generated -e test --deadline 9m -D gocyclo -D errcheck -D aligncheck -D maligned
-.PHONY: lint-fast
-
 
 .PHONY: build push clean test

@@ -1,117 +1,82 @@
 package main
 
 import (
-	"context"
-	goflag "flag"
-	"os"
-	. "runtime"
-	"time"
+	"flag"
 
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller"
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/garbagecollector"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/operator"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/signal"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-const (
-	leaseDuration = 15 * time.Second
-	renewDeadline = 10 * time.Second
-	retryPeriod   = 3 * time.Second
-)
+const leaderElectionID = "redis-operator-leader-election-lock"
 
 func main() {
-	utils.BuildInfos()
-	GOMAXPROCS(NumCPU())
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(rapi.AddToScheme(scheme))
+
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	config := operator.NewRedisOperatorConfig()
 	config.AddFlags(pflag.CommandLine)
 	if err := config.ParseEnvironment(); err != nil {
 		glog.Fatalf("Failed to parse environment variables: %v", err)
 	}
-	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
-	err := goflag.CommandLine.Parse([]string{})
+	err := flag.CommandLine.Parse([]string{})
 	if err != nil {
 		glog.Fatalf("Failed to parse args: %v", err)
 	}
 
-	op := operator.NewRedisOperator(config)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go signal.HandleSignal(cancel)
-
-	glog.Infof("Leader election enabled: %v", config.LeaderElectionEnabled)
-	go func() {
-		err := op.RunHttpServer(ctx.Done())
-		if err != nil {
-			glog.Errorf("failed to run http server: %v", err)
-		}
-	}()
-	go func() {
-		err := op.RunMetricsServer(ctx.Done())
-		if err != nil {
-			glog.Errorf("failed to run metrics server: %v", err)
-		}
-	}()
-	if config.LeaderElectionEnabled {
-		runLeaderElection(ctx, op, config)
-	} else {
-		run(ctx, op)
-	}
-	os.Exit(0)
-}
-
-func leaderElectionConfig(op *operator.RedisOperator, cfg *operator.Config) leaderelection.LeaderElectionConfig {
-	lock := &resourcelock.LeaseLock{
-		LeaseMeta: metav1.ObjectMeta{
-			Name:      operator.LeaderElectionLock,
-			Namespace: cfg.Namespace,
-		},
-		Client: op.Client.CoordinationV1(),
-		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: op.LeaseID,
-		},
-	}
-	return leaderelection.LeaderElectionConfig{
-		Lock:            lock,
-		ReleaseOnCancel: true,
-		LeaseDuration:   leaseDuration,
-		RenewDeadline:   renewDeadline,
-		RetryPeriod:     retryPeriod,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {
-				run(ctx, op)
-			},
-			OnStoppedLeading: func() {
-				glog.Infof("Redis operator leader with id %s lost", op.LeaseID)
-				os.Exit(0)
-			},
-			OnNewLeader: func(id string) {
-				if id == op.LeaseID {
-					return
-				}
-				glog.Infof("Redis operator leader with id %s elected", id)
-			},
-		},
-	}
-}
-
-func runLeaderElection(ctx context.Context, op *operator.RedisOperator, cfg *operator.Config) {
-	lec := leaderElectionConfig(op, cfg)
-	le, err := leaderelection.NewLeaderElector(lec)
+	restConfig := ctrl.GetConfigOrDie()
+	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
+		Scheme:                 scheme,
+		MetricsBindAddress:     config.MetricsAddr,
+		HealthProbeBindAddress: config.HealthCheckAddr,
+		LeaderElection:         config.LeaderElectionEnabled,
+		LeaderElectionID:       leaderElectionID,
+	})
 	if err != nil {
-		glog.Fatalf("Failed to create new leader elector: %v", err)
+		glog.Fatalf("unable to start manager: %v", err)
 	}
-	le.Run(ctx)
-}
 
-func run(ctx context.Context, op *operator.RedisOperator) {
-	if err := op.Run(ctx.Done()); err != nil {
-		glog.Errorf("Redis operator returned an error:%v", err)
-		os.Exit(1)
+	ctrlCfg := controller.NewConfig(1, config.Redis)
+	redisClusterCtrl := controller.NewController(ctrlCfg, mgr.GetClient(), mgr.GetEventRecorderFor("rediscluster-controller"))
+	err = controller.SetupRedisClusterController(mgr, redisClusterCtrl)
+	if err != nil {
+		glog.Fatalf("couldn't setup rediscluster controller:%v", err)
+	}
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		glog.Fatalf("unable to set up health check: %v", err)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		glog.Fatalf("unable to set up ready check: %v", err)
+	}
+
+	ctx := ctrl.SetupSignalHandler()
+
+	gc := garbagecollector.NewGarbageCollector(mgr.GetClient())
+	go gc.Run(ctx.Done())
+
+	glog.Info("starting manager")
+	if err := mgr.Start(ctx); err != nil {
+		glog.Fatalf("problem running manager: %v", err)
 	}
 }

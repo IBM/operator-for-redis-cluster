@@ -8,7 +8,7 @@ import (
 	kapi "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	ctrlpod "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 
@@ -1136,10 +1136,10 @@ func Test_comparePodSpec(t *testing.T) {
 }
 
 func Test_filterLostNodes(t *testing.T) {
-	var pods []*kapi.Pod
-	pods = append(pods, &kapi.Pod{Status: kapi.PodStatus{Reason: "Running"}})
-	pods = append(pods, &kapi.Pod{Status: kapi.PodStatus{Reason: "Finished"}})
-	pods = append(pods, &kapi.Pod{Status: kapi.PodStatus{Reason: "NodeLost"}})
+	var pods []kapi.Pod
+	pods = append(pods, kapi.Pod{Status: kapi.PodStatus{Reason: "Running"}})
+	pods = append(pods, kapi.Pod{Status: kapi.PodStatus{Reason: "Finished"}})
+	pods = append(pods, kapi.Pod{Status: kapi.PodStatus{Reason: "NodeLost"}})
 	ok, ko := filterLostNodes(pods)
 	if !(len(ok) == 2 || len(ko) == 1) {
 		t.Errorf("filterLostNodes() wrong result ok: %v, ko: %v", ok, ko)

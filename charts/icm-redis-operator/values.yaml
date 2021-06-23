@@ -69,14 +69,14 @@ ingress:
 
 livenessProbe:
   httpGet:
-    path: /live
-    port: http
+    path: /healthz
+    port: health
   initialDelaySeconds: 30
 
 readinessProbe:
   httpGet:
-    path: /ready
-    port: http
+    path: /readyz
+    port: health
   initialDelaySeconds: 5
 
 resources: {}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -8,19 +9,23 @@ import (
 	"runtime"
 	"strings"
 
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/golang/glog"
 	"github.com/olekukonko/tablewriter"
 
 	kapiv1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
-	rclient "github.com/TheWeatherCompany/icm-redis-operator/pkg/client"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 )
 
 func main() {
@@ -49,19 +54,24 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	redisClient, err := rclient.NewClient(rest)
+	scheme := apiruntime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(rapi.AddToScheme(scheme))
+	client, err := kclient.New(rest, kclient.Options{Scheme: scheme})
 	if err != nil {
-		glog.Fatalf("Unable to init redis.clientset from kubeconfig:%v", err)
+		glog.Fatalf("Unable to init kubernetes client from kubeconfig:%v", err)
 	}
 
-	rcs := &v1.RedisClusterList{}
+	rcs := &rapi.RedisClusterList{}
 	if clusterName == "" {
-		rcs, err = redisClient.RedisoperatorV1().RedisClusters(namespace).List(meta_v1.ListOptions{})
+		err = client.List(context.Background(), rcs, kclient.InNamespace(namespace))
 		if err != nil {
 			glog.Fatalf("unable to list redisclusters:%v", err)
 		}
 	} else {
-		rc, err := redisClient.RedisoperatorV1().RedisClusters(namespace).Get(clusterName, meta_v1.GetOptions{})
+		rc := &rapi.RedisCluster{}
+		namespacedName := types.NamespacedName{Namespace: namespace, Name: clusterName}
+		err := client.Get(context.Background(), namespacedName, rc)
 		if err == nil && rc != nil {
 			rcs.Items = append(rcs.Items, *rc)
 		}
@@ -99,7 +109,7 @@ func main() {
 	os.Exit(0)
 }
 
-func hasStatus(rc *v1.RedisCluster, conditionType v1.RedisClusterConditionType, status kapiv1.ConditionStatus) bool {
+func hasStatus(rc *rapi.RedisCluster, conditionType rapi.RedisClusterConditionType, status kapiv1.ConditionStatus) bool {
 	for _, cond := range rc.Status.Conditions {
 		if cond.Type == conditionType && cond.Status == status {
 			return true
@@ -108,27 +118,27 @@ func hasStatus(rc *v1.RedisCluster, conditionType v1.RedisClusterConditionType, 
 	return false
 }
 
-func buildClusterStatus(rc *v1.RedisCluster) string {
+func buildClusterStatus(rc *rapi.RedisCluster) string {
 	status := []string{}
 
-	if hasStatus(rc, v1.RedisClusterOK, kapiv1.ConditionFalse) {
+	if hasStatus(rc, rapi.RedisClusterOK, kapiv1.ConditionFalse) {
 		status = append(status, "KO")
-	} else if hasStatus(rc, v1.RedisClusterOK, kapiv1.ConditionTrue) {
-		status = append(status, string(v1.RedisClusterOK))
+	} else if hasStatus(rc, rapi.RedisClusterOK, kapiv1.ConditionTrue) {
+		status = append(status, string(rapi.RedisClusterOK))
 	}
 
-	if hasStatus(rc, v1.RedisClusterRollingUpdate, kapiv1.ConditionTrue) {
-		status = append(status, string(v1.RedisClusterRollingUpdate))
-	} else if hasStatus(rc, v1.RedisClusterScaling, kapiv1.ConditionTrue) {
-		status = append(status, string(v1.RedisClusterScaling))
-	} else if hasStatus(rc, v1.RedisClusterRebalancing, kapiv1.ConditionTrue) {
-		status = append(status, string(v1.RedisClusterRebalancing))
+	if hasStatus(rc, rapi.RedisClusterRollingUpdate, kapiv1.ConditionTrue) {
+		status = append(status, string(rapi.RedisClusterRollingUpdate))
+	} else if hasStatus(rc, rapi.RedisClusterScaling, kapiv1.ConditionTrue) {
+		status = append(status, string(rapi.RedisClusterScaling))
+	} else if hasStatus(rc, rapi.RedisClusterRebalancing, kapiv1.ConditionTrue) {
+		status = append(status, string(rapi.RedisClusterRebalancing))
 	}
 
 	return strings.Join(status, "-")
 }
 
-func buildPodStatus(rc *v1.RedisCluster) string {
+func buildPodStatus(rc *rapi.RedisCluster) string {
 	specPrimary := *rc.Spec.NumberOfPrimaries
 	specReplication := *rc.Spec.ReplicationFactor
 	podWanted := (1 + specReplication) * specPrimary
@@ -139,11 +149,11 @@ func buildPodStatus(rc *v1.RedisCluster) string {
 	return fmt.Sprintf("%d/%d/%d", numPodsReady, numPods, podWanted)
 }
 
-func buildPrimaryStatus(rc *v1.RedisCluster) string {
+func buildPrimaryStatus(rc *rapi.RedisCluster) string {
 	return fmt.Sprintf("%d/%d", rc.Status.Cluster.NumberOfPrimaries, *rc.Spec.NumberOfPrimaries)
 }
 
-func buildReplicationStatus(rc *v1.RedisCluster) string {
+func buildReplicationStatus(rc *rapi.RedisCluster) string {
 	spec := *rc.Spec.ReplicationFactor
 	return fmt.Sprintf("%d-%d/%d", rc.Status.Cluster.MinReplicationFactor, rc.Status.Cluster.MaxReplicationFactor, spec)
 }

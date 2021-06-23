@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/golang/glog"
-	"k8s.io/client-go/kubernetes"
-
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/clustering"
 	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/sanitycheck"
@@ -450,7 +448,7 @@ func sameZoneAsPrimary(primary *redis.Node, replicas redis.Nodes) int {
 	return -1
 }
 
-func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes) bool {
+func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, nbReplicasToDelete int32) bool {
 	largestZone := largestZoneSize(zoneToReplicas)
 	for _, replica := range replicas {
 		// check if this replica is in the largest zone and there are no other replica zones of equal size
@@ -458,7 +456,9 @@ func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToRe
 			// add it to the selection of replicas to delete and remove it from zoneToReplicas
 			*selection = append(*selection, replica)
 			removeReplicaFromZone(replica, zoneToReplicas)
-			return true
+			if len(*selection) == int(nbReplicasToDelete) {
+				return true
+			}
 		}
 	}
 	return false
@@ -466,41 +466,39 @@ func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToRe
 
 func removeReplicasByZone(zones []string, selection *redis.Nodes, primary *redis.Node, replicas redis.Nodes, allReplicas redis.Nodes, nbReplicasToDelete int32) bool {
 	zoneToReplicas := clustering.ZoneToNodes(zones, replicas)
-	if !replicaInLargestZone(selection, replicas, zoneToReplicas) {
+	// remove replicas in the largest zone
+	if replicaInLargestZone(selection, replicas, zoneToReplicas, nbReplicasToDelete) {
+		return true
+	}
+	// all replicas are in zones of equal size, remove replicas in the same zone as their primary
+	if i := sameZoneAsPrimary(primary, replicas); i != -1 {
+		*selection = append(*selection, replicas[i])
+		removeReplicaFromZone(replicas[i], zoneToReplicas)
 		if len(*selection) == int(nbReplicasToDelete) {
 			return true
 		}
-		// all replicas are in zones of equal size
-		if i := sameZoneAsPrimary(primary, replicas); i != -1 {
-			*selection = append(*selection, replicas[i])
-			removeReplicaFromZone(replicas[i], zoneToReplicas)
+	}
+	// remove selected replicas
+	i := 0
+	for _, replica := range allReplicas {
+		if !selectionContainsReplica(selection, replica) {
+			allReplicas[i] = replica
+			i++
+		}
+	}
+	allReplicas = allReplicas[:i]
+	// remove replicas in the largest zone cluster-wide
+	zoneToAllReplicas := clustering.ZoneToNodes(zones, allReplicas)
+	if replicaInLargestZone(selection, replicas, zoneToAllReplicas, nbReplicasToDelete) {
+		return true
+	}
+	// if we still do not have enough replicas, pick the first available
+	for _, replica := range replicas {
+		if !selectionContainsReplica(selection, replica) {
+			*selection = append(*selection, replica)
+			removeReplicaFromZone(replica, zoneToReplicas)
 			if len(*selection) == int(nbReplicasToDelete) {
 				return true
-			}
-		}
-		// remove selected replicas
-		i := 0
-		for _, replica := range allReplicas {
-			if !selectionContainsReplica(selection, replica) {
-				allReplicas[i] = replica
-				i++
-			}
-		}
-		allReplicas = allReplicas[:i]
-		// remove the replica in the largest zone cluster-wide
-		zoneToAllReplicas := clustering.ZoneToNodes(zones, allReplicas)
-		replicaInLargestZone(selection, replicas, zoneToAllReplicas)
-		if len(*selection) == int(nbReplicasToDelete) {
-			return true
-		}
-		// if we still do not have enough replicas, pick the first available
-		for _, replica := range replicas {
-			if !selectionContainsReplica(selection, replica) {
-				*selection = append(*selection, replica)
-				removeReplicaFromZone(replica, zoneToReplicas)
-				if len(*selection) == int(nbReplicasToDelete) {
-					return true
-				}
 			}
 		}
 	}
@@ -549,7 +547,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	currReplicationFactor := *cluster.Spec.ReplicationFactor
 	currNbPrimaries := *cluster.Spec.NumberOfPrimaries
 
-	newCluster, nodes, err := newRedisCluster(ctx, admin, cluster, c.kubeClient)
+	newCluster, nodes, err := newRedisCluster(ctx, admin, cluster, c.client)
 	if err != nil {
 		glog.Errorf("unable to create the RedisCluster view: %v", err)
 		return false, err
@@ -603,7 +601,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		hasChanged = true
 	}
 
-	// Second, select replica nodes
+	// Second, get the current replica nodes
 	currentReplicaNodes := nodes.FilterByFunc(redis.IsReplica)
 
 	// New replicas are currently primaries with no slots
@@ -669,7 +667,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	return hasChanged, nil
 }
 
-func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, kubeClient kubernetes.Interface) (*redis.Cluster, redis.Nodes, error) {
+func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, kubeClient client.Client) (*redis.Cluster, redis.Nodes, error) {
 	infos, err := admin.GetClusterInfos(ctx)
 	if redis.IsPartialError(err) {
 		glog.Errorf("error getting consolidated view of the cluster: %v", err)
@@ -682,12 +680,14 @@ func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *r
 	// build redis cluster
 	rCluster := redis.NewCluster(cluster.Name, cluster.Namespace)
 	rCluster.NodeSelector = cluster.Spec.NodeSelector
-	labelSelector := labels.Set(rCluster.NodeSelector).String()
-	nodeList, err := kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+
+	nodeList := &v1.NodeList{}
+	err = kubeClient.List(ctx, nodeList, client.MatchingLabels(rCluster.NodeSelector))
 	if err != nil {
-		glog.Errorf("error getting k8s nodes with label selector %s", labelSelector)
+		glog.Errorf("error getting k8s nodes with label selector %q: %v", rCluster.NodeSelector, err)
 		return nil, nil, err
 	}
+
 	rCluster.KubeNodes = nodeList.Items
 	for _, node := range nodes {
 		rCluster.Nodes[node.ID] = node

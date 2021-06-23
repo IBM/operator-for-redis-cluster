@@ -89,7 +89,7 @@ func (r *RedisNode) Run(stop <-chan struct{}) error {
 
 func initKubeConfig(c *Config) (*rest.Config, error) {
 	if len(c.KubeConfigFile) > 0 {
-		return clientcmd.BuildConfigFromFlags(c.Primary, c.KubeConfigFile) // out of cluster config
+		return clientcmd.BuildConfigFromFlags(c.KubeAPIServer, c.KubeConfigFile) // out of cluster config
 	}
 	return rest.InClusterConfig()
 }

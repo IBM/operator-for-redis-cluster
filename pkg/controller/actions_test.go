@@ -3,16 +3,31 @@ package controller
 import (
 	"context"
 	"reflect"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"testing"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 	kapiv1 "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/fake"
 )
+
+var scheme *runtime.Scheme
+
+func init() {
+	scheme = runtime.NewScheme()
+
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(rapi.AddToScheme(scheme))
+}
 
 func Test_getNewReplicas(t *testing.T) {
 	_, redisPrimary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
@@ -21,7 +36,6 @@ func Test_getNewReplicas(t *testing.T) {
 	_, redisReplica2 := newRedisPrimaryNode("replica2", "zone3", "pod3", "node3", []string{})
 	_, redisReplica3 := newRedisPrimaryNode("replica3", "zone1", "pod4", "node1", []string{})
 	_, redisReplica4 := newRedisPrimaryNode("replica4", "zone2", "pod5", "node2", []string{})
-
 
 	type args struct {
 		zones            []string
@@ -279,7 +293,8 @@ func newPod(name, node string) *kapiv1.Pod {
 func newNode(name, zone string) *kapiv1.Node {
 	return &kapiv1.Node{
 		ObjectMeta: kmetav1.ObjectMeta{
-			Name: name,
+			Name:            name,
+			ResourceVersion: "358",
 			Labels: map[string]string{
 				kapiv1.LabelTopologyZone: zone,
 			},
@@ -296,7 +311,7 @@ func Test_newRedisCluster(t *testing.T) {
 	nodes := &kapiv1.NodeList{
 		Items: []kapiv1.Node{*node1, *node2},
 	}
-	fakeKubeClient := fake.NewSimpleClientset(nodes)
+	fakeKubeClient := fake.NewClientBuilder().WithScheme(scheme).WithLists(nodes).Build()
 	fakeAdmin := admin.NewFakeAdmin()
 	fakeAdmin.GetClusterInfosRet = admin.ClusterInfosRetType{
 		ClusterInfos: &redis.ClusterInfos{
@@ -310,7 +325,7 @@ func Test_newRedisCluster(t *testing.T) {
 	}
 
 	type args struct {
-		kubeClient kubernetes.Interface
+		kubeClient client.Client
 		admin      redis.AdminInterface
 		cluster    *rapi.RedisCluster
 	}
@@ -359,12 +374,12 @@ func Test_newRedisCluster(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newRedisCluster() got = %v, want %v", got, tt.want)
+				t.Errorf("newRedisCluster() got = %#v, want %#v", got, tt.want)
 			}
 			got1.SortNodes()
 			tt.want1.SortNodes()
 			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("newRedisCluster() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("newRedisCluster() got1 = %#v, want %#v", got1, tt.want1)
 			}
 		})
 	}
@@ -382,7 +397,7 @@ func TestController_applyConfiguration(t *testing.T) {
 	nodes := &kapiv1.NodeList{
 		Items: []kapiv1.Node{*node1, *node2, *node3},
 	}
-	fakeKubeClient := fake.NewSimpleClientset(nodes)
+	fakeKubeClient := fake.NewClientBuilder().WithScheme(scheme).WithLists(nodes).Build()
 
 	type args struct {
 		cluster             *rapi.RedisCluster
@@ -486,7 +501,7 @@ func TestController_applyConfiguration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Controller{
 				updateHandler: func(rc *rapi.RedisCluster) (*rapi.RedisCluster, error) { return rc, nil },
-				kubeClient:    fakeKubeClient,
+				client:        fakeKubeClient,
 			}
 			fakeAdmin := admin.NewFakeAdmin()
 			tt.args.updateFakeAdminFunc(fakeAdmin)

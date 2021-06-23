@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/glog"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
@@ -36,7 +36,7 @@ func SelectPrimaries(cluster *redis.Cluster, nodes redis.Nodes, nbPrimary int32)
 
 	glog.V(2).Infof("total primaries: %d - target %d - selected: %d", len(allPrimaryNodes), nbPrimary, len(newPrimaryNodes))
 	if err != nil {
-		return redis.Nodes{}, redis.Nodes{}, redis.Nodes{}, fmt.Errorf("insufficient primaries, current: %d - target: %d - err:%v", len(allPrimaryNodes), nbPrimary, err)
+		return redis.Nodes{}, redis.Nodes{}, redis.Nodes{}, fmt.Errorf("insufficient primaries, current: %d - target: %d - err: %v", len(allPrimaryNodes), nbPrimary, err)
 	}
 
 	newPrimaryNodes = newPrimaryNodes.SortByFunc(func(a, b *redis.Node) bool { return a.ID < b.ID })

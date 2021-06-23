@@ -9,20 +9,20 @@ import (
 	"fmt"
 	"io"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clientset "k8s.io/client-go/kubernetes"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/golang/glog"
 )
 
 // RedisClusterControlInterface interface for the RedisClusterPodControl
 type RedisClusterControlInterface interface {
 	// GetRedisClusterPods return list of Pod attached to a RedisCluster
-	GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]*kapiv1.Pod, error)
+	GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]kapiv1.Pod, error)
 	// CreatePod used to create a Pod from the RedisCluster pod template
 	CreatePod(redisCluster *rapi.RedisCluster) (*kapiv1.Pod, error)
 	// DeletePod used to delete a pod from its name
@@ -35,15 +35,13 @@ var _ RedisClusterControlInterface = &RedisClusterControl{}
 
 // RedisClusterControl contains requires accessor to managing the RedisCluster pods
 type RedisClusterControl struct {
-	PodLister  corev1listers.PodLister
-	KubeClient clientset.Interface
+	KubeClient client.Client
 	Recorder   record.EventRecorder
 }
 
 // NewRedisClusterControl builds and returns new NewRedisClusterControl instance
-func NewRedisClusterControl(lister corev1listers.PodLister, client clientset.Interface, rec record.EventRecorder) *RedisClusterControl {
+func NewRedisClusterControl(client client.Client, rec record.EventRecorder) *RedisClusterControl {
 	ctrl := &RedisClusterControl{
-		PodLister:  lister,
 		KubeClient: client,
 		Recorder:   rec,
 	}
@@ -51,12 +49,17 @@ func NewRedisClusterControl(lister corev1listers.PodLister, client clientset.Int
 }
 
 // GetRedisClusterPods return list of Pod attached to a RedisCluster
-func (p *RedisClusterControl) GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]*kapiv1.Pod, error) {
+func (p *RedisClusterControl) GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]kapiv1.Pod, error) {
 	selector, err := CreateRedisClusterLabelSelector(redisCluster)
 	if err != nil {
 		return nil, err
 	}
-	return p.PodLister.Pods(redisCluster.Namespace).List(selector)
+	podList := &kapiv1.PodList{}
+	err = p.KubeClient.List(context.Background(), podList, client.InNamespace(redisCluster.Namespace), client.MatchingLabelsSelector{Selector: selector})
+	if err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
 }
 
 // CreatePod used to create a Pod from the RedisCluster pod template
@@ -65,8 +68,12 @@ func (p *RedisClusterControl) CreatePod(redisCluster *rapi.RedisCluster) (*kapiv
 	if err != nil {
 		return pod, err
 	}
-	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.Name)
-	return p.KubeClient.CoreV1().Pods(redisCluster.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.GenerateName)
+	err = p.KubeClient.Create(context.Background(), pod)
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
 }
 
 // DeletePod used to delete a pod from its name
@@ -84,7 +91,18 @@ func (p *RedisClusterControl) DeletePodNow(redisCluster *rapi.RedisCluster, podN
 
 // DeletePodNow used to delete now (force) a pod from its name
 func (p *RedisClusterControl) deletePodGracePeriod(redisCluster *rapi.RedisCluster, podName string, period *int64) error {
-	return p.KubeClient.CoreV1().Pods(redisCluster.Namespace).Delete(context.Background(), podName, metav1.DeleteOptions{GracePeriodSeconds: period})
+	pod := &kapiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: redisCluster.Namespace,
+		},
+	}
+
+	var deleteOptions []client.DeleteOption
+	if period != nil {
+		deleteOptions = append(deleteOptions, client.GracePeriodSeconds(*period))
+	}
+	return p.KubeClient.Delete(context.Background(), pod, deleteOptions...)
 }
 
 func initPod(redisCluster *rapi.RedisCluster) (*kapiv1.Pod, error) {
@@ -100,13 +118,13 @@ func initPod(redisCluster *rapi.RedisCluster) (*kapiv1.Pod, error) {
 	if err != nil {
 		return nil, err
 	}
-	PodName := fmt.Sprintf("rediscluster-%s-", redisCluster.Name)
+	podName := fmt.Sprintf("rediscluster-%s-", redisCluster.Name)
 	pod := &kapiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       redisCluster.Namespace,
 			Labels:          desiredLabels,
 			Annotations:     desiredAnnotations,
-			GenerateName:    PodName,
+			GenerateName:    podName,
 			OwnerReferences: []metav1.OwnerReference{BuildOwnerReference(redisCluster)},
 		},
 	}
@@ -143,7 +161,7 @@ func GenerateMD5Spec(spec *kapiv1.PodSpec) (string, error) {
 // BuildOwnerReference used to build the OwnerReference from a RedisCluster
 func BuildOwnerReference(cluster *rapi.RedisCluster) metav1.OwnerReference {
 	controllerRef := metav1.OwnerReference{
-		APIVersion: rapi.SchemeGroupVersion.String(),
+		APIVersion: rapi.GroupVersion.String(),
 		Kind:       rapi.ResourceKind,
 		Name:       cluster.Name,
 		UID:        cluster.UID,

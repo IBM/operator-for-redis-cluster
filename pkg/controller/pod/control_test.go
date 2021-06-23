@@ -8,7 +8,7 @@ import (
 	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 )
 
 func Test_initPod(t *testing.T) {
@@ -50,7 +50,7 @@ func Test_initPod(t *testing.T) {
 					Namespace:    "foo",
 					OwnerReferences: []metav1.OwnerReference{{
 						Name:       "testcluster",
-						APIVersion: rapi.SchemeGroupVersion.String(),
+						APIVersion: rapi.GroupVersion.String(),
 						Kind:       rapi.ResourceKind,
 						Controller: boolPtr(true),
 					}},

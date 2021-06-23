@@ -18,7 +18,7 @@ rules:
   verbs: ["*"]
 - apiGroups: [""]
   resources: ["nodes"]
-  verbs: ["get", "list"]
+  verbs: ["watch", "get", "list"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list"]

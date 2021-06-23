@@ -25,6 +25,7 @@ RUN go mod download
 
 COPY cmd/ cmd/
 COPY pkg/ pkg/
+COPY api/ api/
 COPY cmd/operator/main.go ./
 
 # Build

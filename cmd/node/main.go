@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	goflag "flag"
+	"flag"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redisnode"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/signal"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 )
 
@@ -18,9 +19,9 @@ func main() {
 	config := redisnode.NewRedisNodeConfig()
 	config.AddFlags(pflag.CommandLine)
 
-	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
-	err := goflag.CommandLine.Parse([]string{})
+	err := flag.CommandLine.Parse([]string{})
 	if err != nil {
 		glog.Errorf("goflag.CommandLine.Parse failed: %v", err)
 		os.Exit(1)
@@ -38,7 +39,17 @@ func main() {
 
 func run(rn *redisnode.RedisNode) error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	go signal.HandleSignal(cancelFunc)
+	go func(cancelFunc context.CancelFunc) {
+		sigc := make(chan os.Signal, 1)
+		signal.Notify(sigc,
+			syscall.SIGHUP,
+			syscall.SIGINT,
+			syscall.SIGTERM,
+			syscall.SIGQUIT)
+		sig := <-sigc
+		glog.Infof("Signal received: %s, stop the process", sig.String())
+		cancelFunc()
+	}(cancelFunc)
 
 	return rn.Run(ctx.Done())
 }

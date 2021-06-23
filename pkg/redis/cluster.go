@@ -3,7 +3,7 @@ package redis
 import (
 	"sort"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 

@@ -3,12 +3,14 @@ package framework
 import (
 	"fmt"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/client/clientset/versioned"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
-	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Framework stores necessary info to run e2e
@@ -36,14 +38,9 @@ func NewFramework() (*Framework, error) {
 	}, nil
 }
 
-func (f *Framework) kubeClient() (clientset.Interface, error) {
-	return clientset.NewForConfig(f.KubeConfig)
-}
-
-func (f *Framework) redisOperatorClient() (versioned.Interface, error) {
-	c, err := client.NewClient(f.KubeConfig)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create rediscluster client:%v", err)
-	}
-	return c, err
+func (f *Framework) kubeClient() (kclient.Client, error) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(rapi.AddToScheme(scheme))
+	return kclient.New(f.KubeConfig, kclient.Options{Scheme: scheme})
 }

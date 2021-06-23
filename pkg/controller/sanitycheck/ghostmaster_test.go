@@ -7,7 +7,7 @@ import (
 	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
@@ -17,9 +17,9 @@ func TestFixGhostPrimaryNodes(t *testing.T) {
 	pod1 := newPod("pod1", "node1", "10.0.0.1")
 	pod2 := newPod("pod2", "node2", "10.0.0.2")
 	pod3 := newPod("pod3", "node3", "10.0.0.3")
-	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Pod: pod1}
-	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: pod2, Slots: redis.SlotSlice{1}}
-	redisGhostPrimary := redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Pod: pod3, Slots: redis.SlotSlice{}}
+	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Pod: &pod1}
+	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: &pod2, Slots: redis.SlotSlice{1}}
+	redisGhostPrimary := redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Pod: &pod3, Slots: redis.SlotSlice{}}
 	ctx := context.Background()
 
 	type args struct {
@@ -43,7 +43,7 @@ func TestFixGhostPrimaryNodes(t *testing.T) {
 
 					return fakeAdmin
 				},
-				podControl: newFakecontrol([]*kapiv1.Pod{pod1, pod2}),
+				podControl: newFakecontrol([]kapiv1.Pod{pod1, pod2}),
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
 				},
@@ -66,7 +66,7 @@ func TestFixGhostPrimaryNodes(t *testing.T) {
 
 					return fakeAdmin
 				},
-				podControl: newFakecontrol([]*kapiv1.Pod{pod1, pod2}),
+				podControl: newFakecontrol([]kapiv1.Pod{pod1, pod2}),
 				cluster: &rapi.RedisCluster{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
 				},

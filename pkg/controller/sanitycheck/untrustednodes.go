@@ -8,7 +8,7 @@ import (
 	kapi "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1alpha1"
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
@@ -77,7 +77,7 @@ func listUntrustedNodes(infos *redis.ClusterInfos) map[string]*redis.Node {
 	return untrustedNodes
 }
 
-func checkIfPodNameExistAndIsReused(node *redis.Node, podlist []*kapi.Pod) (exist bool, reused bool) {
+func checkIfPodNameExistAndIsReused(node *redis.Node, podlist []kapi.Pod) (exist bool, reused bool) {
 	if node.Pod == nil {
 		return exist, reused
 	}

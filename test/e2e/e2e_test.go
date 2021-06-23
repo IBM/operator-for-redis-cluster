@@ -2,9 +2,10 @@ package e2e
 
 import (
 	goflag "flag"
-	"github.com/golang/glog"
 	"os"
 	"testing"
+
+	"github.com/golang/glog"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/test/e2e/framework"
 	"github.com/spf13/pflag"
