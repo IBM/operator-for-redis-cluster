@@ -125,14 +125,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kubernetes-version: ["1.20", "1.19", "1.18"]
+        kubernetes-version: ["1.21", "1.20", "1.19", "1.18"]
         include:
+          - kubernetes-version: "1.21"
+            kind-node: kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6
           - kubernetes-version: "1.20"
-            kind-node: kindest/node:v1.20.2@sha256:8f7ea6e7642c0da54f04a7ee10431549c0257315b3a634f6ef2fecaaedb19bab
+            kind-node: kindest/node:v1.20.7@sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9
           - kubernetes-version: "1.19"
-            kind-node: kindest/node:v1.19.7@sha256:a70639454e97a4b733f9d9b67e12c01f6b0297449d5b9cbbef87473458e26dca
+            kind-node: kindest/node:v1.19.11@sha256:07db187ae84b4b7de440a73886f008cf903fcf5764ba8106a9fd5243d6f32729
           - kubernetes-version: "1.18"
-            kind-node: kindest/node:v1.18.15@sha256:5c1b980c4d0e0e8e7eb9f36f7df525d079a96169c8a8f20d8bd108c0d0889cc4
+            kind-node: kindest/node:v1.18.19@sha256:7af1492e19b3192a79f606e43c35fb741e520d195f96399284515f077b3b622c
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -155,10 +157,11 @@ jobs:
       - name: kind create cluster
         uses: helm/kind-action@v1.1.0
         with:
-          version: v0.10.0
+          version: v0.11.1
           config: ./test/e2e/kind_config.yml
           cluster_name: kind
           node_image: ${{ matrix.kind-node }}
+          wait: 120s
             
       - name: Load Images to KIND
         run: |
@@ -166,6 +169,7 @@ jobs:
           kind load image-archive icm-redis-node.tar
     
       - name: Install icm-redis-operator with Helm
+        id: helm
         run: helm install icm-redis-operator charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local --set logLevel=7
       
       - name: Run e2e tests
@@ -173,14 +177,14 @@ jobs:
         run: go test -timeout 30m ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
 
       - name: Capture logs if e2e failed
-        if: ${{ always() && steps.e2e.outcome == 'failure' }}
+        if: ${{ always() && (steps.e2e.outcome == 'failure' || steps.helm.outcome == 'failure') }}
         run: |
           mkdir ./kind-logs
           kind export logs ./kind-logs
           tar -cvf kind-e2e-logs-${{ matrix.kubernetes-version }}.tar ./kind-logs
       
       - name: Upload logs artifact
-        if: ${{ always() && steps.e2e.outcome == 'failure' }}
+        if: ${{ always() && (steps.e2e.outcome == 'failure' || steps.helm.outcome == 'failure') }}
         uses: actions/upload-artifact@v2
         with:
           name: kind-e2e-logs-${{ matrix.kubernetes-version }}.tar
