@@ -7,7 +7,6 @@ on:
 
 env:
   HELM_VERSION: v3.5.4
-  ICR_REGISTRY: us.icr.io
   ICR_USERNAME: iamapikey
   ICR_PASSWORD: ${{ secrets.IBMCLOUD_API_KEY }}
   HELM_REPO_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -27,16 +26,49 @@ jobs:
         uses: docker/metadata-action@v3
         id: meta
         with:
-          images: us.icr.io/icm-docker-images/icm-redis-operator
+          images: |
+            us.icr.io/icm-docker-images/icm-redis-operator
+            uk.icr.io/icm-docker-images/icm-redis-operator
+            de.icr.io/icm-docker-images/icm-redis-operator
+            au.icr.io/icm-docker-images/icm-redis-operator
+            jp.icr.io/icm-docker-images/icm-redis-operator
           tags: type=ref,event=tag
 
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Login to IBM Cloud Container Registry
+      - name: Login to IBM Cloud Container Registry US
         uses: docker/login-action@v1
         with:
-          registry: ${{ env.ICR_REGISTRY }}
+          registry: us.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry UK
+        uses: docker/login-action@v1
+        with:
+          registry: uk.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry DE
+        uses: docker/login-action@v1
+        with:
+          registry: de.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry AU
+        uses: docker/login-action@v1
+        with:
+          registry: au.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry JP
+        uses: docker/login-action@v1
+        with:
+          registry: jp.icr.io
           username: ${{ env.ICR_USERNAME }}
           password: ${{ env.ICR_PASSWORD }}
 
@@ -65,16 +97,49 @@ jobs:
         uses: docker/metadata-action@v3
         id: meta
         with:
-          images: us.icr.io/icm-docker-images/icm-redis-node
+          images: |
+            us.icr.io/icm-docker-images/icm-redis-node
+            uk.icr.io/icm-docker-images/icm-redis-node
+            de.icr.io/icm-docker-images/icm-redis-node
+            au.icr.io/icm-docker-images/icm-redis-node
+            jp.icr.io/icm-docker-images/icm-redis-node
           tags: type=ref,event=tag
 
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Login to IBM Cloud Container Registry
+      - name: Login to IBM Cloud Container Registry US
         uses: docker/login-action@v1
         with:
-          registry: ${{ env.ICR_REGISTRY }}
+          registry: us.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry UK
+        uses: docker/login-action@v1
+        with:
+          registry: uk.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry DE
+        uses: docker/login-action@v1
+        with:
+          registry: de.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry AU
+        uses: docker/login-action@v1
+        with:
+          registry: au.icr.io
+          username: ${{ env.ICR_USERNAME }}
+          password: ${{ env.ICR_PASSWORD }}
+
+      - name: Login to IBM Cloud Container Registry JP
+        uses: docker/login-action@v1
+        with:
+          registry: jp.icr.io
           username: ${{ env.ICR_USERNAME }}
           password: ${{ env.ICR_PASSWORD }}
 
