@@ -42,6 +42,8 @@ type AdminInterface interface {
 	AttachReplicaToPrimary(ctx context.Context, replica *Node, primary *Node) error
 	// DetachReplica detach a replica to its primary
 	DetachReplica(ctx context.Context, replica *Node) error
+	// PromoteReplicaToPrimary turns off replication and promotes this node to a primary
+	PromoteReplicaToPrimary(ctx context.Context, replica *Node) error
 	// StartFailover execute the failover of the Redis Primary corresponding to the addr
 	StartFailover(ctx context.Context, addr string) error
 	// ForgetNode execute the Redis command to force the cluster to forgot the the Node
@@ -509,11 +511,25 @@ func (a *Admin) DetachReplica(ctx context.Context, replica *Node) error {
 	}
 
 	if err = a.AttachNodeToCluster(ctx, replica.IPPort()); err != nil {
-		glog.Errorf("[DetachReplica] unable to AttachNodeToCluster for replica with id: %s addr:%s", replica.ID, replica.IPPort())
+		glog.Errorf("[DetachReplica] unable to attach replica with id: %s addr:%s", replica.ID, replica.IPPort())
 		return err
 	}
 
 	replica.SetPrimaryReferent("")
+	return replica.SetRole(redisPrimaryRole)
+}
+
+// PromoteReplicaToPrimary turns off replication and promotes this node to a primary
+func (a *Admin) PromoteReplicaToPrimary(ctx context.Context, replica *Node) error {
+	c, err := a.Connections().Get(ctx, replica.IPPort())
+	if err != nil {
+		return err
+	}
+	var resp string
+	cmdErr := c.DoCmd(ctx, &resp, "REPLICAOF", "NO", "ONE")
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "Unable to run command REPLICAOF NO ONE"); err != nil {
+		return err
+	}
 	return replica.SetRole(redisPrimaryRole)
 }
 

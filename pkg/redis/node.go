@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	// DefaultRedisPort define the default redis port
-	DefaultRedisPort = "6379"
 	// redisPrimaryRole redis primary role
 	redisPrimaryRole = "primary"
 	// redisMasterRole redis master role (same as primary)
@@ -23,9 +21,13 @@ const (
 	redisReplicaRole = "replica"
 	// redisSlaveRole redis slave role (same as replica)
 	redisSlaveRole = "slave"
+	// redisHandshakeRole redis handshake role
+	redisHandshakeRole = "handshake"
 )
 
 const (
+	// DefaultRedisPort define the default redis port
+	DefaultRedisPort = "6379"
 	// RedisLinkStateConnected redis connection status connected
 	RedisLinkStateConnected = "connected"
 	// RedisLinkStateDisconnected redis connection status disconnected
@@ -35,11 +37,11 @@ const (
 const (
 	// NodeStatusPFail Node is in PFAIL state. Not reachable for the node you are contacting, but still logically reachable
 	NodeStatusPFail = "fail?"
-	// NodeStatusFail Node is in FAIL state. It was not reachable for multiple nodes that promoted the PFAIL state to FAIL
+	// NodeStatusFail Node is in FAIL state. Not reachable for multiple nodes that promoted the PFAIL state to FAIL
 	NodeStatusFail = "fail"
-	// NodeStatusHandshake Untrusted node, we are handshaking.
+	// NodeStatusHandshake untrusted node, we are handshaking
 	NodeStatusHandshake = "handshake"
-	// NodeStatusNoAddr No address known for this node
+	// NodeStatusNoAddr no address known for this node
 	NodeStatusNoAddr = "noaddr"
 	// NodeStatusNoFlags no flags at all
 	NodeStatusNoFlags = "noflags"
@@ -108,6 +110,8 @@ func (n *Node) SetRole(flags string) error {
 			n.Role = redisPrimaryRole
 		case redisSlaveRole, redisReplicaRole:
 			n.Role = redisReplicaRole
+		case redisHandshakeRole:
+			n.Role = redisHandshakeRole
 		}
 	}
 
@@ -125,6 +129,8 @@ func (n *Node) GetRole() v1.RedisClusterNodeRole {
 		return v1.RedisClusterNodeRolePrimary
 	case redisSlaveRole, redisReplicaRole:
 		return v1.RedisClusterNodeRoleReplica
+	case redisHandshakeRole:
+		return v1.RedisClusterNodeRoleHandshake
 	default:
 		if n.PrimaryReferent != "" {
 			return v1.RedisClusterNodeRoleReplica
@@ -140,9 +146,9 @@ func (n *Node) GetRole() v1.RedisClusterNodeRole {
 // String string representation of a Instance
 func (n *Node) String() string {
 	if n.ServerStartTime.IsZero() {
-		return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), SlotSlice(n.Slots), len(n.MigratingSlots), len(n.ImportingSlots))
+		return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), n.Slots, len(n.MigratingSlots), len(n.ImportingSlots))
 	}
-	return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d, ServerStartTime: %s}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), SlotSlice(n.Slots), len(n.MigratingSlots), len(n.ImportingSlots), n.ServerStartTime.Format("2006-01-02 15:04:05"))
+	return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d, ServerStartTime: %s}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), n.Slots, len(n.MigratingSlots), len(n.ImportingSlots), n.ServerStartTime.Format("2006-01-02 15:04:05"))
 }
 
 // IPPort returns join Ip Port string

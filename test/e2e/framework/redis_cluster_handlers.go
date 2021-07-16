@@ -36,7 +36,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 			AdditionalLabels:  map[string]string{"foo": "bar"},
 			NumberOfPrimaries: &nbPrimary,
 			ReplicationFactor: &replication,
-			PodTemplate: &v1.PodTemplateSpec{
+			PodTemplate: &rapi.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app": "redis-cluster",
@@ -166,9 +166,10 @@ func IsRedisClusterStartedFunc(kubeClient kclient.Client, rediscluster *rapi.Red
 			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
 		}
+		totalNbPods := *cluster.Spec.NumberOfPrimaries * (1 + *cluster.Spec.ReplicationFactor)
 
 		if cluster.Status.Cluster.NumberOfPrimaries != *cluster.Spec.NumberOfPrimaries {
-			return LogAndReturnErrorf("RedisCluster %s has incorrect number of primary, expected: %d - current:%d", cluster.Name, *cluster.Spec.NumberOfPrimaries, cluster.Status.Cluster.NumberOfPrimaries)
+			return LogAndReturnErrorf("RedisCluster %s has incorrect number of primary, expected: %d - current: %d", cluster.Name, *cluster.Spec.NumberOfPrimaries, cluster.Status.Cluster.NumberOfPrimaries)
 		}
 
 		if cluster.Spec.ReplicationFactor == nil {
@@ -176,11 +177,15 @@ func IsRedisClusterStartedFunc(kubeClient kclient.Client, rediscluster *rapi.Red
 		}
 
 		if cluster.Status.Cluster.MinReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s has incorrect min replication factor, expected: %v - current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MinReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s has incorrect min replication factor, expected: %v - current: %v", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MinReplicationFactor)
 		}
 
 		if cluster.Status.Cluster.MaxReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s has incorrect max replication factor, expected: %d - current: %v ", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s has incorrect max replication factor, expected: %d - current: %v", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
+		}
+
+		if cluster.Status.Cluster.NumberOfPods != totalNbPods {
+			return LogAndReturnErrorf("RedisCluster %s has incorrect number of pods, expected: %v - current: %v", cluster.Name, totalNbPods, cluster.Status.Cluster.NumberOfPods)
 		}
 
 		if cluster.Status.Cluster.Status != rapi.ClusterStatusOK {
@@ -222,11 +227,11 @@ func UpdateConfigRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.
 // ZonesBalancedFunc checks if the RedisCluster node's zones are balanced
 func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
 	return func() error {
+		idToPrimary := make(map[string]rapi.RedisClusterNode)
 		zoneToPrimaries := make(map[string][]rapi.RedisClusterNode)
 		zoneToReplicas := make(map[string][]rapi.RedisClusterNode)
-		idToPrimary := make(map[string]rapi.RedisClusterNode)
-		ctx := context.Background()
 
+		ctx := context.Background()
 		cluster := &rapi.RedisCluster{}
 		clusterName := types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}
 		err := kubeClient.Get(ctx, clusterName, cluster)
@@ -234,7 +239,6 @@ func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluste
 			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
 		}
-		nodes := cluster.Status.Cluster.Nodes
 
 		nodeList := &v1.NodeList{}
 		err = kubeClient.List(ctx, nodeList, kclient.MatchingLabels(cluster.Spec.NodeSelector))
@@ -243,6 +247,7 @@ func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluste
 		}
 		kubeNodes := nodeList.Items
 		zones := getZonesFromKubeNodes(kubeNodes)
+		nodes := cluster.Status.Cluster.Nodes
 		for _, node := range nodes {
 			pod := &v1.Pod{}
 			err := kubeClient.Get(ctx, types.NamespacedName{Namespace: cluster.Namespace, Name: node.PodName}, pod)
@@ -293,7 +298,7 @@ func IsPodSpecUpdatedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisClu
 					}
 					if splitString[1] != imageTag {
 						withOldTag = append(withOldTag, pod.Name)
-						Logf("current pod %q container.Image have a wrong tag:%s, want:%s", pod.Name, splitString[1], imageTag)
+						Logf("pod %q container.Image has the wrong tag:%s, want:%s", pod.Name, splitString[1], imageTag)
 					}
 				}
 			}

@@ -202,7 +202,7 @@ func (cnx *AdminConnections) AddAll(ctx context.Context, addrs []string) {
 	for _, addr := range addrs {
 		err := cnx.Add(ctx, addr)
 		if err != nil {
-			glog.Errorf("Can't connect to %s: %v", addr, err)
+			glog.V(6).Infof("Can't connect to %s: %v", addr, err)
 		}
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+
 	kapi "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -14,17 +16,25 @@ import (
 
 func Test_checkReplicationFactor(t *testing.T) {
 	type args struct {
-		cluster *rapi.RedisCluster
+		cluster  *rapi.RedisCluster
+		rCluster *redis.Cluster
 	}
+	redisPrimary1, primary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{})
+	redisPrimary2, primary2 := newRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{})
+	redisReplica1, replica1 := newRedisReplicaNode("replica1", "zone2", primary1.ID, "pod3", "node2")
+	redisReplica2, replica2 := newRedisReplicaNode("replica2", "zone3", primary1.ID, "pod4", "node3")
+	node1 := newNode("node1", "zone1")
+	node2 := newNode("node2", "zone2")
+	node3 := newNode("node3", "zone3")
 	tests := []struct {
 		name   string
 		args   args
-		want   map[string][]string
+		want   map[string]redis.Nodes
 		wantOK bool
 	}{
 		{
 			name:   "On primary no replica, as requested",
-			want:   map[string][]string{"Primary1": {}},
+			want:   map[string]redis.Nodes{primary1.ID: {}},
 			wantOK: true,
 			args: args{
 				cluster: &rapi.RedisCluster{
@@ -35,15 +45,24 @@ func Test_checkReplicationFactor(t *testing.T) {
 						Cluster: rapi.RedisClusterState{
 							MinReplicationFactor: 0,
 							MaxReplicationFactor: 0,
-							Nodes:                []rapi.RedisClusterNode{{ID: "Primary1", Role: rapi.RedisClusterNodeRolePrimary}},
+							Nodes:                []rapi.RedisClusterNode{redisPrimary1},
 						},
+					},
+				},
+				rCluster: &redis.Cluster{
+					Name: "redis-cluster",
+					Nodes: map[string]*redis.Node{
+						"primary1": &primary1,
+					},
+					KubeNodes: []kapi.Node{
+						*node1,
 					},
 				},
 			},
 		},
 		{
 			name:   "On primary no replica, missing one replica",
-			want:   map[string][]string{"Primary1": {}},
+			want:   map[string]redis.Nodes{primary1.ID: {}},
 			wantOK: false,
 			args: args{
 				cluster: &rapi.RedisCluster{
@@ -54,15 +73,22 @@ func Test_checkReplicationFactor(t *testing.T) {
 						Cluster: rapi.RedisClusterState{
 							MinReplicationFactor: 0,
 							MaxReplicationFactor: 0,
-							Nodes:                []rapi.RedisClusterNode{{ID: "Primary1", Role: rapi.RedisClusterNodeRolePrimary}},
+							Nodes:                []rapi.RedisClusterNode{redisPrimary1},
 						},
 					},
+				},
+				rCluster: &redis.Cluster{
+					Name: "redis-cluster",
+					Nodes: map[string]*redis.Node{
+						"primary1": &primary1,
+					},
+					KubeNodes: []kapi.Node{*node1},
 				},
 			},
 		},
 		{
 			name:   "2 primaries, replica=1, missing one replica",
-			want:   map[string][]string{"Primary1": {"Replica1"}, "Primary2": {}},
+			want:   map[string]redis.Nodes{primary1.ID: {&replica1}, primary2.ID: {}},
 			wantOK: false,
 			args: args{
 				cluster: &rapi.RedisCluster{
@@ -73,19 +99,24 @@ func Test_checkReplicationFactor(t *testing.T) {
 						Cluster: rapi.RedisClusterState{
 							MinReplicationFactor: 0,
 							MaxReplicationFactor: 1,
-							Nodes: []rapi.RedisClusterNode{
-								{ID: "Primary1", Role: rapi.RedisClusterNodeRolePrimary},
-								{ID: "Primary2", Role: rapi.RedisClusterNodeRolePrimary},
-								{ID: "Replica1", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "Primary1"},
-							},
+							Nodes:                []rapi.RedisClusterNode{redisPrimary1, redisPrimary2, redisReplica1},
 						},
 					},
+				},
+				rCluster: &redis.Cluster{
+					Name: "redis-cluster",
+					Nodes: map[string]*redis.Node{
+						primary1.ID: &primary1,
+						primary2.ID: &primary2,
+						replica1.ID: &replica1,
+					},
+					KubeNodes: []kapi.Node{*node1, *node2},
 				},
 			},
 		},
 		{
 			name:   "1 primary, replica=1, to many replica",
-			want:   map[string][]string{"Primary1": {"Replica1", "Replica2"}},
+			want:   map[string]redis.Nodes{primary1.ID: {&replica1, &replica2}},
 			wantOK: false,
 			args: args{
 				cluster: &rapi.RedisCluster{
@@ -96,20 +127,25 @@ func Test_checkReplicationFactor(t *testing.T) {
 						Cluster: rapi.RedisClusterState{
 							MinReplicationFactor: 2,
 							MaxReplicationFactor: 2,
-							Nodes: []rapi.RedisClusterNode{
-								{ID: "Primary1", Role: rapi.RedisClusterNodeRolePrimary},
-								{ID: "Replica1", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "Primary1"},
-								{ID: "Replica2", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "Primary1"},
-							},
+							Nodes:                []rapi.RedisClusterNode{redisPrimary1, redisReplica1, redisReplica2},
 						},
 					},
+				},
+				rCluster: &redis.Cluster{
+					Name: "redis-cluster",
+					Nodes: map[string]*redis.Node{
+						primary1.ID: &primary1,
+						replica1.ID: &replica1,
+						replica2.ID: &replica2,
+					},
+					KubeNodes: []kapi.Node{*node1, *node2, *node3},
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := checkReplicationFactor(tt.args.cluster)
+			got, got1 := checkReplicationFactor(tt.args.cluster, tt.args.rCluster)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("checkReplicationFactor() got = %v, want %v", got, tt.want)
 			}
@@ -562,17 +598,21 @@ func Test_checkNumberOfPrimaries(t *testing.T) {
 }
 
 func Test_checkShouldDeletePods(t *testing.T) {
+	redisPrimary1, primary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	redisPrimary2, primary2 := newRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
+	redisPrimary3, primary3 := newRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
+	redisPrimary4, primary4 := newRedisPrimaryNode("primary4", "zone1", "pod4", "node1", []string{})
+	redisReplica1, replica1 := newRedisReplicaNode("replica1", "zone2", primary1.ID, "pod5", "node2")
+	redisReplica2, replica2 := newRedisReplicaNode("replica2", "zone3", primary2.ID, "pod6", "node3")
+	redisReplica3, replica3 := newRedisReplicaNode("replica3", "zone1", primary3.ID, "pod7", "node1")
 
-	primary1 := rapi.RedisClusterNode{ID: "primary1", Slots: []string{"1"}, Role: rapi.RedisClusterNodeRolePrimary}
-	primary2 := rapi.RedisClusterNode{ID: "primary2", Slots: []string{"2"}, Role: rapi.RedisClusterNodeRolePrimary}
-	primary3 := rapi.RedisClusterNode{ID: "primary3", Slots: []string{"3"}, Role: rapi.RedisClusterNodeRolePrimary}
-	primary4 := rapi.RedisClusterNode{ID: "primary4", Slots: []string{}, Role: rapi.RedisClusterNodeRolePrimary}
-	replica1 := rapi.RedisClusterNode{ID: "replica1", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "primary1"}
-	replica2 := rapi.RedisClusterNode{ID: "replica2", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "primary2"}
-	replica3 := rapi.RedisClusterNode{ID: "replica3", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "primary3"}
+	node1 := newNode("node1", "zone1")
+	node2 := newNode("node2", "zone2")
+	node3 := newNode("node3", "zone3")
 
 	type args struct {
-		cluster *rapi.RedisCluster
+		cluster  *rapi.RedisCluster
+		rCluster *redis.Cluster
 	}
 	tests := []struct {
 		name  string
@@ -597,16 +637,28 @@ func Test_checkShouldDeletePods(t *testing.T) {
 							NumberOfPods:         6,
 							NumberOfPodsReady:    6,
 							Nodes: []rapi.RedisClusterNode{
-								primary1, primary2, primary3, replica1, replica2, replica3,
+								redisPrimary1, redisPrimary2, redisPrimary3, redisReplica1, redisReplica2, redisReplica3,
 							},
 						},
 					},
+				},
+				rCluster: &redis.Cluster{
+					Name: "redis-cluster",
+					Nodes: map[string]*redis.Node{
+						primary1.ID: &primary1,
+						primary2.ID: &primary2,
+						primary3.ID: &primary3,
+						replica1.ID: &replica1,
+						replica2.ID: &replica2,
+						replica3.ID: &replica3,
+					},
+					KubeNodes: []kapi.Node{*node1, *node2, *node3},
 				},
 			},
 		},
 		{
 			name:  "useless primary pod",
-			want:  []*rapi.RedisClusterNode{&primary4},
+			want:  []*rapi.RedisClusterNode{&redisPrimary4},
 			want1: true,
 			args: args{
 				cluster: &rapi.RedisCluster{
@@ -622,17 +674,30 @@ func Test_checkShouldDeletePods(t *testing.T) {
 							NumberOfPods:         7,
 							NumberOfPodsReady:    7,
 							Nodes: []rapi.RedisClusterNode{
-								primary1, primary2, primary3, replica1, replica2, replica3, primary4,
+								redisPrimary1, redisPrimary2, redisPrimary3, redisReplica1, redisReplica2, redisReplica3, redisPrimary4,
 							},
 						},
 					},
+				},
+				rCluster: &redis.Cluster{
+					Name: "redis-cluster",
+					Nodes: map[string]*redis.Node{
+						primary1.ID: &primary1,
+						primary2.ID: &primary2,
+						primary3.ID: &primary3,
+						primary4.ID: &primary4,
+						replica1.ID: &replica1,
+						replica2.ID: &replica2,
+						replica3.ID: &replica3,
+					},
+					KubeNodes: []kapi.Node{*node1, *node2, *node3},
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := shouldDeleteNodes(tt.args.cluster)
+			got, got1 := shouldDeleteNodes(tt.args.cluster, tt.args.rCluster)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("canDeleteNodes() got = %v, want %v", got, tt.want)
 			}
@@ -726,7 +791,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &kapi.PodTemplateSpec{
+						PodTemplate: &rapi.PodTemplateSpec{
 							Spec: kapi.PodSpec{},
 						},
 						NumberOfPrimaries: rapi.NewInt32(1),
@@ -755,7 +820,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &kapi.PodTemplateSpec{
+						PodTemplate: &rapi.PodTemplateSpec{
 							Spec: kapi.PodSpec{
 								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.6"}},
 							},
@@ -786,7 +851,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &kapi.PodTemplateSpec{
+						PodTemplate: &rapi.PodTemplateSpec{
 							Spec: kapi.PodSpec{},
 						},
 						NumberOfPrimaries: rapi.NewInt32(2),
@@ -815,7 +880,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &kapi.PodTemplateSpec{},
+						PodTemplate:       &rapi.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -842,7 +907,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &kapi.PodTemplateSpec{},
+						PodTemplate:       &rapi.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -869,7 +934,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &kapi.PodTemplateSpec{},
+						PodTemplate:       &rapi.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -896,7 +961,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &kapi.PodTemplateSpec{},
+						PodTemplate:       &rapi.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -947,7 +1012,7 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &kapi.PodTemplateSpec{
+						PodTemplate: &rapi.PodTemplateSpec{
 							Spec: kapi.PodSpec{
 								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.0"}},
 							},
@@ -967,7 +1032,7 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &kapi.PodTemplateSpec{
+						PodTemplate: &rapi.PodTemplateSpec{
 							Spec: kapi.PodSpec{
 								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.0"}},
 							},
@@ -990,7 +1055,7 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &kapi.PodTemplateSpec{
+						PodTemplate: &rapi.PodTemplateSpec{
 							Spec: kapi.PodSpec{
 								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.6"}},
 							},
@@ -1014,7 +1079,7 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &kapi.PodTemplateSpec{
+						PodTemplate: &rapi.PodTemplateSpec{
 							Spec: kapi.PodSpec{
 								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.6"}, {Name: "redis-exporter", Image: "exporter:latest"}},
 							},

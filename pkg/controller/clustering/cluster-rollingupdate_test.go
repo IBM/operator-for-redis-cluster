@@ -68,7 +68,7 @@ func TestReplacePrimaries(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "one primary to replace, current Primary as already one primary migrated",
+			name: "one primary to replace, current primary already migrated",
 			args: args{
 				oldPrimaries:       redis.Nodes{node1, node2},
 				newPrimaries:       redis.Nodes{node3},

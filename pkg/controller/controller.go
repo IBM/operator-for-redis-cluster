@@ -373,7 +373,7 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod) *rap
 			newNode.ID = redisNode.ID
 			newNode.Role = redisNode.GetRole()
 			newNode.Port = redisNode.Port
-			glog.Infof("node id: %s, pod: %s, node name: %s", newNode.ID, newNode.Pod.Name, newNode.Pod.Spec.NodeName)
+
 			if redis.IsReplica(redisNode) && redisNode.PrimaryReferent != "" {
 				numberOfReplicasPerPrimary[redisNode.PrimaryReferent] = numberOfReplicasPerPrimary[redisNode.PrimaryReferent] + 1
 				newNode.PrimaryRef = redisNode.PrimaryReferent

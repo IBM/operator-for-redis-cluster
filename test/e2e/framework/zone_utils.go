@@ -92,7 +92,7 @@ func addNodeToMaps(node rapi.RedisClusterNode, nodeName string, kubeNodes []core
 		zoneToPrimaries[nodeZone] = append(zoneToPrimaries[nodeZone], node)
 		idToPrimary[node.ID] = node
 	}
-	if node.Role == rapi.RedisClusterNodeRoleReplica {
+	if node.Role == rapi.RedisClusterNodeRoleReplica && node.PrimaryRef != "" {
 		zoneToReplicas[nodeZone] = append(zoneToReplicas[nodeZone], node)
 	}
 }

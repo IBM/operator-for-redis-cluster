@@ -3,6 +3,8 @@ package controller
 import (
 	"reflect"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+
 	"github.com/golang/glog"
 
 	kapi "k8s.io/api/core/v1"
@@ -238,28 +240,36 @@ func needLessPods(cluster *rapi.RedisCluster) bool {
 	return output
 }
 
-// checkReplicationFactor checks the primary replication factor.
-// It returns a map with the primary IDs as key and list of Replica ID as value
-// The second returned value is a boolean. True if replicationFactor is correct for each primary,
-// otherwise it returns false
-func checkReplicationFactor(cluster *rapi.RedisCluster) (map[string][]string, bool) {
-	primaryToReplicas := make(map[string][]string)
+func generatePrimaryToReplicas(cluster *rapi.RedisCluster, rCluster *redis.Cluster) map[string]redis.Nodes {
+	primaryToReplicas := make(map[string]redis.Nodes)
 	for _, node := range cluster.Status.Cluster.Nodes {
 		switch node.Role {
 		case rapi.RedisClusterNodeRolePrimary:
 			if _, ok := primaryToReplicas[node.ID]; !ok {
-				primaryToReplicas[node.ID] = []string{}
+				primaryToReplicas[node.ID] = redis.Nodes{}
 			}
 		case rapi.RedisClusterNodeRoleReplica:
-			if node.PrimaryRef != "" {
-				primaryToReplicas[node.PrimaryRef] = append(primaryToReplicas[node.PrimaryRef], node.ID)
+			replica, err := rCluster.GetNodeByID(node.ID)
+			if err != nil {
+				glog.Errorf("unable to find the node with redis ID:%s", node.ID)
+			}
+			if replica != nil && node.PrimaryRef != "" {
+				primaryToReplicas[node.PrimaryRef] = append(primaryToReplicas[node.PrimaryRef], replica)
 			}
 		}
 	}
+	return primaryToReplicas
+}
+
+// checkReplicationFactor checks the primary replication factor.
+// It returns a map with the primary IDs as key and list of replicas as value
+// The second returned value is a boolean. True if replicationFactor is correct for each primary,
+// otherwise it returns false
+func checkReplicationFactor(cluster *rapi.RedisCluster, rCluster *redis.Cluster) (map[string]redis.Nodes, bool) {
+	primaryToReplicas := generatePrimaryToReplicas(cluster, rCluster)
 	if (cluster.Status.Cluster.MaxReplicationFactor != cluster.Status.Cluster.MinReplicationFactor) || (*cluster.Spec.ReplicationFactor != cluster.Status.Cluster.MaxReplicationFactor) {
 		return primaryToReplicas, false
 	}
-
 	return primaryToReplicas, true
 }
 
@@ -274,14 +284,14 @@ func checkNumberOfPrimaries(cluster *rapi.RedisCluster) (int32, bool) {
 
 // shouldDeleteNodes use to detect if some nodes can be removed without impacting the cluster
 // returns true if there are nodes to be deleted, false otherwise
-func shouldDeleteNodes(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, bool) {
+func shouldDeleteNodes(cluster *rapi.RedisCluster, newCluster *redis.Cluster) ([]*rapi.RedisClusterNode, bool) {
 	uselessNodes := []*rapi.RedisClusterNode{}
 	if !needLessPods(cluster) {
 		return uselessNodes, false
 	}
 
 	_, primaryOK := checkNumberOfPrimaries(cluster)
-	_, replicaOK := checkReplicationFactor(cluster)
+	_, replicaOK := checkReplicationFactor(cluster, newCluster)
 	if !primaryOK || !replicaOK {
 		return uselessNodes, false
 	}
@@ -299,7 +309,7 @@ func shouldDeleteNodes(cluster *rapi.RedisCluster) ([]*rapi.RedisClusterNode, bo
 }
 
 func checkReplicasOfReplica(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {
-	replicaOfReplicaList := make(map[string][]*rapi.RedisClusterNode)
+	replicasOfReplica := make(map[string][]*rapi.RedisClusterNode)
 
 	for i, nodeA := range cluster.Status.Cluster.Nodes {
 		if nodeA.Role != rapi.RedisClusterNodeRoleReplica {
@@ -314,10 +324,10 @@ func checkReplicasOfReplica(cluster *rapi.RedisCluster) (map[string][]*rapi.Redi
 				}
 			}
 			if isReplica {
-				replicaOfReplicaList[nodeA.PrimaryRef] = append(replicaOfReplicaList[nodeA.PrimaryRef], &cluster.Status.Cluster.Nodes[i])
+				replicasOfReplica[nodeA.PrimaryRef] = append(replicasOfReplica[nodeA.PrimaryRef], &cluster.Status.Cluster.Nodes[i])
 			}
 		}
 
 	}
-	return replicaOfReplicaList, len(replicaOfReplicaList) == 0
+	return replicasOfReplica, len(replicasOfReplica) == 0
 }

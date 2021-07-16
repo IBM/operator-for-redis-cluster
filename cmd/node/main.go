@@ -47,7 +47,7 @@ func run(rn *redisnode.RedisNode) error {
 			syscall.SIGTERM,
 			syscall.SIGQUIT)
 		sig := <-sigc
-		glog.Infof("Signal received: %s, stop the process", sig.String())
+		glog.Infof("signal received: %s, stop the process", sig.String())
 		cancelFunc()
 	}(cancelFunc)
 

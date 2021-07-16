@@ -430,7 +430,7 @@ func TestController_applyConfiguration(t *testing.T) {
 						Namespace: "myNamespace",
 					},
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &kapiv1.PodTemplateSpec{},
+						PodTemplate:       &rapi.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(1),
 					},
@@ -474,7 +474,7 @@ func TestController_applyConfiguration(t *testing.T) {
 						Namespace: "myNamespace",
 					},
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &kapiv1.PodTemplateSpec{},
+						PodTemplate:       &rapi.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(2),
 						ReplicationFactor: rapi.NewInt32(1),
 					},

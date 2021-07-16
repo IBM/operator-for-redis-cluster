@@ -20,23 +20,11 @@ type migrationInfo struct {
 type mapSlotByMigInfo map[migrationInfo]redis.SlotSlice
 
 // SelectPrimaries used to select redis nodes with primary roles
-func SelectPrimaries(cluster *redis.Cluster, nodes redis.Nodes, nbPrimary int32) (redis.Nodes, redis.Nodes, redis.Nodes, error) {
-	glog.Info("start dispatching slots to primaries nb nodes: ", len(nodes))
-	var allPrimaryNodes redis.Nodes
-	// Get primaries with slots assigned
-	currentPrimaryNodes := nodes.FilterByFunc(redis.IsPrimaryWithSlot)
-	allPrimaryNodes = append(allPrimaryNodes, currentPrimaryNodes...)
-
-	// Also add available primaries without slots
-	currentPrimaryWithNoSlot := nodes.FilterByFunc(redis.IsPrimaryWithNoSlot)
-	allPrimaryNodes = append(allPrimaryNodes, currentPrimaryWithNoSlot...)
-	glog.V(2).Info("current number of primaries with no slots:", len(currentPrimaryWithNoSlot))
-
-	newPrimaryNodes, bestEffort, err := PlacePrimaries(cluster, currentPrimaryNodes, currentPrimaryWithNoSlot, nbPrimary)
-
-	glog.V(2).Infof("total primaries: %d - target %d - selected: %d", len(allPrimaryNodes), nbPrimary, len(newPrimaryNodes))
+func SelectPrimaries(cluster *redis.Cluster, currentPrimaries, candidatePrimaries redis.Nodes, nbPrimary int32) (redis.Nodes, error) {
+	newPrimaryNodes, bestEffort, err := PlacePrimaries(cluster, currentPrimaries, candidatePrimaries, nbPrimary)
+	glog.V(2).Infof("total primaries: %d - target %d - selected: %d", len(currentPrimaries)+len(candidatePrimaries), nbPrimary, len(newPrimaryNodes))
 	if err != nil {
-		return redis.Nodes{}, redis.Nodes{}, redis.Nodes{}, fmt.Errorf("insufficient primaries, current: %d - target: %d - err: %v", len(allPrimaryNodes), nbPrimary, err)
+		return redis.Nodes{}, fmt.Errorf("insufficient primaries, total primaries: %d - target: %d - err: %v", len(currentPrimaries)+len(candidatePrimaries), nbPrimary, err)
 	}
 
 	newPrimaryNodes = newPrimaryNodes.SortByFunc(func(a, b *redis.Node) bool { return a.ID < b.ID })
@@ -48,7 +36,7 @@ func SelectPrimaries(cluster *redis.Cluster, nodes redis.Nodes, nbPrimary int32)
 		cluster.NodesPlacement = rapi.NodesPlacementInfoOptimal
 	}
 
-	return newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes, nil
+	return newPrimaryNodes, nil
 }
 
 // DispatchSlotsToNewPrimaries used to dispatch slots to the new primary nodes
@@ -323,7 +311,6 @@ func buildSlotByNodeFromAvailableSlots(newPrimaryNodes redis.Nodes, nbSlotByNode
 				if idNode > (nbNode - 1) {
 					// All nodes have been filled, go to previous node and overfill it
 					idNode--
-					glog.V(7).Infof("some available slots have not been assigned, over-filling node %s", newPrimaryNodes[idNode].ID)
 					slotOfNode[idNode] = append(slotOfNode[idNode], slotsFrom[slotIndex])
 					slotToAddByNode[newPrimaryNodes[idNode].ID] = append(slotToAddByNode[newPrimaryNodes[idNode].ID], slotsFrom[slotIndex])
 					slotIndex++

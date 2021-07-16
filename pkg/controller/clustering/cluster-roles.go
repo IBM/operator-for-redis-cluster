@@ -27,11 +27,11 @@ func ClassifyNodesByRole(nodes redis.Nodes) (primaries, replicas, primariesWithN
 }
 
 // DispatchReplica aims to dispatch the available redis to replica of the current primaries
-func DispatchReplica(ctx context.Context, cluster *redis.Cluster, nodes redis.Nodes, replicationLevel int32, admin redis.AdminInterface) error {
-
+func DispatchReplica(ctx context.Context, cluster *redis.Cluster, nodes redis.Nodes, replicationFactor int32, admin redis.AdminInterface) error {
 	currentPrimaryNodes, currentReplicaNodes, futureReplicaNodes := ClassifyNodesByRole(nodes)
 	glog.Infof("current primaries: %v, current replicas: %v, future replicas: %v", currentPrimaryNodes, currentReplicaNodes, futureReplicaNodes)
-	primaryToReplicas, err := PlaceReplicas(cluster, currentPrimaryNodes, currentReplicaNodes, futureReplicaNodes, replicationLevel)
+	primaryToReplicas, unusedReplicas := GeneratePrimaryToReplicas(currentPrimaryNodes, currentReplicaNodes, replicationFactor)
+	err := PlaceReplicas(cluster, primaryToReplicas, RemoveOldReplicas(currentReplicaNodes, futureReplicaNodes), unusedReplicas, replicationFactor)
 	if err != nil {
 		return err
 	}

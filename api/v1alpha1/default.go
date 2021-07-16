@@ -1,9 +1,5 @@
 package v1alpha1
 
-import (
-	kapiv1 "k8s.io/api/core/v1"
-)
-
 // IsRedisClusterDefaulted check if the RedisCluster is already defaulted
 func IsRedisClusterDefaulted(rc *RedisCluster) bool {
 	if rc.Spec.NumberOfPrimaries == nil {
@@ -26,7 +22,7 @@ func DefaultRedisCluster(baseRedisCluster *RedisCluster) *RedisCluster {
 	}
 
 	if rc.Spec.PodTemplate == nil {
-		rc.Spec.PodTemplate = &kapiv1.PodTemplateSpec{}
+		rc.Spec.PodTemplate = &PodTemplateSpec{}
 	}
 
 	rc.Status.Cluster.NumberOfPrimaries = 0

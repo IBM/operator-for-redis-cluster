@@ -62,10 +62,11 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 	}
 
 	testCases := []struct {
-		cluster     *redis.Cluster
-		nodes       redis.Nodes
-		nbPrimaries int32
-		err         bool
+		cluster            *redis.Cluster
+		currentPrimaries   redis.Nodes
+		candidatePrimaries redis.Nodes
+		nbPrimaries        int32
+		err                bool
 	}{
 		// append force copy, because DispatchSlotToPrimary updates the slice
 		{
@@ -80,8 +81,10 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				},
 				KubeNodes: kubeNodes,
 			},
-			nodes: redis.Nodes{
+			currentPrimaries: redis.Nodes{
 				redisNode1,
+			},
+			candidatePrimaries: redis.Nodes{
 				redisNode2,
 				redisNode3,
 				redisNode4,
@@ -101,7 +104,10 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				},
 				KubeNodes: kubeNodes,
 			},
-			nodes: redis.Nodes{
+			currentPrimaries: redis.Nodes{
+				redisNode1,
+			},
+			candidatePrimaries: redis.Nodes{
 				redisNode1,
 				redisNode2,
 				redisNode3,
@@ -119,7 +125,7 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				},
 				KubeNodes: kubeNodes,
 			},
-			nodes: redis.Nodes{
+			currentPrimaries: redis.Nodes{
 				redisNode1,
 			},
 			nbPrimaries: 1, err: false,
@@ -134,7 +140,7 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				},
 				KubeNodes: kubeNodes,
 			},
-			nodes: redis.Nodes{
+			candidatePrimaries: redis.Nodes{
 				redisNode2,
 			},
 			nbPrimaries: 1, err: false,
@@ -146,12 +152,14 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				Namespace: "default",
 				KubeNodes: kubeNodes,
 			},
-			nodes: redis.Nodes{}, nbPrimaries: 0, err: false,
+			currentPrimaries:   redis.Nodes{},
+			candidatePrimaries: redis.Nodes{},
+			nbPrimaries:        0, err: false,
 		},
 	}
 
 	for i, tc := range testCases {
-		_, _, _, err := SelectPrimaries(tc.cluster, tc.nodes, tc.nbPrimaries)
+		_, err := SelectPrimaries(tc.cluster, tc.currentPrimaries, tc.candidatePrimaries, tc.nbPrimaries)
 		if (err != nil) != tc.err {
 			t.Errorf("[case: %d] Unexpected error status, expected error to be %t, got '%v'", i, tc.err, err)
 		}
