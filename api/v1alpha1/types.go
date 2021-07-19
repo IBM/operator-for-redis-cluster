@@ -62,7 +62,7 @@ type RedisClusterSpec struct {
 	ZoneAwareReplication ZoneAwareReplication `json:"zoneAwareReplication,omitempty"`
 
 	// Labels for created redis-cluster (deployment, rs, pod) (if any)
-	AdditionalLabels map[string]string `json:"AdditionalLabels,omitempty"`
+	AdditionalLabels map[string]string `json:"additionalLabels,omitempty"`
 }
 
 // RedisClusterStatus contains RedisCluster status

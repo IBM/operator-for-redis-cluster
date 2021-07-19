@@ -73,7 +73,7 @@ func (s *PodDisruptionBudgetsControl) DeleteRedisClusterPodDisruptionBudget(redi
 // CreateRedisClusterPodDisruptionBudget used to create the Kubernetes PodDisruptionBudget needed to access the Redis Cluster
 func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) (*policyv1.PodDisruptionBudget, error) {
 	PodDisruptionBudgetName := redisCluster.Name
-	desiredlabels, err := pod.GetLabelsSet(redisCluster)
+	desiredLabels, err := pod.GetLabelsSet(redisCluster)
 	if err != nil {
 		return nil, err
 
@@ -85,11 +85,11 @@ func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redi
 	}
 	maxUnavailable := intstr.FromInt(1)
 	labelSelector := metav1.LabelSelector{
-		MatchLabels: desiredlabels,
+		MatchLabels: desiredLabels,
 	}
 	newPodDisruptionBudget := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:          desiredlabels,
+			Labels:          desiredLabels,
 			Annotations:     desiredAnnotations,
 			Name:            PodDisruptionBudgetName,
 			Namespace:       redisCluster.Namespace,

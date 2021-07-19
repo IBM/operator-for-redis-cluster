@@ -34,7 +34,7 @@ spec:
           spec:
             description: Spec represents the desired RedisCluster specification
             properties:
-              AdditionalLabels:
+              additionalLabels:
                 additionalProperties:
                   type: string
                 description: Labels for created redis-cluster (deployment, rs, pod) (if any)

@@ -57,7 +57,7 @@ func (s *ServicesControl) GetRedisClusterService(redisCluster *rapi.RedisCluster
 // CreateRedisClusterService used to create the Kubernetes Service needed to access the Redis Cluster
 func (s *ServicesControl) CreateRedisClusterService(redisCluster *rapi.RedisCluster) (*v1.Service, error) {
 	serviceName := getServiceName(redisCluster)
-	desiredlabels, err := pod.GetLabelsSet(redisCluster)
+	desiredLabels, err := pod.GetLabelsSet(redisCluster)
 	if err != nil {
 		return nil, err
 
@@ -69,7 +69,7 @@ func (s *ServicesControl) CreateRedisClusterService(redisCluster *rapi.RedisClus
 	}
 	newService := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:          desiredlabels,
+			Labels:          desiredLabels,
 			Annotations:     desiredAnnotations,
 			Name:            serviceName,
 			Namespace:       redisCluster.Namespace,
@@ -78,7 +78,7 @@ func (s *ServicesControl) CreateRedisClusterService(redisCluster *rapi.RedisClus
 		Spec: v1.ServiceSpec{
 			ClusterIP: "None",
 			Ports:     []v1.ServicePort{{Port: 6379, Name: "redis"}},
-			Selector:  desiredlabels,
+			Selector:  desiredLabels,
 		},
 	}
 

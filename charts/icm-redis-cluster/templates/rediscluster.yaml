@@ -7,6 +7,10 @@ spec:
   numberOfPrimaries: {{ .Values.numberOfPrimaries }}
   replicationFactor: {{ .Values.replicationFactor }}
   serviceName: {{ include "icm-redis-cluster.fullname" . }}
+  {{- with .Values.additionalLabels }}
+  additionalLabels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   zoneAwareReplication:
     enabled: {{ .Values.zoneAwareReplication.enabled }}
   podTemplate:

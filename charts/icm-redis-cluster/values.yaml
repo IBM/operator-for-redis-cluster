@@ -61,6 +61,8 @@ args:
 
 podAnnotations: {}
 
+additionalLabels: {}
+
 podSecurityContext: {}
   # fsGroup: 2000
 
