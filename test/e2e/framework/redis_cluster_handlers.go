@@ -36,7 +36,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 			AdditionalLabels:  map[string]string{"foo": "bar"},
 			NumberOfPrimaries: &nbPrimary,
 			ReplicationFactor: &replication,
-			PodTemplate: &rapi.PodTemplateSpec{
+			PodTemplate: &v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app": "redis-cluster",

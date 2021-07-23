@@ -5,6 +5,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/test"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -14,17 +16,10 @@ import (
 
 func TestDispatchSlotToPrimary(t *testing.T) {
 	simpleAdmin := admin.NewFakeAdmin()
-	pod1 := newPod("pod1", "node1")
-	pod2 := newPod("pod2", "node2")
-	pod3 := newPod("pod3", "node3")
-	pod4 := newPod("pod4", "node4")
-
-	primaryRole := "primary"
-
-	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, Zone: "zone1", IP: "1.1.1.1", Port: "1234", Slots: redis.BuildSlotSlice(0, simpleAdmin.GetHashMaxSlot()), Pod: pod1}
-	redisNode2 := &redis.Node{ID: "2", Role: primaryRole, Zone: "zone2", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod2}
-	redisNode3 := &redis.Node{ID: "3", Role: primaryRole, Zone: "zone3", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod3}
-	redisNode4 := &redis.Node{ID: "4", Role: primaryRole, Zone: "zone4", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: pod4}
+	_, primary1 := test.NewRedisPrimaryNode("1", "zone1", "pod1", "node1", []string{redis.BuildSlotSlice(0, simpleAdmin.GetHashMaxSlot()).String()})
+	_, primary2 := test.NewRedisPrimaryNode("2", "zone2", "pod2", "node2", []string{""})
+	_, primary3 := test.NewRedisPrimaryNode("3", "zone3", "pod3", "node3", []string{""})
+	_, primary4 := test.NewRedisPrimaryNode("4", "zone4", "pod4", "node4", []string{""})
 
 	kubeNodes := []v1.Node{
 		{
@@ -74,20 +69,20 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				Name:      "clustertest",
 				Namespace: "default",
 				Nodes: map[string]*redis.Node{
-					"1": redisNode1,
-					"2": redisNode2,
-					"3": redisNode3,
-					"4": redisNode4,
+					"1": &primary1,
+					"2": &primary2,
+					"3": &primary3,
+					"4": &primary4,
 				},
 				KubeNodes: kubeNodes,
 			},
 			currentPrimaries: redis.Nodes{
-				redisNode1,
+				&primary1,
 			},
 			candidatePrimaries: redis.Nodes{
-				redisNode2,
-				redisNode3,
-				redisNode4,
+				&primary2,
+				&primary3,
+				&primary4,
 			},
 			nbPrimaries: 6, err: true,
 		},
@@ -97,21 +92,21 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				Name:      "clustertest",
 				Namespace: "default",
 				Nodes: map[string]*redis.Node{
-					"1": redisNode1,
-					"2": redisNode2,
-					"3": redisNode3,
-					"4": redisNode4,
+					"1": &primary1,
+					"2": &primary2,
+					"3": &primary3,
+					"4": &primary4,
 				},
 				KubeNodes: kubeNodes,
 			},
 			currentPrimaries: redis.Nodes{
-				redisNode1,
+				&primary1,
 			},
 			candidatePrimaries: redis.Nodes{
-				redisNode1,
-				redisNode2,
-				redisNode3,
-				redisNode4,
+				&primary1,
+				&primary2,
+				&primary3,
+				&primary4,
 			},
 			nbPrimaries: 2, err: false,
 		},
@@ -121,12 +116,12 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				Name:      "clustertest",
 				Namespace: "default",
 				Nodes: map[string]*redis.Node{
-					"1": redisNode1,
+					"1": &primary1,
 				},
 				KubeNodes: kubeNodes,
 			},
 			currentPrimaries: redis.Nodes{
-				redisNode1,
+				&primary1,
 			},
 			nbPrimaries: 1, err: false,
 		},
@@ -136,12 +131,12 @@ func TestDispatchSlotToPrimary(t *testing.T) {
 				Name:      "clustertest",
 				Namespace: "default",
 				Nodes: map[string]*redis.Node{
-					"2": redisNode2,
+					"2": &primary2,
 				},
 				KubeNodes: kubeNodes,
 			},
 			candidatePrimaries: redis.Nodes{
-				redisNode2,
+				&primary2,
 			},
 			nbPrimaries: 1, err: false,
 		},

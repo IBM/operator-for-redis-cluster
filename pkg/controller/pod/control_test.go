@@ -40,7 +40,7 @@ func Test_initPod(t *testing.T) {
 						Namespace: "foo",
 					},
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{},
+						PodTemplate: &kapiv1.PodTemplateSpec{},
 					},
 				},
 			},

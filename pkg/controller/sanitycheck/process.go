@@ -31,7 +31,7 @@ func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *co
 		return actionDone, nil
 	}
 
-	// forget nodes and delete pods when a redis node is untrusted.
+	// delete pods that are stuck in terminating state
 	if actionDone, err = FixTerminatingPods(cluster, podControl, 5*time.Minute, dryRun); err != nil {
 		return actionDone, err
 	} else if actionDone {
@@ -39,7 +39,7 @@ func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *co
 		return actionDone, nil
 	}
 
-	// forget nodes and delete pods when a redis node is untrusted.
+	// detect and fix cluster split
 	if actionDone, err = FixClusterSplit(ctx, admin, config, infos, dryRun); err != nil {
 		return actionDone, err
 	} else if actionDone {

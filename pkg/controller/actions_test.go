@@ -11,6 +11,8 @@ import (
 
 	"testing"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/test"
+
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
@@ -30,12 +32,12 @@ func init() {
 }
 
 func Test_getNewReplicas(t *testing.T) {
-	_, redisPrimary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	_, redisPrimary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
 
-	_, redisReplica1 := newRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod2", "node2")
-	_, redisReplica2 := newRedisPrimaryNode("replica2", "zone3", "pod3", "node3", []string{})
-	_, redisReplica3 := newRedisPrimaryNode("replica3", "zone1", "pod4", "node1", []string{})
-	_, redisReplica4 := newRedisPrimaryNode("replica4", "zone2", "pod5", "node2", []string{})
+	_, redisReplica1 := test.NewRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod2", "node2")
+	_, redisReplica2 := test.NewRedisPrimaryNode("replica2", "zone3", "pod3", "node3", []string{})
+	_, redisReplica3 := test.NewRedisPrimaryNode("replica3", "zone1", "pod4", "node1", []string{})
+	_, redisReplica4 := test.NewRedisPrimaryNode("replica4", "zone2", "pod5", "node2", []string{})
 
 	type args struct {
 		zones            []string
@@ -120,20 +122,20 @@ func Test_getNewReplicas(t *testing.T) {
 }
 
 func Test_selectReplicasToDelete(t *testing.T) {
-	_, redisPrimary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
-	_, redisPrimary2 := newRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
-	_, redisPrimary3 := newRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
+	_, redisPrimary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	_, redisPrimary2 := test.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
+	_, redisPrimary3 := test.NewRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
 
-	_, redisReplica1 := newRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod4", "node2")
-	_, redisReplica2 := newRedisReplicaNode("replica2", "zone3", redisPrimary2.ID, "pod5", "node3")
-	_, redisReplica3 := newRedisReplicaNode("replica3", "zone1", redisPrimary3.ID, "pod6", "node1")
-	_, redisReplica4 := newRedisReplicaNode("replica4", "zone1", redisPrimary2.ID, "pod7", "node1")
-	_, redisReplica5 := newRedisReplicaNode("replica5", "zone3", redisPrimary3.ID, "pod8", "node2")
-	_, redisReplica6 := newRedisReplicaNode("replica6", "zone2", redisPrimary3.ID, "pod9", "node3")
+	_, redisReplica1 := test.NewRedisReplicaNode("replica1", "zone2", redisPrimary1.ID, "pod4", "node2")
+	_, redisReplica2 := test.NewRedisReplicaNode("replica2", "zone3", redisPrimary2.ID, "pod5", "node3")
+	_, redisReplica3 := test.NewRedisReplicaNode("replica3", "zone1", redisPrimary3.ID, "pod6", "node1")
+	_, redisReplica4 := test.NewRedisReplicaNode("replica4", "zone1", redisPrimary2.ID, "pod7", "node1")
+	_, redisReplica5 := test.NewRedisReplicaNode("replica5", "zone3", redisPrimary3.ID, "pod8", "node2")
+	_, redisReplica6 := test.NewRedisReplicaNode("replica6", "zone2", redisPrimary3.ID, "pod9", "node3")
 
-	node1 := newNode("node1", "zone1")
-	node2 := newNode("node2", "zone2")
-	node3 := newNode("node3", "zone3")
+	node1 := test.NewNode("node1", "zone1")
+	node2 := test.NewNode("node2", "zone2")
+	node3 := test.NewNode("node3", "zone3")
 
 	type args struct {
 		cluster            *redis.Cluster
@@ -255,58 +257,11 @@ func Test_selectReplicasToDelete(t *testing.T) {
 	}
 }
 
-func newRedisReplicaNode(id, zone, primaryRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
-	node := newRedisNode(rapi.RedisClusterNodeRoleReplica, id, podName, nodeName, nil)
-	node.PrimaryRef = primaryRef
-	role := "replica"
-	redisNode := redis.Node{ID: id, PrimaryReferent: primaryRef, Zone: zone, Role: role, Pod: node.Pod}
-	return node, redisNode
-}
-
-func newRedisPrimaryNode(id, zone, podName, nodeName string, slots []string) (rapi.RedisClusterNode, redis.Node) {
-	role := "primary"
-	slotsInt := redis.SlotSlice{}
-	for _, s := range slots {
-		i, _ := redis.DecodeSlot(s)
-		slotsInt = append(slotsInt, i)
-	}
-	node := newRedisNode(rapi.RedisClusterNodeRolePrimary, id, podName, nodeName, slots)
-	redisNode := redis.Node{ID: id, Zone: zone, Slots: slotsInt, Role: role, Pod: node.Pod}
-	return node, redisNode
-}
-
-func newRedisNode(role rapi.RedisClusterNodeRole, id, podName, nodeName string, slots []string) rapi.RedisClusterNode {
-	pod := newPod(podName, nodeName)
-
-	return rapi.RedisClusterNode{ID: id, Slots: slots, Role: role, Pod: pod}
-}
-
-func newPod(name, node string) *kapiv1.Pod {
-	return &kapiv1.Pod{
-		ObjectMeta: kmetav1.ObjectMeta{Name: name},
-		Spec: kapiv1.PodSpec{
-			NodeName: node,
-		},
-	}
-}
-
-func newNode(name, zone string) *kapiv1.Node {
-	return &kapiv1.Node{
-		ObjectMeta: kmetav1.ObjectMeta{
-			Name:            name,
-			ResourceVersion: "358",
-			Labels: map[string]string{
-				kapiv1.LabelTopologyZone: zone,
-			},
-		},
-	}
-}
-
 func Test_newRedisCluster(t *testing.T) {
-	redis1 := redis.Node{ID: "redis1", Role: "replica", IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
-	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
-	node1 := newNode("node1", "zone1")
-	node2 := newNode("node2", "zone2")
+	_, redis1 := test.NewRedisReplicaNode("redis1", "zone1", "", "pod1", "node1")
+	_, redis2 := test.NewRedisPrimaryNode("redis2", "zone2", "pod2", "node2", []string{"1"})
+	node1 := test.NewNode("node1", "zone1")
+	node2 := test.NewNode("node2", "zone2")
 	ctx := context.Background()
 	nodes := &kapiv1.NodeList{
 		Items: []kapiv1.Node{*node1, *node2},
@@ -386,13 +341,13 @@ func Test_newRedisCluster(t *testing.T) {
 }
 
 func TestController_applyConfiguration(t *testing.T) {
-	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Zone: "zone2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
-	redis3 := redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Zone: "zone3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{}}
-	redis4 := redis.Node{ID: "redis4", Role: "primary", IP: "10.0.0.4", Zone: "zone1", Pod: newPod("pod4", "node1"), Slots: redis.SlotSlice{}}
-	redis1 := redis.Node{ID: "redis1", Role: "replica", PrimaryReferent: redis2.ID, IP: "10.0.0.1", Zone: "zone1", Pod: newPod("pod1", "node1")}
-	node1 := newNode("node1", "zone1")
-	node2 := newNode("node2", "zone2")
-	node3 := newNode("node3", "zone3")
+	redis2 := redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Zone: "zone2", Pod: test.NewPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis3 := redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Zone: "zone3", Pod: test.NewPod("pod3", "node3"), Slots: redis.SlotSlice{}}
+	redis4 := redis.Node{ID: "redis4", Role: "primary", IP: "10.0.0.4", Zone: "zone1", Pod: test.NewPod("pod4", "node1"), Slots: redis.SlotSlice{}}
+	redis1 := redis.Node{ID: "redis1", Role: "replica", PrimaryReferent: redis2.ID, IP: "10.0.0.1", Zone: "zone1", Pod: test.NewPod("pod1", "node1")}
+	node1 := test.NewNode("node1", "zone1")
+	node2 := test.NewNode("node2", "zone2")
+	node3 := test.NewNode("node3", "zone3")
 	ctx := context.Background()
 	nodes := &kapiv1.NodeList{
 		Items: []kapiv1.Node{*node1, *node2, *node3},
@@ -430,7 +385,7 @@ func TestController_applyConfiguration(t *testing.T) {
 						Namespace: "myNamespace",
 					},
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &rapi.PodTemplateSpec{},
+						PodTemplate:       &kapiv1.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(1),
 					},
@@ -474,7 +429,7 @@ func TestController_applyConfiguration(t *testing.T) {
 						Namespace: "myNamespace",
 					},
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &rapi.PodTemplateSpec{},
+						PodTemplate:       &kapiv1.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(2),
 						ReplicationFactor: rapi.NewInt32(1),
 					},
@@ -519,12 +474,12 @@ func TestController_applyConfiguration(t *testing.T) {
 }
 
 func Test_getOldNodesToRemove(t *testing.T) {
-	redis1 := &redis.Node{ID: "redis1", Role: "replica", PrimaryReferent: "redis2", IP: "10.0.0.1", Pod: newPod("pod1", "node1")}
-	redis2 := &redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: newPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
-	redis3 := &redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Pod: newPod("pod3", "node3"), Slots: redis.SlotSlice{2}}
-	redis4 := &redis.Node{ID: "redis4", Role: "primary", IP: "10.0.0.4", Pod: newPod("pod4", "node4"), Slots: redis.SlotSlice{3}}
-	redis5 := &redis.Node{ID: "redis5", Role: "replica", PrimaryReferent: "redis3", IP: "10.0.0.5", Pod: newPod("pod5", "node5")}
-	redis6 := &redis.Node{ID: "redis6", Role: "replica", PrimaryReferent: "redis4", IP: "10.0.0.6", Pod: newPod("pod6", "node6")}
+	redis1 := &redis.Node{ID: "redis1", Role: "replica", PrimaryReferent: "redis2", IP: "10.0.0.1", Pod: test.NewPod("pod1", "node1")}
+	redis2 := &redis.Node{ID: "redis2", Role: "primary", IP: "10.0.0.2", Pod: test.NewPod("pod2", "node2"), Slots: redis.SlotSlice{1}}
+	redis3 := &redis.Node{ID: "redis3", Role: "primary", IP: "10.0.0.3", Pod: test.NewPod("pod3", "node3"), Slots: redis.SlotSlice{2}}
+	redis4 := &redis.Node{ID: "redis4", Role: "primary", IP: "10.0.0.4", Pod: test.NewPod("pod4", "node4"), Slots: redis.SlotSlice{3}}
+	redis5 := &redis.Node{ID: "redis5", Role: "replica", PrimaryReferent: "redis3", IP: "10.0.0.5", Pod: test.NewPod("pod5", "node5")}
+	redis6 := &redis.Node{ID: "redis6", Role: "replica", PrimaryReferent: "redis4", IP: "10.0.0.6", Pod: test.NewPod("pod6", "node6")}
 
 	type args struct {
 		curPrimaries redis.Nodes

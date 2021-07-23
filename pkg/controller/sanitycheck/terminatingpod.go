@@ -11,8 +11,7 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
 
-// FixTerminatingPods used to for the deletion of pod blocked in terminating status.
-// in it append the this method will for the deletion of the Pod.
+// FixTerminatingPods used for the deletion of pods blocked in terminating status.
 func FixTerminatingPods(cluster *rapi.RedisCluster, podControl pod.RedisClusterControlInterface, maxDuration time.Duration, dryRun bool) (bool, error) {
 	var errs []error
 	var actionDone bool

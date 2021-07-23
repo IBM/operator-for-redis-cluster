@@ -1,6 +1,7 @@
 package clustering
 
 import (
+	"github.com/TheWeatherCompany/icm-redis-operator/test"
 	"reflect"
 	"testing"
 
@@ -8,11 +9,11 @@ import (
 )
 
 func TestReplacePrimaries(t *testing.T) {
-	node1 := &redis.Node{ID: "node1"}
-	node2 := &redis.Node{ID: "node2"}
-	node3 := &redis.Node{ID: "node3"}
+	_, primary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	_, primary2 := test.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
+	_, primary3 := test.NewRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
 
-	newNode1 := &redis.Node{ID: "newNode1"}
+	_, primary4 := test.NewRedisPrimaryNode("primary4", "zone1", "pod4", "node1", []string{""})
 
 	type args struct {
 		oldPrimaries       redis.Nodes
@@ -44,66 +45,66 @@ func TestReplacePrimaries(t *testing.T) {
 		{
 			name: "no primary to replace",
 			args: args{
-				oldPrimaries:       redis.Nodes{node1, node2, node3},
+				oldPrimaries:       redis.Nodes{&primary1, &primary2, &primary3},
 				newPrimaries:       redis.Nodes{},
 				newNodesNoRole:     redis.Nodes{},
 				nbPrimary:          3,
 				nbPrimaryToReplace: 0,
 			},
-			want:    redis.Nodes{node1, node2, node3},
+			want:    redis.Nodes{&primary1, &primary2, &primary3},
 			want2:   redis.Nodes{},
 			wantErr: false,
 		},
 		{
 			name: "one primary to replace",
 			args: args{
-				oldPrimaries:       redis.Nodes{node1, node2, node3},
+				oldPrimaries:       redis.Nodes{&primary1, &primary2, &primary3},
 				newPrimaries:       redis.Nodes{},
-				newNodesNoRole:     redis.Nodes{newNode1},
+				newNodesNoRole:     redis.Nodes{&primary4},
 				nbPrimary:          3,
 				nbPrimaryToReplace: 1,
 			},
-			want:    redis.Nodes{node1, node2, newNode1},
-			want2:   redis.Nodes{newNode1},
+			want:    redis.Nodes{&primary1, &primary2, &primary4},
+			want2: 	 redis.Nodes{&primary4},
 			wantErr: false,
 		},
 		{
 			name: "one primary to replace, current primary already migrated",
 			args: args{
-				oldPrimaries:       redis.Nodes{node1, node2},
-				newPrimaries:       redis.Nodes{node3},
-				newNodesNoRole:     redis.Nodes{newNode1},
+				oldPrimaries:       redis.Nodes{&primary1, &primary2},
+				newPrimaries:       redis.Nodes{&primary3},
+				newNodesNoRole:     redis.Nodes{&primary4},
 				nbPrimary:          3,
 				nbPrimaryToReplace: 1,
 			},
-			want:    redis.Nodes{node1, node3, newNode1},
-			want2:   redis.Nodes{newNode1},
+			want:    redis.Nodes{&primary1, &primary3, &primary4},
+			want2:   redis.Nodes{&primary4},
 			wantErr: false,
 		},
 		{
 			name: "not enough new nodes",
 			args: args{
-				oldPrimaries:       redis.Nodes{node1, node2, node3},
+				oldPrimaries:       redis.Nodes{&primary1, &primary2, &primary3},
 				newPrimaries:       redis.Nodes{},
-				newNodesNoRole:     redis.Nodes{newNode1},
+				newNodesNoRole:     redis.Nodes{&primary4},
 				nbPrimary:          3,
 				nbPrimaryToReplace: 2,
 			},
-			want:    redis.Nodes{node1, node2, newNode1},
-			want2:   redis.Nodes{newNode1},
+			want:    redis.Nodes{&primary1, &primary2, &primary4},
+			want2:   redis.Nodes{&primary4},
 			wantErr: true,
 		},
 		{
 			name: "not enough primaries",
 			args: args{
-				oldPrimaries:       redis.Nodes{node1, node2, node3},
+				oldPrimaries:       redis.Nodes{&primary1, &primary2, &primary3},
 				newPrimaries:       redis.Nodes{},
-				newNodesNoRole:     redis.Nodes{newNode1},
+				newNodesNoRole:     redis.Nodes{&primary4},
 				nbPrimary:          5,
 				nbPrimaryToReplace: 1,
 			},
-			want:    redis.Nodes{node1, node2, node3, newNode1},
-			want2:   redis.Nodes{newNode1},
+			want:    redis.Nodes{&primary1, &primary2, &primary3, &primary4},
+			want2:   redis.Nodes{&primary4},
 			wantErr: true,
 		},
 	}

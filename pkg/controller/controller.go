@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"math"
 	"time"
 
@@ -88,7 +89,7 @@ func (c *Controller) Reconcile(ctx context.Context, namespacedName ctrl.Request)
 	if !rapi.IsRedisClusterDefaulted(sharedRedisCluster) {
 		defaultedRedisCluster := rapi.DefaultRedisCluster(sharedRedisCluster)
 		if _, err = c.updateHandler(defaultedRedisCluster); err != nil {
-			glog.Errorf("RedisCluster %s updated error:, err", namespacedName)
+			glog.Errorf("RedisCluster %s update error:, err", namespacedName)
 			return ctrl.Result{}, fmt.Errorf("unable to default RedisCluster %s: %v", namespacedName, err)
 		}
 		glog.V(6).Infof("RedisCluster-Operator.Reconcile Defaulted %s", namespacedName)
@@ -117,6 +118,19 @@ func (c *Controller) Reconcile(ctx context.Context, namespacedName ctrl.Request)
 
 	requeue, err := c.syncCluster(ctx, rediscluster)
 	return ctrl.Result{Requeue: requeue}, err
+}
+
+func (c *Controller) getRedisCluster(ctx context.Context, namespace, name string) (*rapi.RedisCluster, error) {
+	newCluster := &rapi.RedisCluster{}
+	namespacedName := types.NamespacedName{
+		Name: name,
+		Namespace: namespace,
+	}
+	err := c.client.Get(ctx, namespacedName, newCluster)
+	if err != nil {
+		return nil, err
+	}
+	return newCluster, err
 }
 
 func (c *Controller) getRedisClusterService(redisCluster *rapi.RedisCluster) (*v1.Service, error) {
@@ -225,7 +239,7 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 		return forceRequeue, fmt.Errorf("unable to build clusterStatus, err:%v", err)
 	}
 
-	updated, err := c.updateClusterStatus(rediscluster, clusterStatus)
+	updated, err := c.updateClusterStatus(ctx, rediscluster.Namespace, rediscluster.Name, clusterStatus)
 	rediscluster.Status.Cluster.Nodes = clusterStatus.Nodes
 	if err != nil {
 		return forceRequeue, err
@@ -243,7 +257,7 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 		allPodsReady = false
 	}
 
-	// Now check if the Operator need to execute some operation the redis cluster. if yes run the clusterAction(...) method.
+	// Now check if the operator needs to execute some operation on the redis cluster
 	needSanitize, err := c.checkSanityCheck(ctx, rediscluster, admin, clusterInfos)
 	if err != nil {
 		glog.Errorf("checkSanityCheck, error happened in dryrun mode, err:%v", err)
@@ -257,7 +271,7 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 			glog.Errorf("error during action on cluster: %s-%s, err: %v", rediscluster.Namespace, rediscluster.Name, err)
 		}
 		forceRequeue = requeue
-		_, err = c.updateRedisCluster(rediscluster)
+		_, err = c.updateHandler(rediscluster)
 		return forceRequeue, err
 	}
 
@@ -276,12 +290,16 @@ func (c *Controller) checkSanityCheck(ctx context.Context, cluster *rapi.RedisCl
 	return sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, true)
 }
 
-func (c *Controller) updateClusterStatus(cluster *rapi.RedisCluster, newStatus *rapi.RedisClusterState) (bool, error) {
+func (c *Controller) updateClusterStatus(ctx context.Context, namespace, name string, newStatus *rapi.RedisClusterState) (bool, error) {
+	cluster, err := c.getRedisCluster(ctx, namespace, name)
+	if err != nil {
+		return false, err
+	}
 	if compareStatus(&cluster.Status.Cluster, newStatus) {
 		glog.V(3).Infof("Status changed for cluster: %s-%s", cluster.Namespace, cluster.Name)
 		// the status have been update, needs to update the RedisCluster
 		cluster.Status.Cluster = *newStatus
-		_, err := c.updateRedisCluster(cluster)
+		_, err := c.updateHandler(cluster)
 		return true, err
 	}
 	return false, nil
@@ -348,7 +366,7 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod) *rap
 			return node.IP == p.Status.PodIP
 		})
 		if err != nil {
-			glog.Errorf("unable to retrieve the associated Redis Node with the pod: %s, ip:%s, err:%v", p.Name, p.Status.PodIP, err)
+			glog.Warningf("unable to retrieve the redis node associated with the pod: %s, ip:%s, err:%v", p.Name, p.Status.PodIP, err)
 			continue
 		}
 		newNode := rapi.RedisClusterNode{
@@ -402,7 +420,7 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod) *rap
 func (c *Controller) updateRedisCluster(rediscluster *rapi.RedisCluster) (*rapi.RedisCluster, error) {
 	err := c.client.Update(context.Background(), rediscluster)
 	if err != nil {
-		glog.Errorf("updateRedisCluster cluster: [%v] error: %v", *rediscluster, err)
+		glog.Errorf("updateRedisCluster cluster: %v, error: %v", *rediscluster, err)
 		return rediscluster, err
 	}
 

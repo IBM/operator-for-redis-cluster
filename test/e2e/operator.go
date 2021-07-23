@@ -49,7 +49,7 @@ var _ = Describe("RedisCluster CRUD operations", func() {
 
 		Eventually(framework.IsRedisClusterStartedFunc(kubeClient, rediscluster), "5m", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "10s", "1s").ShouldNot(HaveOccurred())
 	})
 	Context("a RedisCluster is created", func() {
 		It("should update the RedisCluster", func() {
@@ -70,7 +70,7 @@ var _ = Describe("RedisCluster CRUD operations", func() {
 
 			Eventually(framework.IsRedisClusterStartedFunc(kubeClient, rediscluster), "5m", "5s").ShouldNot(HaveOccurred())
 
-			Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
+			Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "10s", "1s").ShouldNot(HaveOccurred())
 		})
 		Context("a RedisCluster is running", func() {
 			When("the number of primaries is reduced", func() {
@@ -80,7 +80,7 @@ var _ = Describe("RedisCluster CRUD operations", func() {
 
 					Eventually(framework.IsRedisClusterStartedFunc(kubeClient, rediscluster), "5m", "5s").ShouldNot(HaveOccurred())
 
-					Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
+					Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "10s", "1s").ShouldNot(HaveOccurred())
 				})
 			})
 			When("the number of replicas is increased", func() {
@@ -90,7 +90,7 @@ var _ = Describe("RedisCluster CRUD operations", func() {
 
 					Eventually(framework.IsRedisClusterStartedFunc(kubeClient, rediscluster), "5m", "5s").ShouldNot(HaveOccurred())
 
-					Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
+					Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "10s", "1s").ShouldNot(HaveOccurred())
 				})
 			})
 			When("the number of replicas is decreased", func() {
@@ -100,7 +100,7 @@ var _ = Describe("RedisCluster CRUD operations", func() {
 
 					Eventually(framework.IsRedisClusterStartedFunc(kubeClient, rediscluster), "5m", "5s").ShouldNot(HaveOccurred())
 
-					Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "5s", "1s").ShouldNot(HaveOccurred())
+					Eventually(framework.ZonesBalancedFunc(kubeClient, rediscluster), "10s", "1s").ShouldNot(HaveOccurred())
 				})
 			})
 			When("the number of primaries is decreased and the number of replicas is increased", func() {

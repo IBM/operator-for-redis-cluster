@@ -13,7 +13,7 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-// FixClusterSplit use to detect and fix Cluster split
+// FixClusterSplit use to detect and fix a cluster split
 func FixClusterSplit(ctx context.Context, admin redis.AdminInterface, config *config.Redis, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
 	clusters := buildClustersLists(infos)
 

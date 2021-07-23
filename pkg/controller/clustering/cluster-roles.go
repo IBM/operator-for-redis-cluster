@@ -3,6 +3,8 @@ package clustering
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/golang/glog"
@@ -42,9 +44,9 @@ func DispatchReplica(ctx context.Context, cluster *redis.Cluster, nodes redis.No
 	return AttachReplicasToPrimary(ctx, cluster, admin, primaryToReplicas)
 }
 
-// AttachReplicasToPrimary used to attach replicas to there primaries
+// AttachReplicasToPrimary used to attach replicas to their primaries
 func AttachReplicasToPrimary(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, primaryToReplicas map[string]redis.Nodes) error {
-	var globalErr error
+	var errs []error
 	for primaryID, replicas := range primaryToReplicas {
 		primaryNode, err := cluster.GetNodeByID(primaryID)
 		if err != nil {
@@ -53,15 +55,14 @@ func AttachReplicasToPrimary(ctx context.Context, cluster *redis.Cluster, admin 
 		}
 		for _, replica := range replicas {
 			glog.V(2).Infof("[AttachReplicasToPrimary] Attaching node %s to primary %s", replica.ID, primaryID)
-
-			err := admin.AttachReplicaToPrimary(ctx, replica, primaryNode)
+			err = admin.AttachReplicaToPrimary(ctx, replica, primaryNode)
 			if err != nil {
 				glog.Errorf("Error while attaching node %s to primary %s: %v", replica.ID, primaryID, err)
-				globalErr = err
+				errs = append(errs, err)
 			}
 		}
 	}
-	return globalErr
+	return errors.NewAggregate(errs)
 }
 
 // DispatchReplicasToNewPrimaries use to dispatch available Nodes as replica to Primary in the case of rolling update

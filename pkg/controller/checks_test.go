@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/TheWeatherCompany/icm-redis-operator/test"
 
-	kapi "k8s.io/api/core/v1"
+	kapiv1 "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
@@ -19,13 +20,13 @@ func Test_checkReplicationFactor(t *testing.T) {
 		cluster  *rapi.RedisCluster
 		rCluster *redis.Cluster
 	}
-	redisPrimary1, primary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{})
-	redisPrimary2, primary2 := newRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{})
-	redisReplica1, replica1 := newRedisReplicaNode("replica1", "zone2", primary1.ID, "pod3", "node2")
-	redisReplica2, replica2 := newRedisReplicaNode("replica2", "zone3", primary1.ID, "pod4", "node3")
-	node1 := newNode("node1", "zone1")
-	node2 := newNode("node2", "zone2")
-	node3 := newNode("node3", "zone3")
+	redisPrimary1, primary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{})
+	redisPrimary2, primary2 := test.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{})
+	redisReplica1, replica1 := test.NewRedisReplicaNode("replica1", "zone2", primary1.ID, "pod3", "node2")
+	redisReplica2, replica2 := test.NewRedisReplicaNode("replica2", "zone3", primary1.ID, "pod4", "node3")
+	node1 := test.NewNode("node1", "zone1")
+	node2 := test.NewNode("node2", "zone2")
+	node3 := test.NewNode("node3", "zone3")
 	tests := []struct {
 		name   string
 		args   args
@@ -54,7 +55,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 					Nodes: map[string]*redis.Node{
 						"primary1": &primary1,
 					},
-					KubeNodes: []kapi.Node{
+					KubeNodes: []kapiv1.Node{
 						*node1,
 					},
 				},
@@ -82,7 +83,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 					Nodes: map[string]*redis.Node{
 						"primary1": &primary1,
 					},
-					KubeNodes: []kapi.Node{*node1},
+					KubeNodes: []kapiv1.Node{*node1},
 				},
 			},
 		},
@@ -110,7 +111,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 						primary2.ID: &primary2,
 						replica1.ID: &replica1,
 					},
-					KubeNodes: []kapi.Node{*node1, *node2},
+					KubeNodes: []kapiv1.Node{*node1, *node2},
 				},
 			},
 		},
@@ -138,7 +139,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 						replica1.ID: &replica1,
 						replica2.ID: &replica2,
 					},
-					KubeNodes: []kapi.Node{*node1, *node2, *node3},
+					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
 			},
 		},
@@ -598,17 +599,17 @@ func Test_checkNumberOfPrimaries(t *testing.T) {
 }
 
 func Test_checkShouldDeletePods(t *testing.T) {
-	redisPrimary1, primary1 := newRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
-	redisPrimary2, primary2 := newRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
-	redisPrimary3, primary3 := newRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
-	redisPrimary4, primary4 := newRedisPrimaryNode("primary4", "zone1", "pod4", "node1", []string{})
-	redisReplica1, replica1 := newRedisReplicaNode("replica1", "zone2", primary1.ID, "pod5", "node2")
-	redisReplica2, replica2 := newRedisReplicaNode("replica2", "zone3", primary2.ID, "pod6", "node3")
-	redisReplica3, replica3 := newRedisReplicaNode("replica3", "zone1", primary3.ID, "pod7", "node1")
+	redisPrimary1, primary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	redisPrimary2, primary2 := test.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
+	redisPrimary3, primary3 := test.NewRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
+	redisPrimary4, primary4 := test.NewRedisPrimaryNode("primary4", "zone1", "pod4", "node1", []string{})
+	redisReplica1, replica1 := test.NewRedisReplicaNode("replica1", "zone2", primary1.ID, "pod5", "node2")
+	redisReplica2, replica2 := test.NewRedisReplicaNode("replica2", "zone3", primary2.ID, "pod6", "node3")
+	redisReplica3, replica3 := test.NewRedisReplicaNode("replica3", "zone1", primary3.ID, "pod7", "node1")
 
-	node1 := newNode("node1", "zone1")
-	node2 := newNode("node2", "zone2")
-	node3 := newNode("node3", "zone3")
+	node1 := test.NewNode("node1", "zone1")
+	node2 := test.NewNode("node2", "zone2")
+	node3 := test.NewNode("node3", "zone3")
 
 	type args struct {
 		cluster  *rapi.RedisCluster
@@ -652,7 +653,7 @@ func Test_checkShouldDeletePods(t *testing.T) {
 						replica2.ID: &replica2,
 						replica3.ID: &replica3,
 					},
-					KubeNodes: []kapi.Node{*node1, *node2, *node3},
+					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
 			},
 		},
@@ -690,7 +691,7 @@ func Test_checkShouldDeletePods(t *testing.T) {
 						replica2.ID: &replica2,
 						replica3.ID: &replica3,
 					},
-					KubeNodes: []kapi.Node{*node1, *node2, *node3},
+					KubeNodes: []kapiv1.Node{*node1, *node2, *node3},
 				},
 			},
 		},
@@ -791,8 +792,8 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{
-							Spec: kapi.PodSpec{},
+						PodTemplate: &kapiv1.PodTemplateSpec{
+							Spec: kapiv1.PodSpec{},
 						},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
@@ -820,9 +821,9 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{
-							Spec: kapi.PodSpec{
-								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.6"}},
+						PodTemplate: &kapiv1.PodTemplateSpec{
+							Spec: kapiv1.PodSpec{
+								Containers: []kapiv1.Container{{Name: "redis", Image: "redis:4.0.6"}},
 							},
 						},
 						NumberOfPrimaries: rapi.NewInt32(1),
@@ -851,8 +852,8 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{
-							Spec: kapi.PodSpec{},
+						PodTemplate: &kapiv1.PodTemplateSpec{
+							Spec: kapiv1.PodSpec{},
 						},
 						NumberOfPrimaries: rapi.NewInt32(2),
 						ReplicationFactor: rapi.NewInt32(2),
@@ -880,7 +881,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &rapi.PodTemplateSpec{},
+						PodTemplate:       &kapiv1.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -907,7 +908,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &rapi.PodTemplateSpec{},
+						PodTemplate:       &kapiv1.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -934,7 +935,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &rapi.PodTemplateSpec{},
+						PodTemplate:       &kapiv1.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -961,7 +962,7 @@ func Test_needClusterOperation(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate:       &rapi.PodTemplateSpec{},
+						PodTemplate:       &kapiv1.PodTemplateSpec{},
 						NumberOfPrimaries: rapi.NewInt32(1),
 						ReplicationFactor: rapi.NewInt32(2),
 					},
@@ -1012,9 +1013,9 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{
-							Spec: kapi.PodSpec{
-								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.0"}},
+						PodTemplate: &kapiv1.PodTemplateSpec{
+							Spec: kapiv1.PodSpec{
+								Containers: []kapiv1.Container{{Name: "redis", Image: "redis:4.0.0"}},
 							},
 						},
 					},
@@ -1032,9 +1033,9 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{
-							Spec: kapi.PodSpec{
-								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.0"}},
+						PodTemplate: &kapiv1.PodTemplateSpec{
+							Spec: kapiv1.PodSpec{
+								Containers: []kapiv1.Container{{Name: "redis", Image: "redis:4.0.0"}},
 							},
 						},
 					},
@@ -1055,9 +1056,9 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{
-							Spec: kapi.PodSpec{
-								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.6"}},
+						PodTemplate: &kapiv1.PodTemplateSpec{
+							Spec: kapiv1.PodSpec{
+								Containers: []kapiv1.Container{{Name: "redis", Image: "redis:4.0.6"}},
 							},
 						},
 					},
@@ -1079,9 +1080,9 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						PodTemplate: &rapi.PodTemplateSpec{
-							Spec: kapi.PodSpec{
-								Containers: []kapi.Container{{Name: "redis", Image: "redis:4.0.6"}, {Name: "redis-exporter", Image: "exporter:latest"}},
+						PodTemplate: &kapiv1.PodTemplateSpec{
+							Spec: kapiv1.PodSpec{
+								Containers: []kapiv1.Container{{Name: "redis", Image: "redis:4.0.6"}, {Name: "redis-exporter", Image: "exporter:latest"}},
 							},
 						},
 					},
@@ -1114,19 +1115,19 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 	}
 }
 
-func newPodWithContainer(name, node string, containersInfos map[string]string) *kapi.Pod {
-	var containers []kapi.Container
+func newPodWithContainer(name, node string, containersInfos map[string]string) *kapiv1.Pod {
+	var containers []kapiv1.Container
 	for name, image := range containersInfos {
-		containers = append(containers, kapi.Container{Name: name, Image: image})
+		containers = append(containers, kapiv1.Container{Name: name, Image: image})
 	}
 
-	spec := kapi.PodSpec{
+	spec := kapiv1.PodSpec{
 		Containers: containers,
 	}
 
 	hash, _ := ctrlpod.GenerateMD5Spec(&spec)
 
-	pod := &kapi.Pod{
+	pod := &kapiv1.Pod{
 		ObjectMeta: kmetav1.ObjectMeta{
 			Name:        name,
 			Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hash)},
@@ -1138,15 +1139,15 @@ func newPodWithContainer(name, node string, containersInfos map[string]string) *
 }
 
 func Test_comparePodSpec(t *testing.T) {
-	podSpec1 := kapi.PodSpec{Containers: []kapi.Container{{Name: "redis-node", Image: "redis-node:3.0.3"}}}
-	podSpec2 := kapi.PodSpec{Containers: []kapi.Container{{Name: "redis-node", Image: "redis-node:4.0.8"}}}
-	podSpec3 := kapi.PodSpec{Containers: []kapi.Container{{Name: "redis-node", Image: "redis-node:3.0.3"}, {Name: "prometheus", Image: "prometheus-exporter:latest"}}}
+	podSpec1 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:3.0.3"}}}
+	podSpec2 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:4.0.8"}}}
+	podSpec3 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:3.0.3"}, {Name: "prometheus", Image: "prometheus-exporter:latest"}}}
 	hashspec1, _ := ctrlpod.GenerateMD5Spec(&podSpec1)
 	hashspec2, _ := ctrlpod.GenerateMD5Spec(&podSpec2)
 	hashspec3, _ := ctrlpod.GenerateMD5Spec(&podSpec3)
 	type args struct {
 		spec string
-		pod  *kapi.Pod
+		pod  *kapiv1.Pod
 	}
 	tests := []struct {
 		name string
@@ -1157,7 +1158,7 @@ func Test_comparePodSpec(t *testing.T) {
 			name: "PodSpecs similar",
 			args: args{
 				spec: hashspec1,
-				pod: &kapi.Pod{
+				pod: &kapiv1.Pod{
 					ObjectMeta: kmetav1.ObjectMeta{
 						Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hashspec1)},
 					},
@@ -1170,7 +1171,7 @@ func Test_comparePodSpec(t *testing.T) {
 			name: "PodSpecs not equal",
 			args: args{
 				spec: hashspec1,
-				pod: &kapi.Pod{
+				pod: &kapiv1.Pod{
 					ObjectMeta: kmetav1.ObjectMeta{
 						Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hashspec2)},
 					},
@@ -1182,7 +1183,7 @@ func Test_comparePodSpec(t *testing.T) {
 			name: "additional container",
 			args: args{
 				spec: hashspec1,
-				pod: &kapi.Pod{
+				pod: &kapiv1.Pod{
 					ObjectMeta: kmetav1.ObjectMeta{
 						Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hashspec3)},
 					},
@@ -1201,10 +1202,10 @@ func Test_comparePodSpec(t *testing.T) {
 }
 
 func Test_filterLostNodes(t *testing.T) {
-	var pods []kapi.Pod
-	pods = append(pods, kapi.Pod{Status: kapi.PodStatus{Reason: "Running"}})
-	pods = append(pods, kapi.Pod{Status: kapi.PodStatus{Reason: "Finished"}})
-	pods = append(pods, kapi.Pod{Status: kapi.PodStatus{Reason: "NodeLost"}})
+	var pods []kapiv1.Pod
+	pods = append(pods, kapiv1.Pod{Status: kapiv1.PodStatus{Reason: "Running"}})
+	pods = append(pods, kapiv1.Pod{Status: kapiv1.PodStatus{Reason: "Finished"}})
+	pods = append(pods, kapiv1.Pod{Status: kapiv1.PodStatus{Reason: "NodeLost"}})
 	ok, ko := filterLostNodes(pods)
 	if !(len(ok) == 2 || len(ko) == 1) {
 		t.Errorf("filterLostNodes() wrong result ok: %v, ko: %v", ok, ko)

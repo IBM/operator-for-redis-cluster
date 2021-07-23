@@ -53,7 +53,7 @@ type RedisClusterSpec struct {
 	ServiceName string `json:"serviceName,omitempty"`
 
 	// PodTemplate contains the pod specification that should run the redis-server process
-	PodTemplate *PodTemplateSpec `json:"podTemplate,omitempty"`
+	PodTemplate *kapiv1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// NodeSelector determines which kubernetes nodes to use when scheduling pods
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
@@ -119,21 +119,6 @@ type RedisClusterState struct {
 	LabelSelectorPath string `json:"labelSelectorPath"`
 
 	Nodes []RedisClusterNode `json:"nodes,omitempty"`
-}
-
-type PodTemplateSpec struct {
-	// The following kubebuilder statement is necessary due to a bug in the k8s core API
-	// that prunes the metadata field in kapiv1.PodTemplateSpec
-
-	// Standard object's metadata.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
-	// +optional
-	// +kubebuilder:pruning:PreserveUnknownFields
-	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	// Specification of the desired behavior of the pod.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
-	// +optional
-	Spec kapiv1.PodSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 }
 
 func (s RedisClusterState) String() string {

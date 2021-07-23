@@ -8,7 +8,7 @@ PREFIX=us.icr.io/icm-docker-images/
 SOURCES := $(shell find . ! -name "*_test.go" -name '*.go')
 
 CMDBINS := operator node
-CRD_OPTIONS ?= "crd:crdVersions=v1,trivialVersions=false"
+CRD_OPTIONS ?= "crd:crdVersions=v1,trivialVersions=false,generateEmbeddedObjectMeta=true"
 
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -59,7 +59,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.5.0 ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen

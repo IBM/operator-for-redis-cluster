@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/test"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -11,13 +13,13 @@ import (
 )
 
 func TestPlacePrimaries(t *testing.T) {
-	redisNode1 := &redis.Node{ID: "1", Role: "primary", Zone: "zone1", IP: "1.1.1.1", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod1", "node1")}
-	redisNode2 := &redis.Node{ID: "2", Role: "primary", Zone: "zone1", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "node1")}
-	redisNode3 := &redis.Node{ID: "3", Role: "primary", Zone: "zone2", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod3", "node2")}
-	redisNode4 := &redis.Node{ID: "4", Role: "primary", Zone: "zone3", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "node3")}
+	_, primary1 := test.NewRedisPrimaryNode("1", "zone1", "pod1", "node1", []string{""})
+	_, primary2 := test.NewRedisPrimaryNode("2", "zone1", "pod2", "node1", []string{""})
+	_, primary3 := test.NewRedisPrimaryNode("3", "zone2", "pod3", "node2", []string{""})
+	_, primary4 := test.NewRedisPrimaryNode("4", "zone3", "pod4", "node3", []string{""})
 
-	redisNode5 := &redis.Node{ID: "2", Role: "primary", Zone: "zone2", IP: "1.1.1.2", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod2", "node2")}
-	redisNode6 := &redis.Node{ID: "4", Role: "primary", Zone: "zone2", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: newPod("pod4", "node2")}
+	_, primary5 := test.NewRedisPrimaryNode("2", "zone2", "pod2", "node2", []string{""})
+	_, primary6 := test.NewRedisPrimaryNode("4", "zone2", "pod4", "node2", []string{""})
 
 	node1 := v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -66,18 +68,18 @@ func TestPlacePrimaries(t *testing.T) {
 					Name:      "clustertest",
 					Namespace: "default",
 					Nodes: map[string]*redis.Node{
-						"1": redisNode1,
-						"2": redisNode2,
-						"3": redisNode3,
-						"4": redisNode4,
+						"1": &primary1,
+						"2": &primary2,
+						"3": &primary3,
+						"4": &primary4,
 					},
 					KubeNodes: kubeNodes,
 				},
 				currentPrimary:       redis.Nodes{},
-				allPossiblePrimaries: redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode4},
+				allPossiblePrimaries: redis.Nodes{&primary1, &primary2, &primary3, &primary4},
 				nbPrimary:            3,
 			},
-			want:           redis.Nodes{redisNode1, redisNode3, redisNode4},
+			want:           redis.Nodes{&primary1, &primary3, &primary4},
 			wantBestEffort: false,
 			wantError:      false,
 		},
@@ -88,18 +90,18 @@ func TestPlacePrimaries(t *testing.T) {
 					Name:      "clustertest",
 					Namespace: "default",
 					Nodes: map[string]*redis.Node{
-						"1": redisNode1,
-						"2": redisNode2,
-						"3": redisNode3,
-						"4": redisNode6,
+						"1": &primary1,
+						"2": &primary2,
+						"3": &primary3,
+						"4": &primary6,
 					},
 					KubeNodes: []v1.Node{node1, node2},
 				},
 				currentPrimary:       redis.Nodes{},
-				allPossiblePrimaries: redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode6},
+				allPossiblePrimaries: redis.Nodes{&primary1, &primary2, &primary3, &primary6},
 				nbPrimary:            4,
 			},
-			want:           redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode6},
+			want:           redis.Nodes{&primary1, &primary2, &primary3, &primary6},
 			wantBestEffort: true,
 			wantError:      false,
 		},
@@ -110,16 +112,16 @@ func TestPlacePrimaries(t *testing.T) {
 					Name:      "clustertest",
 					Namespace: "default",
 					Nodes: map[string]*redis.Node{
-						"1": redisNode1,
-						"2": redisNode5,
+						"1": &primary1,
+						"2": &primary5,
 					},
 					KubeNodes: kubeNodes,
 				},
 				currentPrimary:       redis.Nodes{},
-				allPossiblePrimaries: redis.Nodes{redisNode1, redisNode5},
+				allPossiblePrimaries: redis.Nodes{&primary1, &primary5},
 				nbPrimary:            3,
 			},
-			want:           redis.Nodes{redisNode1, redisNode5},
+			want:           redis.Nodes{&primary1, &primary5},
 			wantBestEffort: true,
 			wantError:      true,
 		},

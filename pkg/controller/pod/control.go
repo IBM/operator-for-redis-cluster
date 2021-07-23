@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kapiv1 "k8s.io/api/core/v1"
@@ -25,6 +27,10 @@ type RedisClusterControlInterface interface {
 	GetRedisClusterPods(redisCluster *rapi.RedisCluster) ([]kapiv1.Pod, error)
 	// CreatePod used to create a Pod from the RedisCluster pod template
 	CreatePod(redisCluster *rapi.RedisCluster) (*kapiv1.Pod, error)
+	// CreatePodOnNode used to create a Pod on the given node
+	CreatePodOnNode(redisCluster *rapi.RedisCluster, nodeName string) (*kapiv1.Pod, error)
+	// AddPodAnnotations used to add annotations to a pod
+	AddPodAnnotations(redisCluster *rapi.RedisCluster, podName string, annotations map[string]string) error
 	// DeletePod used to delete a pod from its name
 	DeletePod(redisCluster *rapi.RedisCluster, podName string) error
 	// DeletePodNow used to delete now (force) a pod from its name
@@ -68,7 +74,7 @@ func (p *RedisClusterControl) CreatePod(redisCluster *rapi.RedisCluster) (*kapiv
 	if err != nil {
 		return pod, err
 	}
-	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.GenerateName)
+	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.Name)
 	err = p.KubeClient.Create(context.Background(), pod)
 	if err != nil {
 		return nil, err
@@ -76,20 +82,58 @@ func (p *RedisClusterControl) CreatePod(redisCluster *rapi.RedisCluster) (*kapiv
 	return pod, nil
 }
 
-// DeletePod used to delete a pod from its name
+// CreatePodOnNode used to create a Pod on the given node
+func (p *RedisClusterControl) CreatePodOnNode(redisCluster *rapi.RedisCluster, nodeName string) (*kapiv1.Pod, error) {
+	pod, err := initPod(redisCluster)
+	if err != nil {
+		return pod, err
+	}
+	pod.Spec.NodeName = nodeName
+	glog.V(4).Infof("CreatePodOnNode: %s/%s", redisCluster.Namespace, pod.Name)
+	err = p.KubeClient.Create(context.Background(), pod)
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
+}
+
+func (p *RedisClusterControl) AddPodAnnotations(redisCluster *rapi.RedisCluster, podName string, annotations map[string]string) error {
+	ctx := context.Background()
+	name := types.NamespacedName{
+		Name:      podName,
+		Namespace: redisCluster.Namespace,
+	}
+	pod := &kapiv1.Pod{}
+	err := p.KubeClient.Get(ctx, name, pod)
+	if err != nil {
+		return err
+	}
+	for k, v := range annotations {
+		pod.Annotations[k] = v
+	}
+	glog.V(6).Infof("AddPodAnnotations: %s/%s", redisCluster.Namespace, podName)
+	err = p.KubeClient.Update(ctx, pod)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+
+// DeletePod used to delete a pod
 func (p *RedisClusterControl) DeletePod(redisCluster *rapi.RedisCluster, podName string) error {
 	glog.V(6).Infof("DeletePod: %s/%s", redisCluster.Namespace, podName)
 	return p.deletePodGracePeriod(redisCluster, podName, nil)
 }
 
-// DeletePodNow used to delete now (force) a pod from its name
+// DeletePodNow used to for delete a pod now
 func (p *RedisClusterControl) DeletePodNow(redisCluster *rapi.RedisCluster, podName string) error {
 	glog.V(6).Infof("DeletePod: %s/%s", redisCluster.Namespace, podName)
 	now := int64(0)
 	return p.deletePodGracePeriod(redisCluster, podName, &now)
 }
 
-// DeletePodNow used to delete now (force) a pod from its name
+// deletePodGracePeriod used to delete a pod in a given grace period
 func (p *RedisClusterControl) deletePodGracePeriod(redisCluster *rapi.RedisCluster, podName string, period *int64) error {
 	pod := &kapiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

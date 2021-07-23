@@ -71,8 +71,6 @@ type Admin struct {
 	AttachReplicaToPrimaryRet map[string]error
 	// DetachReplicaToPrimaryRet map of returned error for DetachReplica function
 	DetachReplicaToPrimaryRet map[string]error
-	// PromoteReplicaToPrimaryRet map of returned error for PromoteReplicaToPrimary function
-	PromoteReplicaToPrimaryRet map[string]error
 	// ResetRet map of returned error for FlushAndReset function
 	FlushAndResetRet map[string]error
 	cnx              *Connections
@@ -237,15 +235,6 @@ func (a *Admin) AttachReplicaToPrimary(ctx context.Context, replica *redis.Node,
 // DetachReplica detach a replica to its primary
 func (a *Admin) DetachReplica(ctx context.Context, replica *redis.Node) error {
 	val, ok := a.DetachReplicaToPrimaryRet[replica.ID]
-	if !ok {
-		val = nil
-	}
-	return val
-}
-
-// PromoteReplicaToPrimary turns off replication and promotes this node to a primary
-func (a *Admin) PromoteReplicaToPrimary(ctx context.Context, replica *redis.Node) error {
-	val, ok := a.PromoteReplicaToPrimaryRet[replica.ID]
 	if !ok {
 		val = nil
 	}
