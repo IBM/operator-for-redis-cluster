@@ -3,9 +3,10 @@ package controller
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"math"
 	"time"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -116,14 +117,14 @@ func (c *Controller) Reconcile(ctx context.Context, namespacedName ctrl.Request)
 		return ctrl.Result{}, nil
 	}
 
-	requeue, err := c.syncCluster(ctx, rediscluster)
-	return ctrl.Result{Requeue: requeue}, err
+	result, err := c.syncCluster(ctx, rediscluster)
+	return result, err
 }
 
 func (c *Controller) getRedisCluster(ctx context.Context, namespace, name string) (*rapi.RedisCluster, error) {
 	newCluster := &rapi.RedisCluster{}
 	namespacedName := types.NamespacedName{
-		Name: name,
+		Name:      name,
 		Namespace: namespace,
 	}
 	err := c.client.Get(ctx, namespacedName, newCluster)
@@ -133,15 +134,15 @@ func (c *Controller) getRedisCluster(ctx context.Context, namespace, name string
 	return newCluster, err
 }
 
-func (c *Controller) getRedisClusterService(redisCluster *rapi.RedisCluster) (*v1.Service, error) {
-	serviceName := getServiceName(redisCluster)
-	labels, err := pod.GetLabelsSet(redisCluster)
+func (c *Controller) getRedisClusterService(cluster *rapi.RedisCluster) (*v1.Service, error) {
+	serviceName := getServiceName(cluster)
+	labels, err := pod.GetLabelsSet(cluster)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get cluster label, err: %v ", err)
 	}
 
 	svcList := &v1.ServiceList{}
-	err = c.client.List(context.Background(), svcList, kclient.InNamespace(redisCluster.Namespace), kclient.MatchingLabelsSelector{Selector: labels.AsSelector()})
+	err = c.client.List(context.Background(), svcList, kclient.InNamespace(cluster.Namespace), kclient.MatchingLabelsSelector{Selector: labels.AsSelector()})
 	if err != nil {
 		return nil, fmt.Errorf("couldn't list service with label:%s, err:%v ", labels.String(), err)
 	}
@@ -175,52 +176,52 @@ func (c *Controller) getRedisClusterPodDisruptionBudget(redisCluster *rapi.Redis
 	return pdb, nil
 }
 
-func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCluster) (forceRequeue bool, err error) {
+func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCluster) (ctrl.Result, error) {
 	glog.V(6).Info("syncCluster START")
 	defer glog.V(6).Info("syncCluster STOP")
-	forceRequeue = false
+	result := ctrl.Result{}
 	redisClusterService, err := c.getRedisClusterService(rediscluster)
 	if err != nil {
 		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieves service associated to the RedisCluster: %s/%s", rediscluster.Namespace, rediscluster.Name)
-		return forceRequeue, err
+		return result, err
 	}
 	if redisClusterService == nil {
 		if _, err = c.serviceControl.CreateRedisClusterService(rediscluster); err != nil {
 			glog.Errorf("RedisCluster-Operator.Reconcile unable to create service associated to the RedisCluster: %s/%s", rediscluster.Namespace, rediscluster.Name)
-			return forceRequeue, err
+			return result, err
 		}
 	}
 
 	redisClusterPodDisruptionBudget, err := c.getRedisClusterPodDisruptionBudget(rediscluster)
 	if err != nil {
 		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieves podDisruptionBudget associated to the RedisCluster: %s/%s", rediscluster.Namespace, rediscluster.Name)
-		return forceRequeue, err
+		return result, err
 	}
 	if redisClusterPodDisruptionBudget == nil {
 		if _, err = c.podDisruptionBudgetControl.CreateRedisClusterPodDisruptionBudget(rediscluster); err != nil {
 			glog.Errorf("RedisCluster-Operator.Reconcile unable to create podDisruptionBudget associated to the RedisCluster: %s/%s", rediscluster.Namespace, rediscluster.Name)
-			return forceRequeue, err
+			return result, err
 		}
 	}
-	redisClusterPods, err := c.podControl.GetRedisClusterPods(rediscluster)
+	redisPods, err := c.podControl.GetRedisClusterPods(rediscluster)
 	if err != nil {
 		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieves pod associated to the RedisCluster: %s/%s", rediscluster.Namespace, rediscluster.Name)
-		return forceRequeue, err
+		return result, err
 	}
 
-	pods, lostPods := filterLostNodes(redisClusterPods)
+	pods, lostPods := filterLostNodes(redisPods)
 	if len(lostPods) != 0 {
 		for _, p := range lostPods {
-			err := c.podControl.DeletePodNow(rediscluster, p.Name)
+			err = c.podControl.DeletePodNow(rediscluster, p.Name)
 			glog.Errorf("Lost node with pod %s. Deleting... %v", p.Name, err)
 		}
-		redisClusterPods = pods
+		redisPods = pods
 	}
 
 	// RedisAdmin is used access the Redis process in the different pods.
-	admin, err := NewRedisAdmin(ctx, redisClusterPods, &c.config.redis)
+	admin, err := NewRedisAdmin(ctx, redisPods, &c.config.redis)
 	if err != nil {
-		return forceRequeue, fmt.Errorf("unable to create the redis.Admin, err:%v", err)
+		return result, fmt.Errorf("unable to create the redis.Admin, err:%v", err)
 	}
 	defer admin.Close()
 
@@ -228,27 +229,27 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 	if errGetInfos != nil {
 		glog.Errorf("Error when getting cluster infos to rebuild bom : %v", errGetInfos)
 		if clusterInfos.Status == redis.ClusterInfoPartial {
-			return false, fmt.Errorf("partial cluster info")
+			return result, fmt.Errorf("partial cluster info")
 		}
 	}
 
 	// From the Redis cluster nodes connections, build the cluster status
-	clusterStatus, err := c.buildClusterStatus(clusterInfos, redisClusterPods, rediscluster)
+	clusterStatus, err := c.buildClusterStatus(rediscluster, clusterInfos, redisPods)
 	if err != nil {
 		glog.Errorf("unable to build the RedisClusterStatus, err:%v", err)
-		return forceRequeue, fmt.Errorf("unable to build clusterStatus, err:%v", err)
+		return result, fmt.Errorf("unable to build clusterStatus, err:%v", err)
 	}
 
 	updated, err := c.updateClusterStatus(ctx, rediscluster.Namespace, rediscluster.Name, clusterStatus)
 	rediscluster.Status.Cluster.Nodes = clusterStatus.Nodes
 	if err != nil {
-		return forceRequeue, err
+		return result, err
 	}
 	if updated {
 		// If the cluster status changes requeue the key. We want to apply the RedisCluster operation on a
 		// stable cluster already stored in the API server.
 		glog.V(3).Infof("cluster updated %s-%s", rediscluster.Namespace, rediscluster.Name)
-		return true, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	allPodsReady := true
@@ -261,18 +262,16 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 	needSanitize, err := c.checkSanityCheck(ctx, rediscluster, admin, clusterInfos)
 	if err != nil {
 		glog.Errorf("checkSanityCheck, error happened in dryrun mode, err:%v", err)
-		return false, err
+		return result, err
 	}
 
 	if allPodsReady && needClusterOperation(rediscluster) || needSanitize {
-		forceRequeue = false
-		requeue, err := c.clusterAction(ctx, admin, rediscluster, clusterInfos)
+		actionResult, err := c.clusterAction(ctx, admin, rediscluster, clusterInfos)
 		if err != nil {
 			glog.Errorf("error during action on cluster: %s-%s, err: %v", rediscluster.Namespace, rediscluster.Name, err)
 		}
-		forceRequeue = requeue
 		_, err = c.updateHandler(rediscluster)
-		return forceRequeue, err
+		return actionResult, err
 	}
 
 	if setRebalancingCondition(&rediscluster.Status, false) ||
@@ -280,10 +279,10 @@ func (c *Controller) syncCluster(ctx context.Context, rediscluster *rapi.RedisCl
 		setScalingCondition(&rediscluster.Status, false) ||
 		setClusterStatusCondition(&rediscluster.Status, true) {
 		_, err = c.updateHandler(rediscluster)
-		return forceRequeue, err
+		return result, err
 	}
 
-	return forceRequeue, nil
+	return result, nil
 }
 
 func (c *Controller) checkSanityCheck(ctx context.Context, cluster *rapi.RedisCluster, admin redis.AdminInterface, infos *redis.ClusterInfos) (bool, error) {
@@ -305,21 +304,21 @@ func (c *Controller) updateClusterStatus(ctx context.Context, namespace, name st
 	return false, nil
 }
 
-func (c *Controller) buildClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod, cluster *rapi.RedisCluster) (*rapi.RedisClusterState, error) {
+func (c *Controller) buildClusterStatus(cluster *rapi.RedisCluster, clusterInfos *redis.ClusterInfos, pods []v1.Pod) (*rapi.RedisClusterState, error) {
 	clusterStatus := getRedisClusterStatus(clusterInfos, pods)
-
 	podLabels, err := pod.GetLabelsSet(cluster)
 	if err != nil {
 		glog.Errorf("Unable to get labelset. err: %v", err)
 	}
 	clusterStatus.LabelSelectorPath = podLabels.String()
-
 	min, max := getReplicationFactors(clusterStatus.NumberOfReplicasPerPrimary)
 	clusterStatus.MinReplicationFactor = int32(min)
 	clusterStatus.MaxReplicationFactor = int32(max)
-
+	clusterStatus.Status = cluster.Status.Cluster.Status
+	if clusterStatus.NumberOfRedisNodesRunning == clusterStatus.NumberOfPrimariesReady*(1+clusterStatus.MinReplicationFactor) {
+		clusterStatus.Status = rapi.ClusterStatusOK
+	}
 	glog.V(3).Infof("Build Bom, current node list: %s ", clusterStatus.String())
-
 	return clusterStatus, nil
 }
 
@@ -344,8 +343,6 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod) *rap
 	clusterStatus := &rapi.RedisClusterState{}
 	clusterStatus.NumberOfPodsReady = 0
 	clusterStatus.NumberOfRedisNodesRunning = 0
-	clusterStatus.MaxReplicationFactor = 0
-	clusterStatus.MinReplicationFactor = 0
 	clusterStatus.NumberOfPods = int32(len(pods))
 	clusterStatus.NumberOfReplicasPerPrimary = map[string]int{}
 
@@ -366,7 +363,7 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod) *rap
 			return node.IP == p.Status.PodIP
 		})
 		if err != nil {
-			glog.Warningf("unable to retrieve the redis node associated with the pod: %s, ip:%s, err:%v", p.Name, p.Status.PodIP, err)
+			glog.Warningf("unable to retrieve the redis node associated with pod: %s, ip:%s, err:%v", p.Name, p.Status.PodIP, err)
 			continue
 		}
 		newNode := rapi.RedisClusterNode{
@@ -412,7 +409,6 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod) *rap
 	clusterStatus.NumberOfPrimariesReady = numberOfPrimariesReady
 	clusterStatus.NumberOfPodsReady = numberOfPodsReady
 	clusterStatus.NumberOfReplicasPerPrimary = numberOfReplicasPerPrimary
-	clusterStatus.Status = rapi.ClusterStatusOK
 
 	return clusterStatus
 }

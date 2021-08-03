@@ -188,15 +188,14 @@ func (cnx *AdminConnections) GetSelected(addrs []string) map[string]ClientInterf
 }
 
 // Reconnect force a reconnection on the given address
-// is the adress is not part of the map, act like Add
+// if the address is not part of the map, act like Add
 func (cnx *AdminConnections) Reconnect(ctx context.Context, addr string) error {
 	glog.Infof("Reconnecting to %s", addr)
 	cnx.Remove(addr)
 	return cnx.Add(ctx, addr)
 }
 
-// AddAll connect to the given list of addresses and
-// register them in the map
+// AddAll connect the given list of addresses and add them to the connection map
 // fail silently
 func (cnx *AdminConnections) AddAll(ctx context.Context, addrs []string) {
 	for _, addr := range addrs {

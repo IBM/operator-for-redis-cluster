@@ -44,6 +44,31 @@ spec:
                 description: Labels for created redis-cluster (deployment, rs, pod)
                   (if any)
                 type: object
+              keyMigration:
+                description: KeyMigration whether or not to migrate keys during a
+                  rolling update
+                type: boolean
+              migration:
+                description: Migration configuration for redis key migration
+                properties:
+                  idleTimeoutMillis:
+                    description: Maximum idle time at any point during key migration
+                    format: int32
+                    type: integer
+                  keyBatchSize:
+                    description: Number of keys to get from a single slot during each
+                      migration iteration
+                    format: int32
+                    type: integer
+                  slotBatchSize:
+                    description: Number of slots to to migrate on each iteration
+                    format: int32
+                    type: integer
+                  warmingDelayMillis:
+                    description: Amount of time in between each slot batch iteration
+                    format: int32
+                    type: integer
+                type: object
               nodeSelector:
                 additionalProperties:
                   type: string
@@ -6341,12 +6366,7 @@ spec:
               zoneAwareReplication:
                 description: ZoneAwareReplication spreads primary and replica nodes
                   across all available zones
-                properties:
-                  enabled:
-                    type: boolean
-                required:
-                - enabled
-                type: object
+                type: boolean
             type: object
           status:
             description: Status represents the current RedisCluster status

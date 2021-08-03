@@ -3,9 +3,15 @@ package redis
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"strconv"
+	"sync"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/errors"
+
+	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 
 	"github.com/mediocregopher/radix/v4"
 
@@ -29,45 +35,55 @@ type AdminInterface interface {
 	Connections() AdminConnectionsInterface
 	// Close the admin connections
 	Close()
-	// InitRedisCluster used to configure the first node of a cluster
+	// InitRedisCluster configures the first node of a cluster
 	InitRedisCluster(ctx context.Context, addr string) error
-	// GetClusterInfos get node infos for all nodes
+	// GetClusterInfos gets node info for all nodes
 	GetClusterInfos(ctx context.Context) (*ClusterInfos, error)
-	// GetClusterInfosSelected return the Nodes infos for all nodes selected in the cluster
+	// GetClusterInfosSelected returns the node info for all selected nodes in the cluster
 	GetClusterInfosSelected(ctx context.Context, addrs []string) (*ClusterInfos, error)
-	// AttachNodeToCluster command use to connect a Node to the cluster
-	// the connection will be done on a random node part of the connection pool
+	// AttachNodeToCluster connects a Node to the cluster
 	AttachNodeToCluster(ctx context.Context, addr string) error
-	// AttachReplicaToPrimary attach a replica to a primary node
+	// AttachReplicaToPrimary attaches a replica to a primary node
 	AttachReplicaToPrimary(ctx context.Context, replica *Node, primary *Node) error
-	// DetachReplica detach a replica to its primary
+	// DetachReplica detaches a replica from a primary
 	DetachReplica(ctx context.Context, replica *Node) error
-	// StartFailover execute the failover of the Redis Primary corresponding to the addr
+	// StartFailover executes the failover of a redis primary with the corresponding addr
 	StartFailover(ctx context.Context, addr string) error
-	// ForgetNode execute the Redis command to force the cluster to forgot the the Node
+	// ForgetNode forces the cluster to forget a node
 	ForgetNode(ctx context.Context, id string) error
-	// ForgetNodeByAddr execute the Redis command to force the cluster to forgot the the Node
-	ForgetNodeByAddr(ctx context.Context, id string) error
-	// SetSlots execute the redis command to set slots in a pipeline, provide
-	// and empty nodeID if the set slots commands doesn't take a nodeID in parameter
+	// ForgetNodeByAddr forces the cluster to forget the node with the specified address
+	ForgetNodeByAddr(ctx context.Context, addr string) error
+	// SetSlot sets a single slot
+	SetSlot(ctx context.Context, addr, action string, slot Slot, node *Node) error
+	// SetSlots sets multiple slots in a pipeline
 	SetSlots(ctx context.Context, addr string, action string, slots SlotSlice, nodeID string) error
-	// AddSlots execute the redis command to add slots in a pipeline
+	// AddSlots adds slots in a pipeline
 	AddSlots(ctx context.Context, addr string, slots SlotSlice) error
-	// DelSlots execute the redis command to del slots in a pipeline
+	// DelSlots deletes slots in a pipeline
 	DelSlots(ctx context.Context, addr string, slots SlotSlice) error
-	// GetKeysInSlot execute the redis command to get the keys in the given slot on the node we are connected to
-	GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch int, limit bool) ([]string, error)
-	// CountKeysInSlot execute the redis command to count the keys given slot on the node
+	// GetKeysInSlot gets the keys in the given slot on the node
+	GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch string, limit bool) ([]string, error)
+	// CountKeysInSlot counts the keys in a given slot on the node
 	CountKeysInSlot(ctx context.Context, addr string, slot Slot) (int64, error)
-	// MigrateKeys from addr to destination node. returns number of slot migrated. If replace is true, replace key on busy error
-	MigrateKeys(ctx context.Context, addr string, dest *Node, slots SlotSlice, batch, timeout int, replace bool) (int, error)
-	// FlushAndReset reset the cluster configuration of the node, the node is flushed in the same pipe to ensure reset works
+	// GetKeys gets keys in a slot
+	GetKeys(ctx context.Context, addr string, slot Slot, batch string) ([]string, error)
+	// DeleteKeys deletes keys
+	DeleteKeys(ctx context.Context, addr string, keys []string) error
+	// MigrateKeys migrates keys from the source to destination node and returns number of slot migrated
+	MigrateKeys(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration, replace bool) error
+	// MigrateEmptySlot migrates a single empty slot from the source to destination node
+	MigrateEmptySlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch string) error
+	// MigrateEmptySlots migrates slots from the source to destination node
+	MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration) error
+	// MigrateKeysInSlot migrates all the keys in a single slot
+	MigrateKeysInSlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch, timeout string, replace bool) error
+	// FlushAndReset flushes and resets the cluster configuration of the node
 	FlushAndReset(ctx context.Context, addr string, mode string) error
-	// FlushAll flush all keys in cluster
-	FlushAll(ctx context.Context)
-	// GetHashMaxSlot get the max slot value
+	// FlushAll flushes all keys in the cluster
+	FlushAll(ctx context.Context, addr string) error
+	// GetHashMaxSlot gets the max slot value
 	GetHashMaxSlot() Slot
-	//RebuildConnectionMap rebuild the connection map according to the given addresses
+	//RebuildConnectionMap rebuilds the connection map according to the given addresses
 	RebuildConnectionMap(ctx context.Context, addrs []string, options *AdminOptions)
 }
 
@@ -338,6 +354,19 @@ func (a *Admin) ForgetNodeByAddr(ctx context.Context, addr string) error {
 	return a.ForgetNode(ctx, me.ID)
 }
 
+func (a *Admin) SetSlot(ctx context.Context, addr, action string, slot Slot, node *Node) error {
+	var resp string
+	c, err := a.Connections().Get(ctx, addr)
+	if err != nil {
+		return err
+	}
+	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "SETSLOT", slot.String(), action, node.ID)
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, node.IPPort(), "Unable to run command CLUSTER SETSLOT"); err != nil {
+		return err
+	}
+	return nil
+}
+
 // SetSlots use to set SETSLOT command on several slots
 func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSlice, nodeID string) error {
 	if len(slots) == 0 {
@@ -395,18 +424,12 @@ func (a *Admin) DelSlots(ctx context.Context, addr string, slots SlotSlice) erro
 
 // GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
 // Batch is the number of keys fetch per batch, Limit can be use to limit to one batch
-func (a *Admin) GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch int, limit bool) ([]string, error) {
+func (a *Admin) GetKeysInSlot(ctx context.Context, addr string, slot Slot, batch string, limit bool) ([]string, error) {
 	keyCount := 0
 	var allKeys []string
-	c, err := a.Connections().Get(ctx, addr)
-	if err != nil {
-		return allKeys, err
-	}
-
 	for {
-		var keys []string
-		cmdErr := c.DoCmd(ctx, &keys, "CLUSTER", "GETKEYSINSLOT", slot.String(), strconv.Itoa(batch))
-		if err := a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "Unable to run command CLUSTER GETKEYSINSLOT"); err != nil {
+		keys, err := a.GetKeys(ctx, addr, slot, batch)
+		if err != nil {
 			return allKeys, err
 		}
 		allKeys = append(allKeys, keys...)
@@ -434,49 +457,137 @@ func (a *Admin) CountKeysInSlot(ctx context.Context, addr string, slot Slot) (in
 	return resp, nil
 }
 
-// MigrateKeys use to migrate keys from slots to other slots. if replace is true, replace key on busy error
-// timeout is in milliseconds
-func (a *Admin) MigrateKeys(ctx context.Context, addr string, dest *Node, slots SlotSlice, batch int, timeout int, replace bool) (int, error) {
-	glog.Infof("MigrateKeys started for %d slots from %s to %+v", len(slots), addr, dest)
-	start := time.Now()
-	if len(slots) == 0 {
-		return 0, nil
-	}
-	keyCount := 0
+// GetKeys uses the GETKEYSINSLOT command to get the number of keys specified by keyBatch
+func (a *Admin) GetKeys(ctx context.Context, addr string, slot Slot, batch string) ([]string, error) {
+	var keys []string
 	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
-		return keyCount, err
+		return keys, err
 	}
-	timeoutStr := strconv.Itoa(timeout)
-	batchStr := strconv.Itoa(batch)
+	cmdErr := c.DoCmd(ctx, &keys, "CLUSTER", "GETKEYSINSLOT", slot.String(), batch)
+	if err = a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
+		return keys, err
+	}
+	return keys, nil
+}
 
-	for _, slot := range slots {
-		for {
-			var keys []string
-			cmdErr := c.DoCmd(ctx, &keys, "CLUSTER", "GETKEYSINSLOT", slot.String(), batchStr)
-			if err := a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
-				return keyCount, err
-			}
-			keyCount += len(keys)
-			if len(keys) == 0 {
-				break
-			}
+// DeleteKeys uses the DEL command to get delete multiple keys
+func (a *Admin) DeleteKeys(ctx context.Context, addr string, keys []string) error {
+	var resp string
+	c, err := a.Connections().Get(ctx, addr)
+	if err != nil {
+		return err
+	}
+	cmdErr := c.DoCmd(ctx, &resp, "DEL", keys...)
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to run command DEL keys"); err != nil {
+		return err
+	}
+	return nil
+}
 
-			var args []string
-			if replace {
-				args = append([]string{dest.IP, dest.Port, "", "0", timeoutStr, "REPLACE", "KEYS"}, keys...)
-			} else {
-				args = append([]string{dest.IP, dest.Port, "", "0", timeoutStr, "KEYS"}, keys...)
-			}
-			var resp string
-			cmdErr = c.DoCmdWithRetries(ctx, &resp, "MIGRATE", args...)
-			if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to run command MIGRATE"); err != nil {
-				return keyCount, err
-			}
+// MigrateEmptySlot migrates a single empty slot from the source node to the destination
+func (a *Admin) MigrateEmptySlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch string) error {
+	var errs []error
+	for {
+		keys, err := a.GetKeys(ctx, source.IPPort(), slot, batch)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		if len(keys) == 0 {
+			break
+		}
+		if err = a.DeleteKeys(ctx, source.IPPort(), keys); err != nil {
+			errs = append(errs, err)
 		}
 	}
-	glog.Infof("MigrateKeys of %d slots from %s to %+v completed in %s", len(slots), addr, dest, time.Since(start))
-	return keyCount, nil
+	if err := a.SetSlot(ctx, dest.IPPort(), "NODE", slot, dest); err != nil {
+		errs = append(errs, err)
+	}
+	if err := a.SetSlot(ctx, source.IPPort(), "NODE", slot, dest); err != nil {
+		errs = append(errs, err)
+	}
+	return errors.NewAggregate(errs)
+}
+
+// MigrateEmptySlots migrates empty slots from the source node to the destination
+func (a *Admin) MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration) error {
+	glog.Infof("MigrateEmptySlots started for %d slots from %s to %s", len(slots), source.IPPort(), dest.IPPort())
+	if len(slots) == 0 {
+		return nil
+	}
+	keyBatchSize := strconv.Itoa(int(conf.KeyBatchSize))
+	slotBatchSize := int(conf.SlotBatchSize)
+	for i := 0; i < len(slots); i = i + slotBatchSize {
+		wg := sync.WaitGroup{}
+		batchStart := time.Now()
+		endIndex := int(math.Min(float64(i+slotBatchSize), float64(len(slots))))
+		slotBatch := slots[i:endIndex]
+		for _, slot := range slotBatch {
+			wg.Add(1)
+			tmpSlot := slot
+			go func() {
+				defer wg.Done()
+				if err := a.MigrateEmptySlot(ctx, source, dest, tmpSlot, keyBatchSize); err != nil {
+					glog.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		if conf.WarmingDelayMillis > 0 {
+			time.Sleep(time.Duration(conf.WarmingDelayMillis) * time.Millisecond)
+		}
+		glog.Infof("Batch migration of slots %d-%d from %s to %s completed in %s", slots[i], slots[endIndex-1], source.IPPort(), dest.IPPort(), time.Since(batchStart))
+	}
+	return nil
+}
+
+func (a *Admin) MigrateKeysInSlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch, timeout string, replace bool) error {
+	c, err := a.Connections().Get(ctx, source.IPPort())
+	if err != nil {
+		return err
+	}
+	for {
+		keys, err := a.GetKeys(ctx, source.IPPort(), slot, batch)
+		if err != nil {
+			return err
+		}
+		if len(keys) == 0 {
+			break
+		}
+		var args []string
+		if replace {
+			args = append([]string{dest.IP, dest.Port, "", "0", timeout, "REPLACE", "KEYS"}, keys...)
+		} else {
+			args = append([]string{dest.IP, dest.Port, "", "0", timeout, "KEYS"}, keys...)
+		}
+		var resp string
+		cmdErr := c.DoCmdWithRetries(ctx, &resp, "MIGRATE", args...)
+		if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, source.IPPort(), "Unable to run command MIGRATE"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// MigrateKeys from the source node to the destination node. If replace is true, replace key on busy error.
+// Timeout is in milliseconds
+func (a *Admin) MigrateKeys(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration, replace bool) error {
+	glog.Infof("MigrateKeys started for %d slots from %s to %s", len(slots), source.IPPort(), dest.IPPort())
+	start := time.Now()
+	if len(slots) == 0 {
+		return nil
+	}
+
+	timeout := strconv.Itoa(int(conf.IdleTimeoutMillis))
+	keyBatchSize := strconv.Itoa(int(conf.KeyBatchSize))
+	for _, slot := range slots {
+		if err := a.MigrateKeysInSlot(ctx, source, dest, slot, keyBatchSize, timeout, replace); err != nil {
+			return err
+		}
+	}
+	glog.Infof("Migration of %d slots from %s to %s completed in %s", len(slots), source.IPPort(), dest.IPPort(), time.Since(start))
+	return nil
 }
 
 // AttachReplicaToPrimary attach a replica to a primary node
@@ -527,22 +638,22 @@ func (a *Admin) FlushAndReset(ctx context.Context, addr string, mode string) err
 	c.PipeAppend(radix.Cmd(nil, "CLUSTER", "RESET", mode))
 
 	if err = c.DoPipe(ctx); err != nil {
-		return fmt.Errorf("Error %v occured on node %s during CLUSTER RESET", err, addr)
+		return fmt.Errorf("error %v occured on node %s during CLUSTER RESET", err, addr)
 	}
 
 	return nil
 }
 
 // FlushAll flush all keys in cluster
-func (a *Admin) FlushAll(ctx context.Context) {
-	c, err := a.Connections().GetRandom()
+func (a *Admin) FlushAll(ctx context.Context, addr string) error {
+	c, err := a.Connections().Get(ctx, addr)
 	if err != nil {
-		return
+		return err
 	}
-	err = c.DoCmd(ctx, nil, "FLUSHALL")
-	if err != nil {
-		glog.Errorf("FLUSHALL failed: %v", err)
+	if err = c.DoCmd(ctx, nil, "FLUSHALL"); err != nil {
+		return fmt.Errorf("error %v occured on node %s during FLUSHALL", err, addr)
 	}
+	return nil
 }
 
 func selectMyReplicas(me *Node, nodes Nodes) (Nodes, error) {

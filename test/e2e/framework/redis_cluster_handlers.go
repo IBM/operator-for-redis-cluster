@@ -23,7 +23,7 @@ import (
 
 // NewRedisCluster builds and returns a new RedisCluster instance
 func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) *rapi.RedisCluster {
-	return &rapi.RedisCluster{
+	cluster := &rapi.RedisCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       rapi.ResourceKind,
 			APIVersion: rapi.GroupName + "/" + rapi.ResourceVersion,
@@ -108,6 +108,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 			},
 		},
 	}
+	return rapi.DefaultRedisCluster(cluster)
 }
 
 // BuildAndSetClients builds and initializes RedisCluster and kube client

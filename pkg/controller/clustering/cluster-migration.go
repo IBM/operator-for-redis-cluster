@@ -40,84 +40,82 @@ func SelectPrimaries(cluster *redis.Cluster, currentPrimaries, candidatePrimarie
 }
 
 // DispatchSlotsToNewPrimaries used to dispatch slots to the new primary nodes
-func DispatchSlotsToNewPrimaries(ctx context.Context, cluster *redis.Cluster, admin redis.AdminInterface, newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes redis.Nodes) error {
-	// Calculate the Migration slot information (which slots goes from where to where)
+func DispatchSlotsToNewPrimaries(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes redis.Nodes) error {
+	// calculate the migration slot information (which slots go where)
 	migrationSlotInfo, info := feedMigInfo(newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes, int(admin.GetHashMaxSlot()+1))
-	cluster.ActionsInfo = info
-	cluster.Status = rapi.ClusterStatusRebalancing
+	rCluster.ActionsInfo = info
+	rCluster.Status = rapi.ClusterStatusRebalancing
 	for nodesInfo, slots := range migrationSlotInfo {
-		// There is a need for real error handling here, we must ensure we don't keep a slot in abnormal state
+		// there is a need for real error handling here, we must ensure we don't keep a slot in abnormal state
 		if nodesInfo.From == nil {
 			if glog.V(4) {
-				glog.Warning("1) Add slots that having probably been lost during scale down, destination: ", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
+				glog.Warning("Adding slots that have probably been lost during scale down, destination: ", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
 			}
 			err := admin.AddSlots(ctx, nodesInfo.To.IPPort(), slots)
 			if err != nil {
-				glog.Error("error during ADDSLOTS:", err)
+				glog.Error("error during ADDSLOTS: ", err)
 				return err
 			}
 		} else {
-			glog.V(6).Info("1) Send SETSLOT IMPORTING command target:", nodesInfo.To.ID, " source-node:", nodesInfo.From.ID, " total:", len(slots), " : ", slots)
-			err := admin.SetSlots(ctx, nodesInfo.To.IPPort(), "IMPORTING", slots, nodesInfo.From.ID)
-			if err != nil {
-				glog.Error("error during IMPORTING:", err)
-				return err
-			}
-			glog.V(6).Info("2) Send SETSLOT MIGRATION command target:", nodesInfo.From.ID, " destination-node:", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
-			err = admin.SetSlots(ctx, nodesInfo.From.IPPort(), "MIGRATING", slots, nodesInfo.To.ID)
-			if err != nil {
-				glog.Error("error during MIGRATING:", err)
+			if err := setSlotState(ctx, admin, nodesInfo, slots); err != nil {
 				return err
 			}
 
-			glog.V(6).Info("3) Migrate Key")
-			nbMigrated, migerr := admin.MigrateKeys(ctx, nodesInfo.From.IPPort(), nodesInfo.To, slots, 10, 30000, true)
-			if migerr != nil {
-				glog.Error("error during MIGRATION:", migerr)
-			} else {
-				glog.V(7).Infof("   Migrated %d Key", nbMigrated)
+			glog.V(6).Info("3) Migrate keys")
+			if err := admin.MigrateKeys(ctx, nodesInfo.From, nodesInfo.To, slots, &cluster.Spec.Migration, true); err != nil {
+				glog.Error("error during key migration: ", err)
 			}
 
-			// we absolutely need to do setslot on the node owning the slot first, otherwise in case of manager crash, only the owner may think it is now owning the slot
-			// creating a cluster view discrepancy
-			err = admin.SetSlots(ctx, nodesInfo.To.IPPort(), "NODE", slots, nodesInfo.To.ID)
-			if err != nil {
-				if glog.V(4) {
-					glog.Warningf("warning during SETSLOT NODE on %s: %v", nodesInfo.To.IPPort(), err)
-				}
-			}
-			err = admin.SetSlots(ctx, nodesInfo.From.IPPort(), "NODE", slots, nodesInfo.To.ID)
-			if err != nil {
-				if glog.V(4) {
-					glog.Warningf("warning during SETSLOT NODE on %s: %v", nodesInfo.From.IPPort(), err)
-				}
-			}
+			// We need to call SETSLOT on the node owning the slot first. In the case of a manager crash,
+			// the owner may think it is now owning the slot, creating a cluster view discrepancy
+			setMigrationSlots(ctx, admin, nodesInfo, slots)
 
-			// Update bom
+			// update bom
 			nodesInfo.From.Slots = redis.RemoveSlots(nodesInfo.From.Slots, slots)
 
 			// now tell all other nodes
-			for _, primary := range allPrimaryNodes {
-				if primary.IPPort() == nodesInfo.To.IPPort() || primary.IPPort() == nodesInfo.From.IPPort() {
-					// we already did those two
-					continue
-				}
-				if primary.TotalSlots() == 0 {
-					// some nodes may not be primary anymore
-					// as we removed all slots in previous iteration of this code
-					// we ignore those nodes
-					continue
-				}
-				glog.V(6).Info("4) Send SETSLOT NODE command target:", primary.ID, " new owner:", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
-				err = admin.SetSlots(ctx, primary.IPPort(), "NODE", slots, nodesInfo.To.ID)
-				if err != nil {
-					if glog.V(4) {
-						glog.Warningf("warning during SETSLOT NODE on %s: %v", primary.IPPort(), err)
-					}
-				}
-			}
+			setPrimarySlots(ctx, admin, nodesInfo, slots, allPrimaryNodes)
 		}
-		// Update bom
+		// update bom
+		nodesInfo.To.Slots = redis.AddSlots(nodesInfo.To.Slots, slots)
+	}
+	return nil
+}
+
+// DispatchEmptySlotsToPrimaries used to dispatch empty slots to the new primary nodes
+func DispatchEmptySlotsToPrimaries(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes redis.Nodes) error {
+	// calculate the migration slot information (which slots go where)
+	migrationSlotInfo, info := feedMigInfo(newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes, int(admin.GetHashMaxSlot()+1))
+	rCluster.ActionsInfo = info
+	rCluster.Status = rapi.ClusterStatusRebalancing
+	for nodesInfo, slots := range migrationSlotInfo {
+		glog.Infof("node info: %v", nodesInfo)
+		if nodesInfo.From == nil {
+			if glog.V(4) {
+				glog.Warning("Adding slots that have probably been lost during scale down, destination: ", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
+			}
+			err := admin.AddSlots(ctx, nodesInfo.To.IPPort(), slots)
+			if err != nil {
+				glog.Error("error during ADDSLOTS: ", err)
+				return err
+			}
+		} else {
+			if err := setSlotState(ctx, admin, nodesInfo, slots); err != nil {
+				return err
+			}
+
+			glog.V(6).Info("3) Migrate slots with no keys")
+			if err := admin.MigrateEmptySlots(ctx, nodesInfo.From, nodesInfo.To, slots, &cluster.Spec.Migration); err != nil {
+				glog.Error("error during key migration: ", err)
+			}
+
+			// update bom
+			nodesInfo.From.Slots = redis.RemoveSlots(nodesInfo.From.Slots, slots)
+
+			// now tell all other nodes
+			setPrimarySlots(ctx, admin, nodesInfo, slots, allPrimaryNodes)
+		}
+		// update bom
 		nodesInfo.To.Slots = redis.AddSlots(nodesInfo.To.Slots, slots)
 	}
 	return nil
@@ -166,6 +164,58 @@ func feedMigInfo(newPrimaryNodes, oldPrimaryNodes, allPrimaryNodes redis.Nodes, 
 		}
 	}
 	return mapOut, info
+}
+
+func setSlotState(ctx context.Context, admin redis.AdminInterface, nodesInfo migrationInfo, slots redis.SlotSlice) error {
+	glog.V(6).Info("1) Send SETSLOT IMPORTING command target:", nodesInfo.To.ID, " source-node:", nodesInfo.From.ID, " total:", len(slots), " : ", slots)
+	err := admin.SetSlots(ctx, nodesInfo.To.IPPort(), "IMPORTING", slots, nodesInfo.From.ID)
+	if err != nil {
+		glog.Error("error during SETSLOT IMPORTING: ", err)
+		return err
+	}
+	glog.V(6).Info("2) Send SETSLOT MIGRATING command target:", nodesInfo.From.ID, " destination-node:", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
+	err = admin.SetSlots(ctx, nodesInfo.From.IPPort(), "MIGRATING", slots, nodesInfo.To.ID)
+	if err != nil {
+		glog.Error("error during SETSLOT MIGRATING: ", err)
+		return err
+	}
+	return nil
+}
+
+func setMigrationSlots(ctx context.Context, admin redis.AdminInterface, nodesInfo migrationInfo, slots redis.SlotSlice) {
+	err := admin.SetSlots(ctx, nodesInfo.To.IPPort(), "NODE", slots, nodesInfo.To.ID)
+	if err != nil {
+		if glog.V(4) {
+			glog.Warningf("warning during SETSLOT NODE on %s: %v", nodesInfo.To.IPPort(), err)
+		}
+	}
+	err = admin.SetSlots(ctx, nodesInfo.From.IPPort(), "NODE", slots, nodesInfo.To.ID)
+	if err != nil {
+		if glog.V(4) {
+			glog.Warningf("warning during SETSLOT NODE on %s: %v", nodesInfo.From.IPPort(), err)
+		}
+	}
+}
+
+func setPrimarySlots(ctx context.Context, admin redis.AdminInterface, nodesInfo migrationInfo, slots redis.SlotSlice, primaries redis.Nodes) {
+	for _, primary := range primaries {
+		if primary.IPPort() == nodesInfo.To.IPPort() || primary.IPPort() == nodesInfo.From.IPPort() {
+			// we already did these two
+			continue
+		}
+		if primary.TotalSlots() == 0 {
+			// ignore primaries that no longer have slots
+			// some primaries had their slots completely removed in the previous iteration
+			continue
+		}
+		glog.V(6).Info("4) Send SETSLOT NODE command to primary: ", primary.ID, " new owner: ", nodesInfo.To.ID, " total: ", len(slots), " : ", slots)
+		err := admin.SetSlots(ctx, primary.IPPort(), "NODE", slots, nodesInfo.To.ID)
+		if err != nil {
+			if glog.V(4) {
+				glog.Warningf("warning during SETSLOT NODE on %s: %v", primary.IPPort(), err)
+			}
+		}
+	}
 }
 
 // buildSlotsByNode get all slots that have to be migrated with retrieveSlotToMigrateFrom and retrieveSlotToMigrateFromRemovedNodes
@@ -235,17 +285,17 @@ func retrieveSlotToMigrateFrom(oldPrimaryNodes redis.Nodes, nbSlotByNode int) ma
 func retrieveSlotToMigrateFromRemovedNodes(newPrimaryNodes, oldPrimaryNodes redis.Nodes) map[string]redis.SlotSlice {
 	slotToMigrateByNode := make(map[string]redis.SlotSlice)
 	var removedNodes redis.Nodes
-	for _, old := range oldPrimaryNodes {
-		glog.V(6).Info("--- oldPrimaryNode:", old.ID)
+	for _, oldNode := range oldPrimaryNodes {
+		glog.V(6).Info("--- oldPrimaryNode:", oldNode.ID)
 		isPresent := false
-		for _, new := range newPrimaryNodes {
-			if old.ID == new.ID {
+		for _, newNode := range newPrimaryNodes {
+			if oldNode.ID == newNode.ID {
 				isPresent = true
 				break
 			}
 		}
 		if !isPresent {
-			removedNodes = append(removedNodes, old)
+			removedNodes = append(removedNodes, oldNode)
 		}
 	}
 

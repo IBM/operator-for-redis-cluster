@@ -5,77 +5,78 @@ import (
 	"fmt"
 	"time"
 
+	ctrl "sigs.k8s.io/controller-runtime"
+
+	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/golang/glog"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/errors"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/clustering"
-	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/sanitycheck"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) (bool, error) {
+func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) (ctrl.Result, error) {
 	var err error
+	result := ctrl.Result{}
 	// run sanity check if needed
 	needSanity, err := sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, true)
 	if err != nil {
 		glog.Errorf("[clusterAction] cluster %s/%s, an error occurs during sanity check: %v ", cluster.Namespace, cluster.Name, err)
-		return false, err
+		return result, err
 	}
 	if needSanity {
 		glog.V(3).Infof("[clusterAction] run sanity check cluster: %s/%s", cluster.Namespace, cluster.Name)
-		return sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, false)
+		result.Requeue, err = sanitycheck.RunSanityChecks(ctx, admin, &c.config.redis, c.podControl, cluster, infos, false)
+		return result, err
 	}
 
 	// Start more pods if needed
 	if needMorePods(cluster) {
 		if setScalingCondition(&cluster.Status, true) {
 			if _, err = c.updateHandler(cluster); err != nil {
-				return false, err
+				return result, err
 			}
 		}
 		pod, err2 := c.podControl.CreatePod(cluster)
 		if err2 != nil {
 			glog.Errorf("[clusterAction] unable to create a pod associated to the RedisCluster: %s/%s, err: %v", cluster.Namespace, cluster.Name, err2)
-			return false, err2
+			return result, err2
 		}
 
 		glog.V(3).Infof("[clusterAction]create a Pod %s/%s", pod.Namespace, pod.Name)
-		return true, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 	if setScalingCondition(&cluster.Status, false) {
 		if _, err = c.updateHandler(cluster); err != nil {
-			return false, err
+			return result, err
 		}
 	}
 
 	// Reconfigure the cluster if needed
-	hasChanged, err := c.applyConfiguration(ctx, admin, cluster)
+	applyResult, err := c.applyConfiguration(ctx, admin, cluster)
 	if err != nil {
 		glog.Errorf("[clusterAction] cluster %s/%s, error: %v ", cluster.Namespace, cluster.Name, err)
-		return false, err
+		return result, err
 	}
 
-	if hasChanged {
-		glog.V(6).Infof("[clusterAction] cluster has changed cluster: %s/%s", cluster.Namespace, cluster.Name)
-		return true, nil
-	}
-
-	glog.V(6).Infof("[clusterAction] cluster hasn't changed cluster: %s/%s", cluster.Namespace, cluster.Name)
-	return false, nil
+	glog.V(6).Infof("[clusterAction] cluster change for cluster %s/%s: %v", cluster.Namespace, cluster.Name, applyResult.Requeue)
+	return applyResult, nil
 }
 
 // applyConfiguration apply new configuration if needed:
 // - add or delete pods
 // - configure the redis-server process
-func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster) (bool, error) {
+func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster) (ctrl.Result, error) {
 	glog.V(6).Info("applyConfiguration START")
 	defer glog.V(6).Info("applyConfiguration STOP")
-	hasChanged := false
+	result := ctrl.Result{}
+	needsRequeue := false
 
 	// configuration
 	nbPrimaries := *cluster.Spec.NumberOfPrimaries
@@ -83,7 +84,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	newCluster, nodes, err := newRedisCluster(ctx, admin, cluster, c.client)
 	if err != nil {
 		glog.Errorf("unable to create the RedisCluster view: %v", err)
-		return false, err
+		return result, err
 	}
 
 	currentPrimaries, candidatePrimaries, allPrimaries := getPrimaries(nodes)
@@ -91,31 +92,33 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 
 	needsUpdate, err := c.rollingUpdateCondition(cluster)
 	if err != nil {
-		return false, err
+		return result, err
 	}
 	if needsUpdate {
 		glog.Info("applyConfiguration needRollingUpdate")
-		return c.manageRollingUpdate(ctx, admin, cluster, newCluster, nodes)
+		updateResult, err := c.manageRollingUpdate(ctx, admin, cluster, newCluster, nodes)
+		return updateResult, err
 	}
 	needsLessPods, err := c.lessPodsCondition(cluster)
 	if err != nil {
-		return false, err
+		return result, err
 	}
 	if needsLessPods {
 		glog.Info("applyConfiguration needPodScaleDown")
-		return c.managePodScaleDown(ctx, admin, cluster, newCluster, nodes)
+		result.Requeue, err = c.managePodScaleDown(ctx, admin, cluster, newCluster, nodes)
+		return result, err
 	}
 
 	clusterStatus := &cluster.Status.Cluster
 	if (clusterStatus.NumberOfPods - clusterStatus.NumberOfRedisNodesRunning) != 0 {
 		glog.V(3).Infof("Not all redis nodes are running, numberOfPods: %d, numberOfRedisNodesRunning: %d", clusterStatus.NumberOfPods, clusterStatus.NumberOfRedisNodesRunning)
-		return false, err
+		return result, err
 	}
 
 	// if we do not have enough primaries, promote replicas to primaries
 	if len(currentPrimaries)+len(candidatePrimaries) < int(nbPrimaries) {
-		newPrimaries := promoteReplicasToPrimaries(ctx, admin, newCluster, replicas, candidatePrimaries, int(nbPrimaries)-len(currentPrimaries)-len(candidatePrimaries))
-		candidatePrimaries = append(candidatePrimaries, newPrimaries...)
+		promotedPrimaries := promoteReplicasToPrimaries(ctx, admin, newCluster, replicas, candidatePrimaries, int(nbPrimaries)-len(currentPrimaries)-len(candidatePrimaries))
+		candidatePrimaries = append(candidatePrimaries, promotedPrimaries...)
 	}
 
 	// first, we select the new primaries
@@ -123,10 +126,10 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	if err != nil {
 		glog.Errorf("cannot dispatch slots to primaries: %v", err)
 		newCluster.Status = rapi.ClusterStatusKO
-		return false, err
+		return result, err
 	}
 	if len(newPrimaries) != len(currentPrimaries) {
-		hasChanged = true
+		needsRequeue = true
 	}
 
 	// second, get the current and new replica nodes
@@ -137,13 +140,13 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		// this happens after a scale down of the cluster
 		// we should dispatch slots before dispatching replicas
 		if err = scaleDown(ctx, admin, cluster, newCluster, currentPrimaries, newPrimaries, allPrimaries, currentReplicas, newReplicas); err != nil {
-			return false, err
+			return result, err
 		}
 	} else {
 		// scaling up the number of primaries or the number of primaries hasn't changed
 		// assign primary/replica roles
 		if err = scaleUp(ctx, admin, cluster, newCluster, currentPrimaries, newPrimaries, allPrimaries, currentReplicas, newReplicas); err != nil {
-			return false, err
+			return result, err
 		}
 	}
 
@@ -152,7 +155,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 	newCluster.Status = rapi.ClusterStatusOK
 	// wait a bit for the cluster to propagate configuration to reduce warning logs because of temporary inconsistency
 	time.Sleep(1 * time.Second)
-	return hasChanged, nil
+	return ctrl.Result{Requeue: needsRequeue}, nil
 }
 
 func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, kubeClient client.Client) (*redis.Cluster, redis.Nodes, error) {
@@ -197,25 +200,26 @@ func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *r
 }
 
 // manageRollingUpdate used to manage properly a cluster rolling update if the pod template spec has changed
-func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (bool, error) {
+func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (ctrl.Result, error) {
+	result := ctrl.Result{}
 	podsCreated, err := c.createPodReplacements(cluster)
 	if err != nil {
-		return false, err
+		return result, err
 	}
 	if podsCreated {
-		return true, nil
+		result.Requeue = true
+		return result, nil
 	}
+
 	oldNodes, newNodes, err := getNodesWithNewHash(cluster, nodes)
 	if err != nil {
-		return false, err
+		return result, err
 	}
-
 	oldPrimaries, oldReplicas, _ := clustering.ClassifyNodesByRole(oldNodes)
 	newPrimaries, newReplicas, newPrimariesNoSlots := clustering.ClassifyNodesByRole(newNodes)
-
 	selectedPrimaries, selectedNewPrimaries, err := clustering.SelectPrimariesToReplace(oldPrimaries, newPrimaries, newPrimariesNoSlots, *cluster.Spec.NumberOfPrimaries, 1)
 	if err != nil {
-		return false, err
+		glog.Errorf("error while selecting primaries to replace: %v", err)
 	}
 	currentReplicas := append(oldReplicas, newReplicas...)
 	candidateReplicas := newPrimariesNoSlots.FilterByFunc(func(n *redis.Node) bool {
@@ -232,31 +236,37 @@ func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminI
 	err = clustering.PlaceReplicas(rCluster, primaryToReplicas, clustering.RemoveOldReplicas(currentReplicas, candidateReplicas), unusedReplicas, *cluster.Spec.ReplicationFactor)
 	if err != nil {
 		glog.Errorf("unable to place replicas: %v", err)
-		return false, err
+		return result, err
 	}
 	cluster.Status.Cluster.NodesPlacement = rapi.NodesPlacementInfoOptimal
 
 	if err = clustering.AttachReplicasToPrimary(ctx, rCluster, admin, primaryToReplicas); err != nil {
-		glog.Error("unable to dispatch replica on new primary, err:", err)
-		return false, err
+		glog.Errorf("unable to attach replicas to primary: %v", err)
+		return result, err
 	}
 
 	currentPrimaries := append(oldPrimaries, newPrimaries...)
 	allPrimaries := append(currentPrimaries, selectedNewPrimaries...)
-	// now we can move slot from old primary to new primary
-	if err = clustering.DispatchSlotsToNewPrimaries(ctx, rCluster, admin, selectedPrimaries, currentPrimaries, allPrimaries); err != nil {
-		glog.Error("unable to dispatch slot on new primary, err:", err)
-		return false, err
-	}
-
 	removedPrimaries, removedReplicas := getOldNodesToRemove(currentPrimaries, selectedPrimaries, nodes)
-	for _, node := range append(removedPrimaries, removedReplicas...) {
-		if err := c.detachForgetDeleteNode(ctx, admin, cluster, node); err != nil {
-			return false, err
+
+	// now we can move slot from old primary to new primary
+	if *cluster.Spec.KeyMigration {
+		if err = clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, selectedPrimaries, currentPrimaries, allPrimaries); err != nil {
+			glog.Error("unable to dispatch slot on new primary, err: ", err)
+		}
+	} else {
+		if err = clustering.DispatchEmptySlotsToPrimaries(ctx, admin, cluster, rCluster, selectedPrimaries, currentPrimaries, allPrimaries); err != nil {
+			glog.Error("unable to dispatch slot on new primary, err: ", err)
 		}
 	}
 
-	return false, nil
+	for _, node := range append(removedPrimaries, removedReplicas...) {
+		if err = c.detachForgetDeleteNode(ctx, admin, cluster, node); err != nil {
+			return result, err
+		}
+	}
+
+	return result, nil
 }
 
 // managePodScaleDown used to manage the scale down of a cluster
@@ -335,7 +345,7 @@ func (c *Controller) removeReplicasOfReplica(ctx context.Context, admin redis.Ad
 	}
 }
 
-func (c *Controller) scaleDownPrimaries(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, newCluster *redis.Cluster, nodes redis.Nodes, nbPrimaryToDelete int32) error {
+func (c *Controller) scaleDownPrimaries(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes, nbPrimaryToDelete int32) error {
 	newNumberOfPrimaries := cluster.Status.Cluster.NumberOfPrimaries
 
 	// Decrease the number of primaries by one in order to limit the impact on the client
@@ -345,16 +355,16 @@ func (c *Controller) scaleDownPrimaries(ctx context.Context, admin redis.AdminIn
 	currentPrimaries, candidatePrimaries, allPrimaries := getPrimaries(nodes)
 
 	// Create the new primaries
-	newPrimaries, err := clustering.SelectPrimaries(newCluster, currentPrimaries, candidatePrimaries, newNumberOfPrimaries)
+	newPrimaries, err := clustering.SelectPrimaries(rCluster, currentPrimaries, candidatePrimaries, newNumberOfPrimaries)
 	if err != nil {
 		glog.Errorf("error while dispatching slots to primaries: %v", err)
 		cluster.Status.Cluster.Status = rapi.ClusterStatusKO
-		newCluster.Status = rapi.ClusterStatusKO
+		rCluster.Status = rapi.ClusterStatusKO
 		return err
 	}
 
 	// Dispatch slots to the new primaries
-	if err = clustering.DispatchSlotsToNewPrimaries(ctx, newCluster, admin, newPrimaries, currentPrimaries, allPrimaries); err != nil {
+	if err = clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, newPrimaries, currentPrimaries, allPrimaries); err != nil {
 		glog.Errorf("unable to dispatch slot to new primary: %v", err)
 		return err
 	}
@@ -426,10 +436,10 @@ func (c *Controller) createPodReplacements(cluster *rapi.RedisCluster) (bool, er
 	return createPods, nil
 }
 
-func (c *Controller) removeReplicasFromPrimary(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, newCluster *redis.Cluster, primaryID string, replicas redis.Nodes, allReplicas redis.Nodes, diff int32) error {
+func (c *Controller) removeReplicasFromPrimary(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, primaryID string, replicas redis.Nodes, allReplicas redis.Nodes, diff int32) error {
 	var errs []error
 	// select a replica to be removed
-	nodesToDelete, err := selectReplicasToDelete(newCluster, primaryID, replicas, allReplicas, diff)
+	nodesToDelete, err := selectReplicasToDelete(rCluster, primaryID, replicas, allReplicas, diff)
 	if err != nil {
 		return err
 	}
@@ -516,7 +526,7 @@ func promoteReplicasToPrimaries(ctx context.Context, admin redis.AdminInterface,
 }
 
 func scaleDown(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, currentPrimaries, newPrimaries, allPrimaries, currentReplicas, newReplicas redis.Nodes) error {
-	if err := clustering.DispatchSlotsToNewPrimaries(ctx, rCluster, admin, newPrimaries, currentPrimaries, allPrimaries); err != nil {
+	if err := clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, newPrimaries, currentPrimaries, allPrimaries); err != nil {
 		glog.Errorf("unable to dispatch slot on new primary: %v", err)
 		return err
 	}
@@ -530,7 +540,7 @@ func scaleUp(ctx context.Context, admin redis.AdminInterface, cluster *rapi.Redi
 	if err := placeAndAttachReplicas(ctx, admin, cluster, rCluster, currentReplicas, newPrimaries, newReplicas); err != nil {
 		return err
 	}
-	if err := clustering.DispatchSlotsToNewPrimaries(ctx, rCluster, admin, newPrimaries, currentPrimaries, allPrimaries); err != nil {
+	if err := clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, newPrimaries, currentPrimaries, allPrimaries); err != nil {
 		glog.Errorf("unable to dispatch slot on new primary: %v", err)
 		return err
 	}

@@ -11,8 +11,9 @@ spec:
   additionalLabels:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  zoneAwareReplication:
-    enabled: {{ .Values.zoneAwareReplication.enabled }}
+  zoneAwareReplication: {{ .Values.zoneAwareReplication }}
+  keyMigration: {{ .Values.keyMigration }}
+  migration: {{- toYaml .Values.migration | nindent 4 }}
   podTemplate:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -28,7 +29,7 @@ spec:
       serviceAccountName: {{ include "icm-redis-cluster.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.zoneAwareReplication.enabled }}
+      {{- if .Values.zoneAwareReplication }}
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone

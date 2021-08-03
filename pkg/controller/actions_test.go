@@ -4,6 +4,8 @@ import (
 	"context"
 	"reflect"
 
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -361,7 +363,7 @@ func TestController_applyConfiguration(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    bool
+		want    ctrl.Result
 		wantErr bool
 	}{
 		{
@@ -403,7 +405,7 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 				},
 			},
-			want:    false,
+			want:    ctrl.Result{},
 			wantErr: false,
 		},
 		{
@@ -447,7 +449,7 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 				},
 			},
-			want:    true,
+			want:    ctrl.Result{Requeue: true},
 			wantErr: false,
 		},
 	}

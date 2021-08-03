@@ -1,6 +1,9 @@
 package v1alpha1
 
-import kapiv1 "k8s.io/api/core/v1"
+import (
+	"github.com/gogo/protobuf/proto"
+	kapiv1 "k8s.io/api/core/v1"
+)
 
 // IsRedisClusterDefaulted check if the RedisCluster is already defaulted
 func IsRedisClusterDefaulted(rc *RedisCluster) bool {
@@ -33,6 +36,26 @@ func DefaultRedisCluster(baseRedisCluster *RedisCluster) *RedisCluster {
 	rc.Status.Cluster.NumberOfPods = 0
 	rc.Status.Cluster.NumberOfPodsReady = 0
 	rc.Status.Cluster.NumberOfRedisNodesRunning = 0
+
+	if rc.Spec.ZoneAwareReplication == nil {
+		rc.Spec.ZoneAwareReplication = proto.Bool(true)
+	}
+
+	if rc.Spec.KeyMigration == nil {
+		rc.Spec.KeyMigration = proto.Bool(true)
+	}
+
+	if rc.Spec.Migration.SlotBatchSize == 0 {
+		rc.Spec.Migration.SlotBatchSize = 100
+	}
+
+	if rc.Spec.Migration.KeyBatchSize == 0 {
+		rc.Spec.Migration.KeyBatchSize = 100
+	}
+
+	if rc.Spec.Migration.IdleTimeoutMillis == 0 {
+		rc.Spec.Migration.IdleTimeoutMillis = 30000
+	}
 
 	return rc
 }

@@ -36,7 +36,7 @@ func TestFixGhostPrimaryNodes(t *testing.T) {
 	}{
 
 		{
-			name: "no gost",
+			name: "no ghost",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
 					fakeAdmin := admin.NewFakeAdmin()
@@ -59,7 +59,7 @@ func TestFixGhostPrimaryNodes(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "gost redis3",
+			name: "ghost redis3",
 			args: args{
 				adminFunc: func() redis.AdminInterface {
 					fakeAdmin := admin.NewFakeAdmin()

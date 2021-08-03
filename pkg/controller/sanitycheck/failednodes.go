@@ -29,8 +29,8 @@ func FixFailedNodes(ctx context.Context, admin redis.AdminInterface, cluster *ra
 	return doneAnAction, errors.NewAggregate(errs)
 }
 
-// listGhostNodes : A Ghost node is a node still known by some redis node but which doesn't exists anymore
-// meaning it is failed, and pod not in kubernetes, or without targetable IP
+// listGhostNodes: a ghost node is a failed node still known by some redis nodes,
+// meaning it is no longer in kubernetes and should be forgotten
 func listGhostNodes(cluster *rapi.RedisCluster, infos *redis.ClusterInfos) map[string]bool {
 	ghostNodesSet := map[string]bool{}
 	if infos == nil || infos.Infos == nil {

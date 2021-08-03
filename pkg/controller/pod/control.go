@@ -74,7 +74,7 @@ func (p *RedisClusterControl) CreatePod(redisCluster *rapi.RedisCluster) (*kapiv
 	if err != nil {
 		return pod, err
 	}
-	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.Name)
+	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.GenerateName)
 	err = p.KubeClient.Create(context.Background(), pod)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (p *RedisClusterControl) CreatePodOnNode(redisCluster *rapi.RedisCluster, n
 		return pod, err
 	}
 	pod.Spec.NodeName = nodeName
-	glog.V(4).Infof("CreatePodOnNode: %s/%s", redisCluster.Namespace, pod.Name)
+	glog.V(6).Infof("CreatePodOnNode: %s/%s", redisCluster.Namespace, pod.GenerateName)
 	err = p.KubeClient.Create(context.Background(), pod)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,6 @@ func (p *RedisClusterControl) AddPodAnnotations(redisCluster *rapi.RedisCluster,
 	}
 	return nil
 }
-
 
 // DeletePod used to delete a pod
 func (p *RedisClusterControl) DeletePod(redisCluster *rapi.RedisCluster, podName string) error {

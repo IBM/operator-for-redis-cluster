@@ -69,11 +69,11 @@ func main() {
 			glog.Fatalf("unable to list redisclusters:%v", err)
 		}
 	} else {
-		rc := &rapi.RedisCluster{}
+		cluster := &rapi.RedisCluster{}
 		namespacedName := types.NamespacedName{Namespace: namespace, Name: clusterName}
-		err := client.Get(context.Background(), namespacedName, rc)
-		if err == nil && rc != nil {
-			rcs.Items = append(rcs.Items, *rc)
+		err := client.Get(context.Background(), namespacedName, cluster)
+		if err == nil && cluster != nil {
+			rcs.Items = append(rcs.Items, *cluster)
 		}
 		if err != nil && !apierrors.IsNotFound(err) {
 			glog.Fatalf("unable to get rediscluster %s: %v", clusterName, err)
@@ -81,8 +81,8 @@ func main() {
 	}
 
 	data := [][]string{}
-	for _, rc := range rcs.Items {
-		data = append(data, []string{rc.Name, rc.Namespace, buildPodStatus(&rc), buildClusterStatus(&rc), string(rc.Status.Cluster.Status), buildPrimaryStatus(&rc), buildReplicationStatus(&rc)})
+	for _, cluster := range rcs.Items {
+		data = append(data, []string{cluster.Name, cluster.Namespace, buildPodStatus(&cluster), buildClusterStatus(&cluster), string(cluster.Status.Cluster.Status), buildPrimaryStatus(&cluster), buildReplicationStatus(&cluster)})
 	}
 
 	if len(data) == 0 {
@@ -109,8 +109,8 @@ func main() {
 	os.Exit(0)
 }
 
-func hasStatus(rc *rapi.RedisCluster, conditionType rapi.RedisClusterConditionType, status kapiv1.ConditionStatus) bool {
-	for _, cond := range rc.Status.Conditions {
+func hasStatus(cluster *rapi.RedisCluster, conditionType rapi.RedisClusterConditionType, status kapiv1.ConditionStatus) bool {
+	for _, cond := range cluster.Status.Conditions {
 		if cond.Type == conditionType && cond.Status == status {
 			return true
 		}
@@ -118,44 +118,44 @@ func hasStatus(rc *rapi.RedisCluster, conditionType rapi.RedisClusterConditionTy
 	return false
 }
 
-func buildClusterStatus(rc *rapi.RedisCluster) string {
+func buildClusterStatus(cluster *rapi.RedisCluster) string {
 	status := []string{}
 
-	if hasStatus(rc, rapi.RedisClusterOK, kapiv1.ConditionFalse) {
+	if hasStatus(cluster, rapi.RedisClusterOK, kapiv1.ConditionFalse) {
 		status = append(status, "KO")
-	} else if hasStatus(rc, rapi.RedisClusterOK, kapiv1.ConditionTrue) {
+	} else if hasStatus(cluster, rapi.RedisClusterOK, kapiv1.ConditionTrue) {
 		status = append(status, string(rapi.RedisClusterOK))
 	}
 
-	if hasStatus(rc, rapi.RedisClusterRollingUpdate, kapiv1.ConditionTrue) {
+	if hasStatus(cluster, rapi.RedisClusterRollingUpdate, kapiv1.ConditionTrue) {
 		status = append(status, string(rapi.RedisClusterRollingUpdate))
-	} else if hasStatus(rc, rapi.RedisClusterScaling, kapiv1.ConditionTrue) {
+	} else if hasStatus(cluster, rapi.RedisClusterScaling, kapiv1.ConditionTrue) {
 		status = append(status, string(rapi.RedisClusterScaling))
-	} else if hasStatus(rc, rapi.RedisClusterRebalancing, kapiv1.ConditionTrue) {
+	} else if hasStatus(cluster, rapi.RedisClusterRebalancing, kapiv1.ConditionTrue) {
 		status = append(status, string(rapi.RedisClusterRebalancing))
 	}
 
 	return strings.Join(status, "-")
 }
 
-func buildPodStatus(rc *rapi.RedisCluster) string {
-	specPrimary := *rc.Spec.NumberOfPrimaries
-	specReplication := *rc.Spec.ReplicationFactor
+func buildPodStatus(cluster *rapi.RedisCluster) string {
+	specPrimary := *cluster.Spec.NumberOfPrimaries
+	specReplication := *cluster.Spec.ReplicationFactor
 	podWanted := (1 + specReplication) * specPrimary
 
-	numPods := rc.Status.Cluster.NumberOfPods
-	numPodsReady := rc.Status.Cluster.NumberOfPodsReady
+	numPods := cluster.Status.Cluster.NumberOfPods
+	numPodsReady := cluster.Status.Cluster.NumberOfPodsReady
 
 	return fmt.Sprintf("%d/%d/%d", numPodsReady, numPods, podWanted)
 }
 
-func buildPrimaryStatus(rc *rapi.RedisCluster) string {
-	return fmt.Sprintf("%d/%d", rc.Status.Cluster.NumberOfPrimaries, *rc.Spec.NumberOfPrimaries)
+func buildPrimaryStatus(cluster *rapi.RedisCluster) string {
+	return fmt.Sprintf("%d/%d", cluster.Status.Cluster.NumberOfPrimaries, *cluster.Spec.NumberOfPrimaries)
 }
 
-func buildReplicationStatus(rc *rapi.RedisCluster) string {
-	spec := *rc.Spec.ReplicationFactor
-	return fmt.Sprintf("%d-%d/%d", rc.Status.Cluster.MinReplicationFactor, rc.Status.Cluster.MaxReplicationFactor, spec)
+func buildReplicationStatus(cluster *rapi.RedisCluster) string {
+	spec := *cluster.Spec.ReplicationFactor
+	return fmt.Sprintf("%d-%d/%d", cluster.Status.Cluster.MinReplicationFactor, cluster.Status.Cluster.MaxReplicationFactor, spec)
 }
 
 func configFromPath(path string) (clientcmd.ClientConfig, error) {

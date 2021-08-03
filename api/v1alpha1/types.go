@@ -59,7 +59,13 @@ type RedisClusterSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// ZoneAwareReplication spreads primary and replica nodes across all available zones
-	ZoneAwareReplication ZoneAwareReplication `json:"zoneAwareReplication,omitempty"`
+	ZoneAwareReplication *bool `json:"zoneAwareReplication,omitempty"`
+
+	// KeyMigration whether or not to migrate keys during a rolling update
+	KeyMigration *bool `json:"keyMigration,omitempty"`
+
+	// Migration configuration for redis key migration
+	Migration Migration `json:"migration,omitempty"`
 
 	// Labels for created redis-cluster (deployment, rs, pod) (if any)
 	AdditionalLabels map[string]string `json:"additionalLabels,omitempty"`
@@ -121,6 +127,17 @@ type RedisClusterState struct {
 	Nodes []RedisClusterNode `json:"nodes,omitempty"`
 }
 
+type Migration struct {
+	// Number of keys to get from a single slot during each migration iteration
+	KeyBatchSize int32 `json:"keyBatchSize,omitempty"`
+	// Number of slots to to migrate on each iteration
+	SlotBatchSize int32 `json:"slotBatchSize,omitempty"`
+	// Maximum idle time at any point during key migration
+	IdleTimeoutMillis int32 `json:"idleTimeoutMillis,omitempty"`
+	// Amount of time in between each slot batch iteration
+	WarmingDelayMillis int32 `json:"warmingDelayMillis,omitempty"`
+}
+
 func (s RedisClusterState) String() string {
 	output := ""
 	output += fmt.Sprintf("status:%s\n", s.Status)
@@ -139,10 +156,6 @@ func (s RedisClusterState) String() string {
 
 // NodesPlacementInfo Redis Nodes placement mode information
 type NodesPlacementInfo string
-
-type ZoneAwareReplication struct {
-	Enabled bool `json:"enabled"`
-}
 
 const (
 	// NodesPlacementInfoBestEffort the cluster nodes placement is in best effort,

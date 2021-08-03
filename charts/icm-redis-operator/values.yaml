@@ -104,8 +104,7 @@ tolerations: []
 
 affinity: {}
 
-zoneAwareReplication:
-  enabled: true
+zoneAwareReplication: true
 
 metrics:
   grafanaDashboard:

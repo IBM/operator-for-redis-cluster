@@ -114,8 +114,23 @@ affinity: {}
 
 # When enabled, spreads primary and replica nodes across all available zones.
 # Kubernetes nodes are selected according to the nodeSelector field above.
-zoneAwareReplication:
-  enabled: true
+zoneAwareReplication: true
+
+# Whether or not to migrate keys during a rolling update
+# If false, you will lose all keys during migration
+keyMigration: true
+
+# Configuration for redis key migration from the source node to the destination node
+migration:
+  # Number of keys to get from a single slot during each migration iteration
+  keyBatchSize: 1000
+  # Number of slots to to migrate on each iteration
+  slotBatchSize: 100
+  # Maximum idle time at any point during key migration
+  idleTimeoutMillis: 30000
+  # Used to warm the cache of the new primary node
+  # Amount of time in between each slot batch iteration
+  warmingDelayMillis: 1000
 
 metrics:
   enabled: false
@@ -150,9 +165,9 @@ sysctl:
 
 redis:
   configuration:
-    # You can provide the path of a redis configuration file that will be added in a configMap and included
+    # you can provide the path of a redis configuration file that will be added in a configMap and included
     # in the redis-server configuration in each redis-cluster node.
-    # The file must be local to the helm chart (in the chart folder). Passing values is the preferred method as shown below!
+    # the file must be local of the helm chart (in the chart folder).
     file: ""
     # You can provide the redis config directly as a value instead through a file as shown in the example below.
     # If BOTH the "file" and "value" are defined, the value will be used, i.e. treated as an override value.

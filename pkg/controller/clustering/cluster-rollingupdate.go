@@ -12,7 +12,7 @@ func SelectPrimariesToReplace(oldPrimaries, newPrimaries, newNodesNoSlots redis.
 		return newPrimaries, redis.Nodes{}, nil
 	}
 	selectedPrimaries, newSelectedPrimaries := selectPrimaries(oldPrimaries, newPrimaries, newNodesNoSlots, nbPrimaries, nbPrimariesToReplace)
-	if len(newSelectedPrimaries) != int(nbPrimariesToReplace) {
+	if len(newSelectedPrimaries) < int(nbPrimariesToReplace) {
 		return selectedPrimaries, newSelectedPrimaries, fmt.Errorf("insufficient number of nodes for primary replacement, wanted:%d, current:%d", nbPrimariesToReplace, len(newSelectedPrimaries))
 	}
 	if len(selectedPrimaries) != int(nbPrimaries) {

@@ -95,7 +95,7 @@ func TestRedisInitializationAttach(t *testing.T) {
 
 	// other ips registered, will attach to them
 	fakeAdmin := admin.NewFakeAdmin()
-	fakeAdmin.InitRedisClusterRet[myIP] = errors.New("Should not call init cluster")
+	fakeAdmin.AddrError[myIP] = errors.New("Should not call init cluster")
 
 	endpoint := kapi.Endpoints{
 		ObjectMeta: kmetav1.ObjectMeta{

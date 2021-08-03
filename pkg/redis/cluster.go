@@ -23,7 +23,7 @@ type Cluster struct {
 	ActionsInfo    ClusterActionsInfo
 }
 
-// ClusterActionsInfo use to store information about current action on the Cluster
+// ClusterActionsInfo stores information about the current action on the Cluster
 type ClusterActionsInfo struct {
 	NbSlotsToMigrate int32
 }

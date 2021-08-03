@@ -1,9 +1,10 @@
 package clustering
 
 import (
-	"github.com/TheWeatherCompany/icm-redis-operator/test"
 	"reflect"
 	"testing"
+
+	"github.com/TheWeatherCompany/icm-redis-operator/test"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
@@ -65,7 +66,7 @@ func TestReplacePrimaries(t *testing.T) {
 				nbPrimaryToReplace: 1,
 			},
 			want:    redis.Nodes{&primary1, &primary2, &primary4},
-			want2: 	 redis.Nodes{&primary4},
+			want2:   redis.Nodes{&primary4},
 			wantErr: false,
 		},
 		{

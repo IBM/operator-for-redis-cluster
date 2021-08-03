@@ -1227,9 +1227,9 @@ data:
           {
             "allValue": null,
             "current": {
-              "text": "primary",
+              "text": "master",
               "value": [
-                  "primary"
+                  "master"
               ]
             },
             "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
@@ -1292,7 +1292,7 @@ data:
             "name": "primaries",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=\"primary\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
+              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
