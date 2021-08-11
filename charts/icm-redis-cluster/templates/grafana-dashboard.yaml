@@ -27,324 +27,384 @@ data:
       "editable": true,
       "gnetId": 763,
       "graphTooltip": 0,
-      "id": 6,
-      "iteration": 1562764481576,
+      "id": 135,
+      "iteration": 1628542138439,
       "links": [],
       "panels": [
         {
-          "cacheTimeout": null,
-          "colorBackground": false,
-          "colorValue": false,
-          "colors": [
-              "rgba(245, 54, 54, 0.9)",
-              "rgba(237, 129, 40, 0.89)",
-              "rgba(50, 172, 45, 0.97)"
-          ],
-          "datasource": "{{ required "Field .Values.monitoring.grafanaDashboard.datasourceName is required" .Values.metrics.grafanaDashboard.datasourceName }}",
-          "decimals": 0,
-          "editable": true,
-          "error": false,
-          "format": "none",
-          "gauge": {
-            "maxValue": 100,
-            "minValue": 0,
-            "show": false,
-            "thresholdLabels": false,
-            "thresholdMarkers": true
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
           },
+          "id": 18,
+          "panels": [],
+          "title": "Redis Node Metrics",
+          "type": "row"
+        },
+        {
+          "id": 12,
           "gridPos": {
             "h": 7,
             "w": 4,
             "x": 0,
-            "y": 0
+            "y": 1
           },
+          "type": "piechart",
+          "title": "Total Clients",
+          "datasource": "{{ required "Field .Values.metrics.grafanaDashboard.datasourceName is required" .Values.metrics.grafanaDashboard.datasourceName }}",
+          "pluginVersion": "7.2.0",
+          "timeFrom": "1m",
           "hideTimeOverride": true,
-          "id": 12,
-          "interval": null,
-          "isNew": true,
-          "links": [],
-          "mappingType": 1,
-          "mappingTypes": [
-            {
-              "name": "value to text",
-              "value": 1
-            },
-            {
-              "name": "range to text",
-              "value": 2
-            }
-          ],
           "maxDataPoints": 100,
-          "nullPointMode": "connected",
-          "nullText": null,
-          "postfix": "",
-          "postfixFontSize": "50%",
-          "prefix": "",
-          "prefixFontSize": "50%",
-          "rangeMaps": [
-            {
-              "from": "null",
-              "text": "N/A",
-              "to": "null"
-            }
-          ],
-          "sparkline": {
-            "fillColor": "rgba(31, 118, 189, 0.18)",
-            "full": false,
-            "lineColor": "rgb(31, 120, 193)",
-            "show": true
+          "links": [],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "decimals": 0,
+              "max": 0,
+              "unit": "none"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "available clients"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73BF69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "connected clients"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FF9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
           },
-          "tableColumn": "",
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                  "sum"
+              ],
+              "fields": ""
+            },
+            "pieType": "pie",
+            "tooltip": {
+              "mode": "single"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "values": [
+                  "value",
+                  "percent"
+              ],
+              "calcs": []
+            }
+          },
           "targets": [
             {
               "expr": "sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
+              "legendFormat": "connected clients",
+              "interval": "",
+              "exemplar": true,
               "format": "time_series",
+              "hide": false,
               "intervalFactor": 2,
-              "legendFormat": "",
               "metric": "",
               "refId": "A",
-              "step": 2
-            }
-          ],
-          "thresholds": "",
-          "timeFrom": "1m",
-          "timeShift": null,
-          "title": "Total Clients",
-          "type": "singlestat",
-          "valueFontSize": "80%",
-          "valueMaps": [
+              "step": 2,
+              "instant": true
+            },
             {
-              "op": "=",
-              "text": "N/A",
-              "value": "null"
+              "expr": "max(redis_config_maxclients) - sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
+              "legendFormat": "available clients",
+              "interval": "",
+              "exemplar": true,
+              "hide": false,
+              "instant": true,
+              "intervalFactor": 2,
+              "refId": "B"
             }
           ],
-          "valueName": "current"
+          "cacheTimeout": null,
+          "interval": null,
+          "timeShift": null
         },
         {
           "cacheTimeout": null,
-          "colorBackground": false,
-          "colorValue": false,
-          "colors": [
-              "rgba(50, 172, 45, 0.97)",
-              "rgba(237, 129, 40, 0.89)",
-              "rgba(245, 54, 54, 0.9)"
-          ],
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "decimals": 0,
-          "editable": true,
-          "error": false,
-          "format": "decbytes",
-          "gauge": {
-            "maxValue": 100,
-            "minValue": 0,
-            "show": true,
-            "thresholdLabels": false,
-            "thresholdMarkers": true
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "rgba(50, 172, 45, 0.97)",
+                    "value": null
+                  },
+                  {
+                    "color": "rgba(237, 129, 40, 0.89)",
+                    "value": 80
+                  },
+                  {
+                    "color": "rgba(245, 54, 54, 0.9)",
+                    "value": 95
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 7,
             "w": 4,
             "x": 4,
-            "y": 0
+            "y": 1
           },
           "hideTimeOverride": true,
           "id": 11,
           "interval": null,
-          "isNew": true,
           "links": [],
-          "mappingType": 1,
-          "mappingTypes": [
-            {
-              "name": "value to text",
-              "value": 1
-            },
-            {
-              "name": "range to text",
-              "value": 2
-            }
-          ],
           "maxDataPoints": 100,
-          "nullPointMode": "connected",
-          "nullText": null,
-          "postfix": "",
-          "postfixFontSize": "50%",
-          "prefix": "",
-          "prefixFontSize": "50%",
-          "rangeMaps": [
-            {
-              "from": "null",
-              "text": "N/A",
-              "to": "null"
-            }
-          ],
-          "sparkline": {
-            "fillColor": "rgba(31, 118, 189, 0.18)",
-            "full": false,
-            "lineColor": "rgb(31, 120, 193)",
-            "show": true
+          "options": {
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                  "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
           },
-          "tableColumn": "",
+          "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "sum(redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
+              "expr": "sum(redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) / sum(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) * 100",
               "format": "time_series",
               "intervalFactor": 2,
-              "legendFormat": "",
               "metric": "",
               "refId": "A",
               "step": 2
             }
           ],
-          "thresholds": "80,95",
           "timeFrom": "1m",
           "timeShift": null,
           "title": "Total Memory Usage",
-          "type": "singlestat",
-          "valueFontSize": "80%",
-          "valueMaps": [
-            {
-              "op": "=",
-              "text": "N/A",
-              "value": "null"
-            }
-          ],
-          "valueName": "current"
+          "type": "gauge"
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {},
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 7,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 0
+            "y": 1
           },
           "id": 2,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
           "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "hidden",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "pluginVersion": "8.0.5",
           "targets": [
             {
               "expr": "rate(redis_commands_processed_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\"}[1m])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
-              "legendFormat": "",
+              "legendFormat": "{{ "{{ pod }}" }}",
               "metric": "A",
               "refId": "A",
               "step": 240,
               "target": ""
             }
           ],
-          "thresholds": [],
           "timeFrom": null,
-          "timeRegions": [],
           "timeShift": null,
-          "title": "Commands Executed / sec",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "title": "Commands Executed per Sec",
+          "type": "timeseries"
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "decimals": 2,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {},
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 8,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 0
+            "y": 1
           },
           "id": 1,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
           "links": [],
-          "nullPointMode": "connected",
-          "percentage": true,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "hidden",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "pluginVersion": "8.0.5",
           "targets": [
             {
               "expr": "irate(redis_keyspace_hits_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m])",
@@ -371,94 +431,118 @@ data:
               "target": ""
             }
           ],
-          "thresholds": [],
           "timeFrom": null,
-          "timeRegions": [],
           "timeShift": null,
           "title": "Hits / Misses per Sec",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": "",
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "type": "timeseries"
         },
         {
-          "aliasColors": {
-            "max": "#BF1B00"
-          },
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {},
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "B"
+                },
+                "properties": [
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "dark-red",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 7
+            "y": 8
           },
           "id": 7,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "hideEmpty": false,
-            "hideZero": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
           "links": [],
-          "nullPointMode": "null as zero",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" } ",
+              "expr": "redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{ "{{ pod }}" }}",
@@ -468,56 +552,23 @@ data:
               "target": ""
             },
             {
-              "expr": "redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" } ",
+              "exemplar": true,
+              "expr": "max(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
               "format": "time_series",
-              "hide": true,
+              "hide": false,
+              "instant": false,
+              "interval": "",
               "intervalFactor": 2,
-              "legendFormat": "max",
+              "legendFormat": "max memory",
               "refId": "B",
               "step": 240
             }
           ],
           "thresholds": [],
           "timeFrom": null,
-          "timeRegions": [],
           "timeShift": null,
-          "title": "Total Memory Usage",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "bytes",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "title": "Memory Usage per Redis Node",
+          "type": "timeseries"
         },
         {
           "aliasColors": {},
@@ -528,13 +579,15 @@ data:
           "editable": true,
           "error": false,
           "fill": 1,
+          "fillGradient": 0,
           "grid": {},
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 7
+            "y": 8
           },
+          "hiddenSeries": false,
           "id": 10,
           "isNew": true,
           "legend": {
@@ -550,7 +603,11 @@ data:
           "linewidth": 2,
           "links": [],
           "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
+          "pluginVersion": "8.0.5",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -625,49 +682,34 @@ data:
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "editable": true,
-          "error": false,
-          "fill": 7,
-          "grid": {},
+          "id": 5,
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 14
+            "y": 15
           },
-          "id": 5,
-          "isNew": true,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
+          "type": "timeseries",
+          "title": "Total Items per DB",
+          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+          "pluginVersion": "8.0.5",
           "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": true,
-          "steppedLine": false,
+          "options": {
+            "tooltip": {
+              "mode": "single"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                  "lastNotNull"
+              ]
+            }
+          },
           "targets": [
             {
-              "expr": "sum (redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) by (db,pod)",
+              "exemplar": true,
+              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) by (db,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -677,90 +719,135 @@ data:
               "target": ""
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Total Items per DB",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "none",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "barAlignment": 0,
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "spanNulls": false,
+                "showPoints": "never",
+                "pointSize": 5,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "value": null,
+                    "color": "green"
+                  },
+                  {
+                    "value": 80,
+                    "color": "red"
+                  }
+                ]
+              },
+              "mappings": [],
+              "unit": "none"
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+            "overrides": []
+          },
+          "timeFrom": null,
+          "timeShift": null
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "editable": true,
-          "error": false,
-          "fill": 7,
-          "grid": {},
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 14
+            "y": 15
           },
           "id": 13,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
           "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": true,
-          "steppedLine": false,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "sum (redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) - sum (redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) ",
+              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) - sum (redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -770,7 +857,7 @@ data:
               "target": ""
             },
             {
-              "expr": "sum (redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) ",
+              "expr": "sum(redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -780,47 +867,10 @@ data:
               "step": 240
             }
           ],
-          "thresholds": [],
           "timeFrom": null,
-          "timeRegions": [],
           "timeShift": null,
           "title": "Expiring vs Not-Expiring Keys",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "type": "timeseries"
         },
         {
           "aliasColors": {},
@@ -831,13 +881,15 @@ data:
           "editable": true,
           "error": false,
           "fill": 1,
+          "fillGradient": 0,
           "grid": {},
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 21
+            "y": 22
           },
+          "hiddenSeries": false,
           "id": 8,
           "isNew": true,
           "legend": {
@@ -853,7 +905,11 @@ data:
           "linewidth": 2,
           "links": [],
           "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
+          "pluginVersion": "8.0.5",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -932,221 +988,39 @@ data:
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "editable": true,
-          "error": false,
-          "fill": 0,
-          "grid": {},
-          "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
-            "y": 21
-          },
-          "id": 14,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "topk(5, sum by (cmd) (irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" } [1m])))",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{ "{{ cmd }}" }}",
-              "metric": "redis_command_calls_total",
-              "refId": "A",
-              "step": 240
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Command Calls / sec",
-          "tooltip": {
-            "msResolution": true,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "editable": true,
-          "error": false,
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "grid": {},
-          "gridPos": {
-            "h": 12,
-            "w": 14,
-            "x": 0,
-            "y": 28
-          },
-          "hiddenSeries": false,
-          "id": 15,
-          "isNew": true,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "7.5.3",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "$$hashKey": "object:100",
-              "alias": "reclaims",
-              "yaxis": 2
-            }
-          ],
-          "spaceLength": 10,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "exemplar": true,
-              "expr": "redis_script_values{pod=~\"$primaries\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
-              "format": "time_series",
-              "hide": false,
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{ "{{ pod }}" }}",
-              "metric": "",
-              "refId": "A",
-              "step": 240,
-              "target": ""
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Slots distribution",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "$$hashKey": "object:107",
-              "decimals": null,
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": "16384",
-              "min": "0",
-              "show": true
-            },
-            {
-              "$$hashKey": "object:108",
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
               },
               "mappings": [],
               "thresholds": {
@@ -1161,7 +1035,160 @@ data:
                     "value": 80
                   }
                 ]
-              }
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 22
+          },
+          "id": 14,
+          "links": [],
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "pluginVersion": "8.0.5",
+          "targets": [
+            {
+              "expr": "topk(5, sum by (cmd) (irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" } [1m])))",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{ "{{ cmd }}" }}",
+              "metric": "redis_command_calls_total",
+              "refId": "A",
+              "step": 240
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Command Calls / sec",
+          "type": "timeseries"
+        },
+        {
+          "id": 15,
+          "gridPos": {
+            "h": 12,
+            "w": 14,
+            "x": 0,
+            "y": 29
+          },
+          "type": "timeseries",
+          "title": "Slots Distribution Timeline",
+          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+          "pluginVersion": "8.0.5",
+          "links": [],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "barAlignment": 0,
+                "lineWidth": 3,
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "spanNulls": false,
+                "showPoints": "auto",
+                "pointSize": 2,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                },
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "axisSoftMin": 0
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "mappings": []
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "single"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
+              "legendFormat": "{{ "{{ pod }}" }}",
+              "interval": "",
+              "exemplar": true,
+              "format": "time_series",
+              "hide": false,
+              "intervalFactor": 2,
+              "metric": "",
+              "refId": "A",
+              "step": 240,
+              "target": ""
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null
+        },
+        {
+          "cacheTimeout": null,
+          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "decimals": 0,
+              "mappings": [],
+              "unit": "short"
             },
             "overrides": []
           },
@@ -1169,35 +1196,37 @@ data:
             "h": 12,
             "w": 10,
             "x": 14,
-            "y": 28
+            "y": 29
           },
           "id": 16,
+          "interval": null,
           "links": [],
           "options": {
-            "displayLabels": [
-              "percent",
-              "value"
-            ],
             "legend": {
-              "displayMode": "list",
-              "placement": "right",
-              "values": []
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "values": [
+                  "value"
+              ]
             },
             "pieType": "pie",
             "reduceOptions": {
               "calcs": [
-                "last"
+                  "lastNotNull"
               ],
               "fields": "",
               "values": false
             },
-            "text": {}
+            "tooltip": {
+              "mode": "single"
+            }
           },
           "pluginVersion": "7.5.3",
           "targets": [
             {
               "exemplar": true,
-              "expr": "redis_script_values{pod=~\"$primaries\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
+              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -1211,12 +1240,515 @@ data:
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Slots distribution",
+          "title": "Slots Distribution",
           "type": "piechart"
+        },
+        {
+          "collapsed": true,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 41
+          },
+          "id": 20,
+          "panels": [
+            {
+              "id": 22,
+              "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 2
+              },
+              "type": "timeseries",
+              "title": "CPU Usage per Pod",
+              "pluginVersion": "8.0.5",
+              "links": [],
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "linear",
+                    "barAlignment": 0,
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "spanNulls": false,
+                    "showPoints": "never",
+                    "pointSize": 5,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisPlacement": "auto",
+                    "axisLabel": "",
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "hideFrom": {
+                      "tooltip": false,
+                      "viz": false,
+                      "legend": false
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "tooltip": {
+                  "mode": "single"
+                },
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": []
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\"}) by (pod)",
+                  "format": "time_series",
+                  "interval": "",
+                  "intervalFactor": 2,
+                  "legendFormat": "{{ "{{ pod }}" }}",
+                  "legendLink": null,
+                  "refId": "A",
+                  "step": 10
+                },
+                {
+                  "expr": "sum(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
+                  "legendFormat": "requests",
+                  "interval": "",
+                  "exemplar": true,
+                  "refId": "B",
+                  "hide": false,
+                  "intervalFactor": 2
+                },
+                {
+                  "expr": "sum(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
+                  "legendFormat": "limits",
+                  "interval": "",
+                  "exemplar": true,
+                  "refId": "C",
+                  "hide": false,
+                  "intervalFactor": 2
+                }
+              ],
+              "timeFrom": null,
+              "timeShift": null,
+              "datasource": null
+            },
+            {
+              "id": 24,
+              "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 9
+              },
+              "type": "timeseries",
+              "title": "Memory Usage per Pod",
+              "pluginVersion": "8.0.5",
+              "links": [],
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "linear",
+                    "barAlignment": 0,
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "spanNulls": false,
+                    "showPoints": "never",
+                    "pointSize": 5,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisPlacement": "auto",
+                    "axisLabel": "",
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "hideFrom": {
+                      "tooltip": false,
+                      "viz": false,
+                      "legend": false
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "unit": "bytes"
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "quota - requests"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#F2495C",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": false,
+                          "mode": "normal"
+                        }
+                      },
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                              10,
+                              10
+                          ],
+                          "fill": "dash"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "quota - limits"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#FF9830",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.stacking",
+                        "value": {
+                          "group": false,
+                          "mode": "normal"
+                        }
+                      },
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "dash": [
+                              10,
+                              10
+                          ],
+                          "fill": "dash"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "tooltip": {
+                  "mode": "single"
+                },
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": []
+                }
+              },
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "sum(container_memory_working_set_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", container!=\"\", image!=\"\"}) by (pod)",
+                  "format": "time_series",
+                  "hide": false,
+                  "interval": "",
+                  "intervalFactor": 2,
+                  "legendFormat": "{{ "{{ pod }}" }}",
+                  "legendLink": null,
+                  "refId": "A",
+                  "step": 10
+                },
+                {
+                  "expr": "sum(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
+                  "legendFormat": "requests",
+                  "interval": "",
+                  "exemplar": true,
+                  "format": "time_series",
+                  "intervalFactor": 2,
+                  "legendLink": null,
+                  "refId": "B",
+                  "step": 10,
+                  "hide": false
+                },
+                {
+                  "expr": "sum(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
+                  "legendFormat": "limits",
+                  "interval": "",
+                  "exemplar": true,
+                  "format": "time_series",
+                  "intervalFactor": 2,
+                  "legendLink": null,
+                  "refId": "C",
+                  "step": 10,
+                  "hide": false
+                }
+              ],
+              "timeFrom": null,
+              "timeShift": null,
+              "datasource": null
+            },
+            {
+              "id": 26,
+              "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 56
+              },
+              "type": "timeseries",
+              "title": "CPU Usage per Node",
+              "pluginVersion": "8.0.5",
+              "links": [],
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "linear",
+                    "barAlignment": 0,
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "spanNulls": false,
+                    "showPoints": "never",
+                    "pointSize": 5,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisPlacement": "auto",
+                    "axisLabel": "",
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "hideFrom": {
+                      "tooltip": false,
+                      "viz": false,
+                      "legend": false
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "tooltip": {
+                  "mode": "single"
+                },
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": []
+                }
+              },
+              "targets": [
+                {
+                  "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\"}) by (node)",
+                  "legendFormat": "{{ "{{ pod }}" }}",
+                  "interval": "",
+                  "exemplar": true,
+                  "format": "time_series",
+                  "intervalFactor": 2,
+                  "legendLink": null,
+                  "refId": "A",
+                  "step": 10
+                }
+              ],
+              "timeFrom": null,
+              "timeShift": null,
+              "datasource": null
+            },
+            {
+              "id": 28,
+              "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 63
+              },
+              "type": "timeseries",
+              "title": "Memory Usage per Node",
+              "pluginVersion": "8.0.5",
+              "links": [],
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "linear",
+                    "barAlignment": 0,
+                    "lineWidth": 2,
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "spanNulls": false,
+                    "showPoints": "never",
+                    "pointSize": 5,
+                    "stacking": {
+                      "mode": "none",
+                      "group": "A"
+                    },
+                    "axisPlacement": "auto",
+                    "axisLabel": "",
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "hideFrom": {
+                      "tooltip": false,
+                      "viz": false,
+                      "legend": false
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "unit": "bytes"
+                },
+                "overrides": []
+              },
+              "options": {
+                "tooltip": {
+                  "mode": "single"
+                },
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": []
+                }
+              },
+              "targets": [
+                {
+                  "expr": "sum(node_namespace_pod_container:container_memory_working_set_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\"}) by (node)",
+                  "legendFormat": "{{ "{{ pod }}" }}",
+                  "interval": "",
+                  "exemplar": true,
+                  "format": "time_series",
+                  "intervalFactor": 2,
+                  "legendLink": null,
+                  "refId": "A",
+                  "step": 10
+                }
+              ],
+              "timeFrom": null,
+              "timeShift": null,
+              "datasource": null
+            }
+          ],
+          "title": "Kubernetes Metrics",
+          "type": "row"
         }
       ],
       "refresh": "30s",
-      "schemaVersion": 16,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
           "prometheus",
@@ -1227,26 +1759,33 @@ data:
           {
             "allValue": null,
             "current": {
-              "text": "master",
+              "selected": true,
+              "text": [
+                  "All"
+              ],
               "value": [
-                  "master"
+                  "$__all"
               ]
             },
             "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
             "definition": "label_values(redis_up, pod)",
+            "description": null,
+            "error": null,
             "hide": 0,
             "includeAll": true,
             "label": "Role",
             "multi": true,
             "name": "role",
             "options": [],
-            "query": "label_values(redis_instance_info, role)",
+            "query": {
+              "query": "label_values(redis_instance_info, role)",
+              "refId": "Prometheus-role-Variable-Query"
+            },
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1254,24 +1793,33 @@ data:
           {
             "allValue": null,
             "current": {
-              "text": "All",
-              "value": "$__all"
+              "selected": true,
+              "text": [
+                  "All"
+              ],
+              "value": [
+                  "$__all"
+              ]
             },
             "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+            "definition": "",
+            "description": null,
+            "error": null,
             "hide": 0,
             "includeAll": true,
             "label": null,
             "multi": true,
             "name": "instance",
             "options": [],
-            "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
+            "query": {
+              "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"rc1-icm-redis-cluster-metrics\" }, pod)",
+              "refId": "Prometheus-instance-Variable-Query"
+            },
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
             "tagValuesQuery": "",
-            "tags": [],
-            "tagsQuery": "label_values(redis_, pod)",
             "type": "query",
             "useTags": false
           },
@@ -1283,16 +1831,17 @@ data:
               "value": "$__all"
             },
             "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+            "definition": "",
             "description": null,
             "error": null,
             "hide": 0,
             "includeAll": true,
-            "label": "primaries",
+            "label": "masters",
             "multi": false,
-            "name": "primaries",
+            "name": "masters",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
+              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"rc1-icm-redis-cluster-metrics\" }, pod)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -1300,7 +1849,6 @@ data:
             "skipUrlSync": false,
             "sort": 0,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1308,7 +1856,7 @@ data:
         ]
       },
       "time": {
-        "from": "now-1h",
+        "from": "now-15m",
         "to": "now"
       },
       "timepicker": {
@@ -1338,7 +1886,7 @@ data:
       },
       "timezone": "browser",
       "title": "Redis Cluster ({{ .Release.Namespace }}/{{ include "icm-redis-cluster.fullname" . }})",
-      "uid": "",
-      "version": 1
+      "uid": "Q2Qox8Mnz",
+      "version": 3
     }
 {{- end }}
