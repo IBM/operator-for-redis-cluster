@@ -1341,7 +1341,7 @@ data:
                   "step": 10
                 },
                 {
-                  "expr": "sum(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
+                  "expr": "max(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
                   "legendFormat": "requests",
                   "interval": "",
                   "exemplar": true,
@@ -1350,7 +1350,7 @@ data:
                   "intervalFactor": 2
                 },
                 {
-                  "expr": "sum(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
+                  "expr": "max(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
                   "legendFormat": "limits",
                   "interval": "",
                   "exemplar": true,
@@ -1532,7 +1532,7 @@ data:
                   "step": 10
                 },
                 {
-                  "expr": "sum(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
+                  "expr": "max(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
                   "legendFormat": "requests",
                   "interval": "",
                   "exemplar": true,
@@ -1544,7 +1544,7 @@ data:
                   "hide": false
                 },
                 {
-                  "expr": "sum(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
+                  "expr": "max(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
                   "legendFormat": "limits",
                   "interval": "",
                   "exemplar": true,
