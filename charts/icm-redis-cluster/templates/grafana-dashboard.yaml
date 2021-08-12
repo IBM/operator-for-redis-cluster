@@ -1361,7 +1361,7 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "datasource": null
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
             },
             {
               "id": 24,
@@ -1558,7 +1558,7 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "datasource": null
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
             },
             {
               "id": 26,
@@ -1649,7 +1649,7 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "datasource": null
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
             },
             {
               "id": 28,
@@ -1740,7 +1740,7 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "datasource": null
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
             }
           ],
           "title": "Kubernetes Metrics",
@@ -1812,7 +1812,7 @@ data:
             "name": "instance",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"rc1-icm-redis-cluster-metrics\" }, pod)",
+              "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
               "refId": "Prometheus-instance-Variable-Query"
             },
             "refresh": 2,
@@ -1841,7 +1841,7 @@ data:
             "name": "masters",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"rc1-icm-redis-cluster-metrics\" }, pod)",
+              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -1886,7 +1886,7 @@ data:
       },
       "timezone": "browser",
       "title": "Redis Cluster ({{ .Release.Namespace }}/{{ include "icm-redis-cluster.fullname" . }})",
-      "uid": "Q2Qox8Mnz",
+      "uid": "",
       "version": 3
     }
 {{- end }}
