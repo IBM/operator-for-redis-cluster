@@ -1,6 +1,13 @@
-# Minikube
+---
+title: Cookbook
+slug: /cookbook
+---
 
-## Prerequisit
+# Cookbook
+
+## Minikube Configuration
+
+### Prerequisites
 
 - minikube version >= 0.20
 - kubectl >= 1.7
@@ -10,9 +17,9 @@
 - make
 - git
 
-## Commands
+### Installation
 
-Project and environment
+Project and environment setup:
 
 ```console
 $ REPO="https://github.com/TheWeatherCompany/icm-redis-operator.git"
@@ -25,19 +32,19 @@ $ git clone $REPO $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
 $ cd $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
 ```
 
-install the kubectl rediscluster plugin (more info [here](./kubectl-plugin.md))
+Install the kubectl Redis cluster plugin (more info [here](./kubectl-plugin.md))
 
 ```console
 $ make plugin
 ```
 
-start minikube with RBAC activated
+Start minikube with RBAC activated
 
 ```console
 $ minikube start --extra-config=apiserver.Authorization.Mode=RBAC
 ```
 
-Create the missing rolebinding for k8s dashboard
+Create the missing role binding for k8s dashboard
 
 ```console
 $ kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
@@ -60,7 +67,7 @@ Tiller (the Helm server-side component) has been installed into your Kubernetes 
 Happy Helming!
 ```
 
-check if Helm is running properly
+Check if Helm is running properly
 
 ```console
 checkhelm(){ CHECKHELM=$(kubectl get pod -n kube-system -l app=helm,name=tiller | grep "1/1" | wc -l); }
@@ -76,7 +83,7 @@ CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/
 ...
 ```
 
-Install the redis-operator thanks to helm
+Helm install the Redis operator
 
 ```console
 $ helm install --wait -n operator chart/redis-operator
@@ -103,7 +110,7 @@ NAME            SECRETS  AGE
 redis-operator  1        0s
 ```
 
-Monitor that the operator is running properly.
+Monitor that the operator is running properly
 
 ```console
 $ kubectl get pods -w
@@ -137,7 +144,7 @@ mycluster  0s
 redis-node  0s
 ```
 
-Monitor the redis-cluster creation
+Monitor the Redis cluster creation
 
 ```console
 $ watch kubectl plugin rediscluster --rc myCluster
@@ -146,7 +153,7 @@ Every 2.0s: kubectl plugin rediscluster
  mycluster  default    6/6/6  OK      3/3         1-1/1
 ```
 
-check the cluster status thanks to redis command `cluster info`:
+Check the cluster status with `cluster info`:
 
 ```console
 $ kubectl exec $(kubectl get pod -l redis-operator.k8s.io/cluster-name=mycluster -o jsonpath="{.items[0].metadata.name}") -- redis-cli cluster info
@@ -176,23 +183,23 @@ f73d9e04184a3ab5a83f7073b28f02d481818f6c 172.17.0.8:6379@16379 master - 0 151870
 caa70778d7b52f43a1145e6f19ccd31194b70c32 172.17.0.6:6379@16379 master - 0 1518704527755 2 connected 10924-16383
 ```
 
-## cleanup your environement
+## Clean up your environment
 
-delete the redis cluster
+Delete the Redis cluster
 
 ```console
 $ helm delete mycluster
 release "mycluster" deleted
 ```
 
-delete the redis-operator
+Delete the Redis operator
 
 ```console
 $ helm delete operator
 release "operator" deleted
 ```
 
-all pods should have been deleted
+Ensure all pods have been deleted
 ```console
 $ kubectl get pods
 No resources found.

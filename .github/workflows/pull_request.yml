@@ -118,6 +118,21 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --target-branch=main --check-version-increment=false
 
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.15.4 # This is recommended LTS version which includes npm 6.14.10
+      - name: Build docs website
+        run: |
+          npm -v
+          node -v
+          cd docs
+          npm ci
+          npm run build
 
   run-e2e-tests:
     runs-on: ubuntu-latest

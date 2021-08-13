@@ -193,3 +193,27 @@ jobs:
           md5sum_var=$(md5sum ./icm-redis-cluster-$VERSION.tgz | awk '{ print $1 }')
           sha1sum_var=$(sha1sum ./icm-redis-cluster-$VERSION.tgz | awk '{ print $1 }')
           curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-cluster-$VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-cluster-$VERSION.tgz
+
+  docs:
+    name: Publish Docs
+    needs: [ helm-release ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.15.4 # This is recommended LTS version which includes npm 6.14.10
+      - name: Publish docs website
+        env:
+          USE_SSH: false
+          GIT_USER: git
+          CURRENT_BRANCH: main
+          DEPLOYMENT_BRANCH: gh-pages
+          GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "gh-actions"
+          cd ./docs
+          npm ci
+          npx docusaurus deploy
