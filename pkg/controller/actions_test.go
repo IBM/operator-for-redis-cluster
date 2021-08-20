@@ -4,6 +4,8 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/gogo/protobuf/proto"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -388,8 +390,8 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfPrimaries: rapi.NewInt32(1),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(1),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},
@@ -432,8 +434,8 @@ func TestController_applyConfiguration(t *testing.T) {
 					},
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfPrimaries: rapi.NewInt32(2),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(2),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Conditions: []rapi.RedisClusterCondition{},

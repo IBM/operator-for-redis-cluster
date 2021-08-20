@@ -13,6 +13,8 @@ module.exports = {
   docs: [
     'home',
     'cookbook',
-    'kubectl-plugin'
+    'kubectl-plugin',
+    'rolling-update',
+    'key-migration'
   ],
 };

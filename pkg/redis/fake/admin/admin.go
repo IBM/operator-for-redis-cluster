@@ -225,7 +225,7 @@ func (a *Admin) MigrateEmptySlot(ctx context.Context, source *redis.Node, dest *
 }
 
 // MigrateEmptySlots migrates empty slots from the source node to the destination node
-func (a *Admin) MigrateEmptySlots(ctx context.Context, source *redis.Node, dest *redis.Node, slots redis.SlotSlice, conf *rapi.Migration) error {
+func (a *Admin) MigrateEmptySlots(ctx context.Context, source *redis.Node, dest *redis.Node, slots redis.SlotSlice, conf *rapi.RollingUpdate) error {
 	val, ok := a.AddrError[source.IPPort()]
 	if !ok {
 		val = nil

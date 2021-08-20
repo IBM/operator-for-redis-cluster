@@ -5,8 +5,7 @@ slug: /kubectl-plugin
 
 # Kubectl Plugin
 
-The Redis Operator kubectl plugin helps you visualise the status of your Redis cluster.
-Please visit the [official documentation](https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/) for more details.
+The Redis Operator kubectl plugin helps you visualise the status of your Redis cluster. Please visit the [official documentation](https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/) for more details.
 
 ## Installation
 

@@ -250,8 +250,8 @@ func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminI
 	removedPrimaries, removedReplicas := getOldNodesToRemove(currentPrimaries, selectedPrimaries, nodes)
 
 	// now we can move slot from old primary to new primary
-	if *cluster.Spec.KeyMigration {
-		if err = clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, selectedPrimaries, currentPrimaries, allPrimaries); err != nil {
+	if *cluster.Spec.RollingUpdate.KeyMigration {
+		if err = clustering.DispatchSlotsToNewPrimaries(ctx, admin, rCluster, selectedPrimaries, currentPrimaries, allPrimaries, &cluster.Spec.RollingUpdate.Migration); err != nil {
 			glog.Error("unable to dispatch slot on new primary, err: ", err)
 		}
 	} else {
@@ -364,7 +364,7 @@ func (c *Controller) scaleDownPrimaries(ctx context.Context, admin redis.AdminIn
 	}
 
 	// Dispatch slots to the new primaries
-	if err = clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, newPrimaries, currentPrimaries, allPrimaries); err != nil {
+	if err = clustering.DispatchSlotsToNewPrimaries(ctx, admin, rCluster, newPrimaries, currentPrimaries, allPrimaries, cluster.Spec.Scaling); err != nil {
 		glog.Errorf("unable to dispatch slot to new primary: %v", err)
 		return err
 	}
@@ -421,8 +421,8 @@ func (c *Controller) reconcileReplicationFactor(ctx context.Context, admin redis
 }
 
 func (c *Controller) createPodReplacements(cluster *rapi.RedisCluster) (bool, error) {
-	nbRequiredPods := *cluster.Spec.NumberOfPrimaries * (1 + *cluster.Spec.ReplicationFactor)
 	nbMigrationPods := 1 + *cluster.Spec.ReplicationFactor
+	nbRequiredPods := *cluster.Spec.NumberOfPrimaries * nbMigrationPods
 	nbPodToCreate := nbRequiredPods + nbMigrationPods - cluster.Status.Cluster.NumberOfPods
 	createPods := nbPodToCreate > 0
 	if createPods {
@@ -526,7 +526,7 @@ func promoteReplicasToPrimaries(ctx context.Context, admin redis.AdminInterface,
 }
 
 func scaleDown(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, currentPrimaries, newPrimaries, allPrimaries, currentReplicas, newReplicas redis.Nodes) error {
-	if err := clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, newPrimaries, currentPrimaries, allPrimaries); err != nil {
+	if err := clustering.DispatchSlotsToNewPrimaries(ctx, admin, rCluster, newPrimaries, currentPrimaries, allPrimaries, cluster.Spec.Scaling); err != nil {
 		glog.Errorf("unable to dispatch slot on new primary: %v", err)
 		return err
 	}
@@ -540,7 +540,7 @@ func scaleUp(ctx context.Context, admin redis.AdminInterface, cluster *rapi.Redi
 	if err := placeAndAttachReplicas(ctx, admin, cluster, rCluster, currentReplicas, newPrimaries, newReplicas); err != nil {
 		return err
 	}
-	if err := clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, newPrimaries, currentPrimaries, allPrimaries); err != nil {
+	if err := clustering.DispatchSlotsToNewPrimaries(ctx, admin, rCluster, newPrimaries, currentPrimaries, allPrimaries, cluster.Spec.Scaling); err != nil {
 		glog.Errorf("unable to dispatch slot on new primary: %v", err)
 		return err
 	}

@@ -12,8 +12,8 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   zoneAwareReplication: {{ .Values.zoneAwareReplication }}
-  keyMigration: {{ .Values.keyMigration }}
-  migration: {{- toYaml .Values.migration | nindent 4 }}
+  rollingUpdate: {{- toYaml .Values.rollingUpdate | nindent 4 }}
+  scaling: {{- toYaml .Values.scaling | nindent 4 }}
   podTemplate:
     metadata:
       {{- with .Values.podAnnotations }}

@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/TheWeatherCompany/icm-redis-operator/test"
 
@@ -40,7 +42,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						ReplicationFactor: rapi.NewInt32(0),
+						ReplicationFactor: proto.Int32(0),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -68,7 +70,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						ReplicationFactor: rapi.NewInt32(1),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -94,7 +96,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						ReplicationFactor: rapi.NewInt32(1),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -122,7 +124,7 @@ func Test_checkReplicationFactor(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						ReplicationFactor: rapi.NewInt32(1),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -356,8 +358,8 @@ func Test_needMorePods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 6},
@@ -371,8 +373,8 @@ func Test_needMorePods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 4},
@@ -386,8 +388,8 @@ func Test_needMorePods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 3},
@@ -401,8 +403,8 @@ func Test_needMorePods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 4},
@@ -416,8 +418,8 @@ func Test_needMorePods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 10, NumberOfPodsReady: 10},
@@ -450,8 +452,8 @@ func Test_needLessPods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 6},
@@ -465,8 +467,8 @@ func Test_needLessPods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 6, NumberOfPodsReady: 4},
@@ -480,8 +482,8 @@ func Test_needLessPods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 3},
@@ -495,8 +497,8 @@ func Test_needLessPods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 4, NumberOfPodsReady: 4},
@@ -510,8 +512,8 @@ func Test_needLessPods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPods: 10, NumberOfPodsReady: 10},
@@ -546,7 +548,7 @@ func Test_checkNumberOfPrimaries(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
+						NumberOfPrimaries: proto.Int32(3),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPrimaries: 3},
@@ -561,7 +563,7 @@ func Test_checkNumberOfPrimaries(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
+						NumberOfPrimaries: proto.Int32(3),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPrimaries: 6},
@@ -576,7 +578,7 @@ func Test_checkNumberOfPrimaries(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(6),
+						NumberOfPrimaries: proto.Int32(6),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{NumberOfPrimaries: 3},
@@ -628,8 +630,8 @@ func Test_checkShouldDeletePods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -664,8 +666,8 @@ func Test_checkShouldDeletePods(t *testing.T) {
 			args: args{
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
-						NumberOfPrimaries: rapi.NewInt32(3),
-						ReplicationFactor: rapi.NewInt32(1),
+						NumberOfPrimaries: proto.Int32(3),
+						ReplicationFactor: proto.Int32(1),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -795,8 +797,8 @@ func Test_needClusterOperation(t *testing.T) {
 						PodTemplate: &kapiv1.PodTemplateSpec{
 							Spec: kapiv1.PodSpec{},
 						},
-						NumberOfPrimaries: rapi.NewInt32(1),
-						ReplicationFactor: rapi.NewInt32(2),
+						NumberOfPrimaries: proto.Int32(1),
+						ReplicationFactor: proto.Int32(2),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -826,8 +828,8 @@ func Test_needClusterOperation(t *testing.T) {
 								Containers: []kapiv1.Container{{Name: "redis", Image: "redis:4.0.6"}},
 							},
 						},
-						NumberOfPrimaries: rapi.NewInt32(1),
-						ReplicationFactor: rapi.NewInt32(2),
+						NumberOfPrimaries: proto.Int32(1),
+						ReplicationFactor: proto.Int32(2),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -855,8 +857,8 @@ func Test_needClusterOperation(t *testing.T) {
 						PodTemplate: &kapiv1.PodTemplateSpec{
 							Spec: kapiv1.PodSpec{},
 						},
-						NumberOfPrimaries: rapi.NewInt32(2),
-						ReplicationFactor: rapi.NewInt32(2),
+						NumberOfPrimaries: proto.Int32(2),
+						ReplicationFactor: proto.Int32(2),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -882,8 +884,8 @@ func Test_needClusterOperation(t *testing.T) {
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfPrimaries: rapi.NewInt32(1),
-						ReplicationFactor: rapi.NewInt32(2),
+						NumberOfPrimaries: proto.Int32(1),
+						ReplicationFactor: proto.Int32(2),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -909,8 +911,8 @@ func Test_needClusterOperation(t *testing.T) {
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfPrimaries: rapi.NewInt32(1),
-						ReplicationFactor: rapi.NewInt32(2),
+						NumberOfPrimaries: proto.Int32(1),
+						ReplicationFactor: proto.Int32(2),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -936,8 +938,8 @@ func Test_needClusterOperation(t *testing.T) {
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfPrimaries: rapi.NewInt32(1),
-						ReplicationFactor: rapi.NewInt32(2),
+						NumberOfPrimaries: proto.Int32(1),
+						ReplicationFactor: proto.Int32(2),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{
@@ -963,8 +965,8 @@ func Test_needClusterOperation(t *testing.T) {
 				cluster: &rapi.RedisCluster{
 					Spec: rapi.RedisClusterSpec{
 						PodTemplate:       &kapiv1.PodTemplateSpec{},
-						NumberOfPrimaries: rapi.NewInt32(1),
-						ReplicationFactor: rapi.NewInt32(2),
+						NumberOfPrimaries: proto.Int32(1),
+						ReplicationFactor: proto.Int32(2),
 					},
 					Status: rapi.RedisClusterStatus{
 						Cluster: rapi.RedisClusterState{

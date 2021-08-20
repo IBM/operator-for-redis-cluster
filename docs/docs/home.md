@@ -10,24 +10,17 @@ slug: /
 
 This is an ongoing project.
 
-The goal of this project is to simplify the deployment and management of a [Redis cluster](https://redis.io/topics/cluster-tutorial) in a [Kubernetes](https://kubernetes.io/) environment.
-It started internally at Amadeus in 2016, where it was initially designed to run on [Openshift](https://www.openshift.com/).
-This is the third version of the Redis operator, which leverages the [Operator SDK](https://sdk.operatorframework.io/) framework for operators.
+The goal of this project is to simplify the deployment and management of a [Redis cluster](https://redis.io/topics/cluster-tutorial) in a [Kubernetes](https://kubernetes.io/) environment. It started internally at Amadeus in 2016, where it was initially designed to run on [Openshift](https://www.openshift.com/). This is the third version of the Redis operator, which leverages the [Operator SDK](https://sdk.operatorframework.io/) framework for operators.
 
 ## Overview
 
-This project contains two Helm charts, namely `icm-redis-operator` and `icm-redis-cluster`. The first chart deploys the Redis operator, `RedisCluster` Custom Resource Definition (CRD), and various other k8s resources.
-The second chart deploys the `RedisCluster` resource and various other k8s resources. Each node in the Redis cluster runs in its own Pod.
-Upon startup, each node joins the cluster as a primary node with no slots. See the cluster representation in the diagram below:
+This project contains two Helm charts, namely `icm-redis-operator` and `icm-redis-cluster`. The first chart deploys the Redis operator, `RedisCluster` Custom Resource Definition (CRD), and various other k8s resources. The second chart deploys the `RedisCluster` resource and various other k8s resources. Each node in the Redis cluster runs in its own Pod. Upon startup, each node joins the cluster as a primary node with no slots. See the cluster representation in the diagram below:
 
 ![Initial state](../static/images/overview_1.png)
 
-At this point, your Redis process running and each node is aware of each other, but only one primary has all the slots.
-In order to properly configure each node in the cluster, we introduce the `Redis Operator`.
+At this point, your Redis process running and each node is aware of each other, but only one primary has all the slots. In order to properly configure each node in the cluster, we introduce the `Redis Operator`.
 
-The `Redis Operator` watches the `RedisCluster` CR that stores cluster configuration: number of primaries, replication factor (number of replicas per primary), and the pod template.
-Then the operator tries to apply this configuration to the set of Redis server processes. If the number of Redis servers doesn't match the provided configuration, the manager scales the number of pods to obtain the proper number of Redis nodes.
-The operator continuously reconciles the state of the cluster with the configuration stored in the `RedisCluster` CR until they match. To understand how the reconciliation loop works, see the [Operator SDK docs](https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/#reconcile-loop).
+The `Redis Operator` watches the `RedisCluster` CR that stores cluster configuration: number of primaries, replication factor (number of replicas per primary), and the pod template. Then the operator tries to apply this configuration to the set of Redis server processes. If the number of Redis servers doesn't match the provided configuration, the manager scales the number of pods to obtain the proper number of Redis nodes. The operator continuously reconciles the state of the cluster with the configuration stored in the `RedisCluster` CR until they match. To understand how the reconciliation loop works, see the [Operator SDK docs](https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/#reconcile-loop).
 
 ## Deployment
 

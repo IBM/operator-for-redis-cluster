@@ -61,11 +61,11 @@ type RedisClusterSpec struct {
 	// ZoneAwareReplication spreads primary and replica nodes across all available zones
 	ZoneAwareReplication *bool `json:"zoneAwareReplication,omitempty"`
 
-	// KeyMigration whether or not to migrate keys during a rolling update
-	KeyMigration *bool `json:"keyMigration,omitempty"`
+	// Configuration for redis key migration during rolling updates
+	RollingUpdate *RollingUpdate `json:"rollingUpdate,omitempty"`
 
-	// Migration configuration for redis key migration
-	Migration Migration `json:"migration,omitempty"`
+	// Configuration for redis key migration during scaling operations
+	Scaling *Migration `json:"scaling,omitempty"`
 
 	// Labels for created redis-cluster (deployment, rs, pod) (if any)
 	AdditionalLabels map[string]string `json:"additionalLabels,omitempty"`
@@ -127,15 +127,21 @@ type RedisClusterState struct {
 	Nodes []RedisClusterNode `json:"nodes,omitempty"`
 }
 
-type Migration struct {
-	// Number of keys to get from a single slot during each migration iteration
-	KeyBatchSize int32 `json:"keyBatchSize,omitempty"`
-	// Number of slots to to migrate on each iteration
-	SlotBatchSize int32 `json:"slotBatchSize,omitempty"`
-	// Maximum idle time at any point during key migration
-	IdleTimeoutMillis int32 `json:"idleTimeoutMillis,omitempty"`
+type RollingUpdate struct {
+	Migration `json:",inline"`
+	// KeyMigration whether or not to migrate keys during a rolling update
+	KeyMigration *bool `json:"keyMigration,omitempty"`
 	// Amount of time in between each slot batch iteration
 	WarmingDelayMillis int32 `json:"warmingDelayMillis,omitempty"`
+}
+
+type Migration struct {
+	// Number of keys to get from a single slot during each migration iteration
+	KeyBatchSize *int32 `json:"keyBatchSize,omitempty"`
+	// Number of slots to to migrate on each iteration
+	SlotBatchSize *int32 `json:"slotBatchSize,omitempty"`
+	// Maximum idle time at any point during key migration
+	IdleTimeoutMillis *int32 `json:"idleTimeoutMillis,omitempty"`
 }
 
 func (s RedisClusterState) String() string {

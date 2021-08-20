@@ -40,7 +40,7 @@ func SelectPrimaries(cluster *redis.Cluster, currentPrimaries, candidatePrimarie
 }
 
 // DispatchSlotsToNewPrimaries used to dispatch slots to the new primary nodes
-func DispatchSlotsToNewPrimaries(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes redis.Nodes) error {
+func DispatchSlotsToNewPrimaries(ctx context.Context, admin redis.AdminInterface, rCluster *redis.Cluster, newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes redis.Nodes, conf *rapi.Migration) error {
 	// calculate the migration slot information (which slots go where)
 	migrationSlotInfo, info := feedMigInfo(newPrimaryNodes, currentPrimaryNodes, allPrimaryNodes, int(admin.GetHashMaxSlot()+1))
 	rCluster.ActionsInfo = info
@@ -62,7 +62,7 @@ func DispatchSlotsToNewPrimaries(ctx context.Context, admin redis.AdminInterface
 			}
 
 			glog.V(6).Info("3) Migrate keys")
-			if err := admin.MigrateKeys(ctx, nodesInfo.From, nodesInfo.To, slots, &cluster.Spec.Migration, true); err != nil {
+			if err := admin.MigrateKeys(ctx, nodesInfo.From, nodesInfo.To, slots, conf, true); err != nil {
 				glog.Error("error during key migration: ", err)
 			}
 
@@ -105,7 +105,7 @@ func DispatchEmptySlotsToPrimaries(ctx context.Context, admin redis.AdminInterfa
 			}
 
 			glog.V(6).Info("3) Migrate slots with no keys")
-			if err := admin.MigrateEmptySlots(ctx, nodesInfo.From, nodesInfo.To, slots, &cluster.Spec.Migration); err != nil {
+			if err := admin.MigrateEmptySlots(ctx, nodesInfo.From, nodesInfo.To, slots, cluster.Spec.RollingUpdate); err != nil {
 				glog.Error("error during key migration: ", err)
 			}
 

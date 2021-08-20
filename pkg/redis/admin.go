@@ -74,7 +74,7 @@ type AdminInterface interface {
 	// MigrateEmptySlot migrates a single empty slot from the source to destination node
 	MigrateEmptySlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch string) error
 	// MigrateEmptySlots migrates slots from the source to destination node
-	MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration) error
+	MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.RollingUpdate) error
 	// MigrateKeysInSlot migrates all the keys in a single slot
 	MigrateKeysInSlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch, timeout string, replace bool) error
 	// FlushAndReset flushes and resets the cluster configuration of the node
@@ -510,13 +510,13 @@ func (a *Admin) MigrateEmptySlot(ctx context.Context, source *Node, dest *Node, 
 }
 
 // MigrateEmptySlots migrates empty slots from the source node to the destination
-func (a *Admin) MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration) error {
+func (a *Admin) MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.RollingUpdate) error {
 	glog.Infof("MigrateEmptySlots started for %d slots from %s to %s", len(slots), source.IPPort(), dest.IPPort())
 	if len(slots) == 0 {
 		return nil
 	}
-	keyBatchSize := strconv.Itoa(int(conf.KeyBatchSize))
-	slotBatchSize := int(conf.SlotBatchSize)
+	keyBatchSize := strconv.Itoa(int(*conf.Migration.KeyBatchSize))
+	slotBatchSize := int(*conf.Migration.SlotBatchSize)
 	for i := 0; i < len(slots); i = i + slotBatchSize {
 		wg := sync.WaitGroup{}
 		batchStart := time.Now()
@@ -579,8 +579,8 @@ func (a *Admin) MigrateKeys(ctx context.Context, source *Node, dest *Node, slots
 		return nil
 	}
 
-	timeout := strconv.Itoa(int(conf.IdleTimeoutMillis))
-	keyBatchSize := strconv.Itoa(int(conf.KeyBatchSize))
+	timeout := strconv.Itoa(int(*conf.IdleTimeoutMillis))
+	keyBatchSize := strconv.Itoa(int(*conf.KeyBatchSize))
 	for _, slot := range slots {
 		if err := a.MigrateKeysInSlot(ctx, source, dest, slot, keyBatchSize, timeout, replace); err != nil {
 			return err

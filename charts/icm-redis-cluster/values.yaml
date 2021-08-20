@@ -116,12 +116,11 @@ affinity: {}
 # Kubernetes nodes are selected according to the nodeSelector field above.
 zoneAwareReplication: true
 
-# Whether or not to migrate keys during a rolling update
-# If false, you will lose all keys during migration
-keyMigration: true
-
-# Configuration for redis key migration from the source node to the destination node
-migration:
+# Configuration for redis key migration during rolling updates
+rollingUpdate:
+  # Whether or not to migrate keys during a rolling update
+  # If false, you will lose all current data during migration
+  keyMigration: true
   # Number of keys to get from a single slot during each migration iteration
   keyBatchSize: 1000
   # Number of slots to to migrate on each iteration
@@ -130,7 +129,13 @@ migration:
   idleTimeoutMillis: 30000
   # Used to warm the cache of the new primary node
   # Amount of time in between each slot batch iteration
-  warmingDelayMillis: 1000
+  warmingDelayMillis: 0
+
+# Configuration for redis key migration during scaling operations
+scaling:
+  keyBatchSize: 1000
+  slotBatchSize: 100
+  idleTimeoutMillis: 30000
 
 metrics:
   enabled: false

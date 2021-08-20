@@ -1235,7 +1235,8 @@ data:
               "metric": "",
               "refId": "A",
               "step": 240,
-              "target": ""
+              "target": "",
+              "instant": true
             }
           ],
           "timeFrom": null,

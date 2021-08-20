@@ -5,12 +5,26 @@ import (
 	kapiv1 "k8s.io/api/core/v1"
 )
 
+var (
+	defaultNumberOfPrimaries = proto.Int32(3)
+	defaultReplicationFactor = proto.Int32(1)
+	defaultKeyBatchSize      = proto.Int32(1000)
+	defaultSlotBatchSize     = proto.Int32(100)
+	defaultIdleTimeoutMillis = proto.Int32(30000)
+)
+
 // IsRedisClusterDefaulted check if the RedisCluster is already defaulted
 func IsRedisClusterDefaulted(rc *RedisCluster) bool {
 	if rc.Spec.NumberOfPrimaries == nil {
 		return false
 	}
 	if rc.Spec.ReplicationFactor == nil {
+		return false
+	}
+	if rc.Spec.RollingUpdate == nil {
+		return false
+	}
+	if rc.Spec.Scaling == nil {
 		return false
 	}
 	return true
@@ -20,10 +34,10 @@ func IsRedisClusterDefaulted(rc *RedisCluster) bool {
 func DefaultRedisCluster(baseRedisCluster *RedisCluster) *RedisCluster {
 	rc := baseRedisCluster.DeepCopy()
 	if rc.Spec.NumberOfPrimaries == nil {
-		rc.Spec.NumberOfPrimaries = NewInt32(3)
+		rc.Spec.NumberOfPrimaries = defaultNumberOfPrimaries
 	}
 	if rc.Spec.ReplicationFactor == nil {
-		rc.Spec.ReplicationFactor = NewInt32(1)
+		rc.Spec.ReplicationFactor = defaultReplicationFactor
 	}
 
 	if rc.Spec.PodTemplate == nil {
@@ -41,29 +55,41 @@ func DefaultRedisCluster(baseRedisCluster *RedisCluster) *RedisCluster {
 		rc.Spec.ZoneAwareReplication = proto.Bool(true)
 	}
 
-	if rc.Spec.KeyMigration == nil {
-		rc.Spec.KeyMigration = proto.Bool(true)
+	if rc.Spec.RollingUpdate == nil {
+		rc.Spec.RollingUpdate = &RollingUpdate{}
 	}
 
-	if rc.Spec.Migration.SlotBatchSize == 0 {
-		rc.Spec.Migration.SlotBatchSize = 100
+	if rc.Spec.RollingUpdate.KeyMigration == nil {
+		rc.Spec.RollingUpdate.KeyMigration = proto.Bool(true)
 	}
 
-	if rc.Spec.Migration.KeyBatchSize == 0 {
-		rc.Spec.Migration.KeyBatchSize = 100
+	if rc.Spec.RollingUpdate.KeyBatchSize == nil {
+		rc.Spec.RollingUpdate.KeyBatchSize = defaultKeyBatchSize
 	}
 
-	if rc.Spec.Migration.IdleTimeoutMillis == 0 {
-		rc.Spec.Migration.IdleTimeoutMillis = 30000
+	if rc.Spec.RollingUpdate.SlotBatchSize == nil {
+		rc.Spec.RollingUpdate.SlotBatchSize = defaultSlotBatchSize
+	}
+
+	if rc.Spec.RollingUpdate.IdleTimeoutMillis == nil {
+		rc.Spec.RollingUpdate.IdleTimeoutMillis = defaultIdleTimeoutMillis
+	}
+
+	if rc.Spec.Scaling == nil {
+		rc.Spec.Scaling = &Migration{}
+	}
+
+	if rc.Spec.Scaling.KeyBatchSize == nil {
+		rc.Spec.Scaling.KeyBatchSize = defaultKeyBatchSize
+	}
+
+	if rc.Spec.Scaling.SlotBatchSize == nil {
+		rc.Spec.Scaling.SlotBatchSize = defaultSlotBatchSize
+	}
+
+	if rc.Spec.Scaling.IdleTimeoutMillis == nil {
+		rc.Spec.Scaling.IdleTimeoutMillis = defaultIdleTimeoutMillis
 	}
 
 	return rc
-}
-
-// NewInt32 use to instantiate an int32 pointer
-func NewInt32(val int32) *int32 {
-	output := new(int32)
-	*output = val
-
-	return output
 }
