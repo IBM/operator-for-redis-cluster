@@ -27,7 +27,7 @@ scaling:
   idleTimeoutMillis: 30000
 ```
 
-If you observe the default configuration above, you will notice that there are two separate sections for configuring key migration during rolling updates and scaling operations. The `rollingUpdate` section determines how keys are migrated during [rolling updates](rolling-update.md), and the `scaling` section determines how keys are migrated during scaling operations. The following definitions apply to both configurations.
+If you observe the default configuration above, you will notice that there are two separate sections for configuring key migration during rolling updates and scaling operations. The `rollingUpdate` section determines how keys are migrated during [rolling updates](rolling-update.md), and the `scaling` section determines how keys are migrated during [scaling operations](scaling.md). The following definitions apply to both configurations.
 
 ### Definitions
 
@@ -35,7 +35,7 @@ If you observe the default configuration above, you will notice that there are t
 
 `keyBatchSize` determines the number of keys to get from a single slot during each migration iteration. By default, this value is `1000` keys.
 
-`slotBatchSize` specifies the number of slots to migrate on each iteration. By default, this value is `100` slots. Keep in mind a Redis cluster has `16384` total slots, and those slots are evenly distributed across the primary nodes.
+`slotBatchSize` specifies the number of slots to migrate on each iteration. By default, this value is `100` slots. For most use cases, se this value to the number of logical CPUs. Usually, this is two times the CPU resource limits in the Redis operator deployment. See [runtime.CPU](https://pkg.go.dev/runtime#NumCPU) for more information on how Go checks the number of available CPUs. Also, keep in mind a Redis cluster has `16384` total slots, and those slots are evenly distributed across the primary nodes.
 
 `idleTimeoutMillis` is the maximum idle time at any point during key migration. This means the migration should make progress without blocking for more than the specified number of milliseconds. See the [Redis migrate command](https://redis.io/commands/migrate) for more information about the timeout.
 
@@ -44,27 +44,28 @@ If you observe the default configuration above, you will notice that there are t
 ### Rolling update key migration enabled - `rollingUpdate.keyMigration: true`
 `keyBatchSize`: change this value depending on the total number of keys in your Redis cluster. Increasing this value can reduce the amount of time it takes to migrate keys by moving a larger number of keys per batch of slots.
 
-`slotBatchSize`: increasing this value can decrease the total amount of time it takes to migrate keys.
+`slotBatchSize`: increasing this value higher than the number of logical CPUs will have minimal effect on rolling update performance.
 
 `idleTimeoutMillis`: do not modify this value unless you receive this specific error.
 
 `warmingDelayMillis`: it's best to set this value to zero unless you want to introduce a delay between slot migrations. You can still set a non-zero delay if you want to reduce the overall strain on the cluster by the migration calls, and you do not care about how long the migration takes.
 
 #### Examples
+Assume all clusters have allocated 4 physical CPUs and 1 Gb memory for the Redis operator. We have 8 logical CPUs.
 
 Given a small redis cluster with 3 primaries, RF = 1, and maximum memory of 1 Gb per node - we have the following configuration:
 
 ```yaml
 rollingUpdate:                # For rolling updates,
   keyMigration: true          # Key migration is enabled
-  keyBatchSize: 10000         # Migrate keys in batches of 10,000 per slot 
-  slotBatchSize: 2500         # Transfer 2,500 slots on each migration iteration
+  keyBatchSize: 1000          # Migrate keys in batches of 1,000 per slot 
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
   warmingDelayMillis: 0       # No delay between each batch of 2,500 slots
 
 scaling:                      # For scaling operations,
-  keyBatchSize: 10000         # Migrate keys in batches of 10,000 per slot
-  slotBatchSize: 2500         # Transfer 2,500 slots on each migration iteration
+  keyBatchSize: 1000          # Migrate keys in batches of 1,000 per slot
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
 ```
 
@@ -72,44 +73,43 @@ Given a large redis cluster with 20 primaries, RF = 1, and maximum memory of 10 
 ```yaml
 rollingUpdate:                # For rolling updates,
   keyMigration: true          # Key migration is enabled
-  keyBatchSize: 100000        # Migrate keys in batches of 100,000 per slot
-  slotBatchSize: 200          # Transfer 200 slots on each migration iteration
+  keyBatchSize: 10000         # Migrate keys in batches of 10,000 per slot
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
   warmingDelayMillis: 0       # No delay between each batch of slots
 
 scaling:                      # For scaling operations,
-  keyBatchSize: 100000        # Migrate keys in batches of 100,000 per slot
-  slotBatchSize: 200          # Transfer 200 slots on each migration iteration
+  keyBatchSize: 10000         # Migrate keys in batches of 10,000 per slot
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
 ```
-Observe how `keyBatchSize` is significantly greater than in the previous example because we have ten times the data per node. Also notice that `slotBatchSize` is much smaller because we have 20 primaries instead of 3, yielding fewer slots per node.
+Observe how `keyBatchSize` is significantly greater than in the previous example because we have ten times the data per node.
 
 Here we have a cluster with 10 primaries, RF = 1, and maximum memory of 5Gb per node. We optimize for fast key migration on both rolling updates and scaling operations:
 ```yaml
 rollingUpdate:                # For rolling updates,
   keyMigration: true          # Key migration is enabled
   keyBatchSize: 50000         # Migrate keys in batches of 50,000 per slot
-  slotBatchSize: 16384        # Transfer the maximum number of slots on each migration iteration
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
   warmingDelayMillis: 0       # No delay between each batch of slots
 
 scaling:                      # For scaling operations,
   keyBatchSize: 50000         # Migrate keys in batches of 50,000 per slot
-  slotBatchSize: 16384        # Transfer the maximum number of slots on each migration iteration
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
 ```
-Observe that `slotBatchSize` is set to 16384, the maximum number of slots in a Redis cluster. Since we have 10 primaries, we expect each primary to have roughly 16384 / 10 = 1638 slots. We specified a value greater than the number of slots per node, so each migration iteration will transfer all the node's slots.
 
 ### Rolling update key migration disabled - `rollingUpdate.keyMigration: false`
 `keyBatchSize`: not used when no keys are migrated.
 
-`slotBatchSize`: depends on how quickly you want to wipe the cache. You can use a small `slotBatchSize` and increase `warmingDelayMillis` to make this process go slower. If your backend can handle a higher increase in requests, you can do the opposite to make it go faster.
+`slotBatchSize`: depends on how quickly you want to wipe the cache. You can use a smaller `slotBatchSize` and increase `warmingDelayMillis` to make this process go slower. If your backend can handle a higher increase in requests, you can set `warmingDelayMillis` to something small or even zero.
 
 `idleTimeoutMillis`: not used in when no keys are migrated.
 
 `warmingDelayMillis`: increasing this value will ease the strain on your backend as slot ownership transfers during a rolling update by pausing after migrating a single batch of slots. 
 
-Please be sure to properly configure `migration` based on your Redis cluster if you plan on using this configuration. Setting too large a value for `slotBatchSize` will quickly wipe all the keys in your cluster without yielding sufficient time for new Redis nodes to warm up.
+Please be sure to properly configure `rollingUpdate` based on your Redis cluster if you plan on using this configuration. Setting too small a value for `warmingDelayMillis` will quickly wipe all the keys in your cluster without yielding sufficient time for new Redis nodes to warm up.
 
 #### Examples
 
@@ -117,12 +117,12 @@ Given a small redis cluster with 3 primaries, RF = 1, and maximum memory of 1 Gb
 ```yaml
 rollingUpdate:                # For rolling updates,
   keyMigration: false         # Key migration is disabled
-  slotBatchSize: 500          # Transfer 500 slots on each migration iteration
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   warmingDelayMillis: 1000    # Wait 1 second between each batch of slots
 
 scaling:                      # For scaling operations,
   keyBatchSize: 10000         # Migrate keys in batches of 10,000 per slot
-  slotBatchSize: 2500         # Transfer 2,500 slots on each migration iteration
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
 ```
 
@@ -130,12 +130,12 @@ Given a large redis cluster with 20 primaries, RF = 1, and maximum memory of 10 
 ```yaml
 rollingUpdate:                # For rolling updates,
   keyMigration: false         # Key migration is disabled
-  slotBatchSize: 50           # Transfer 50 slots on each migration iteration
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   warmingDelayMillis: 10000   # Wait 10 seconds between each batch of slots
 
 scaling:                      # For scaling operations,
-  keyBatchSize: 100000        # Migrate keys in batches of 100,000 per slot
-  slotBatchSize: 200          # Transfer 200 slots on each migration iteration
+  keyBatchSize: 10000         # Migrate keys in batches of 10,000 per slot
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
 ```
 
@@ -143,11 +143,11 @@ Here we have a cluster with 10 primaries, RF = 1, and maximum memory of 5Gb per 
 ```yaml
 rollingUpdate:                # For rolling updates,
   keyMigration: false         # Key migration is disabled
-  slotBatchSize: 16384        # Transfer the maximum number of slots on each migration iteration
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   warmingDelayMillis: 0       # No delay between each batch of slots
 
 scaling:                      # For scaling operations,
   keyBatchSize: 50000         # Migrate keys in batches of 50,000 per slot
-  slotBatchSize: 16384        # Transfer the maximum number of slots on each migration iteration
+  slotBatchSize: 8            # Transfer 8 slots on each migration iteration
   idleTimeoutMillis: 30000    # Wait up to 30 seconds for any delay in communication during the migration
 ```

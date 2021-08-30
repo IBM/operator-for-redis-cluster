@@ -14,6 +14,7 @@ module.exports = {
     'home',
     'cookbook',
     'kubectl-plugin',
+    'scaling',
     'rolling-update',
     'key-migration'
   ],
