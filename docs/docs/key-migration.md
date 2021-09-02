@@ -35,7 +35,7 @@ If you observe the default configuration above, you will notice that there are t
 
 `keyBatchSize` determines the number of keys to get from a single slot during each migration iteration. By default, this value is `1000` keys.
 
-`slotBatchSize` specifies the number of slots to migrate on each iteration. By default, this value is `100` slots. For most use cases, se this value to the number of logical CPUs. Usually, this is two times the CPU resource limits in the Redis operator deployment. See [runtime.CPU](https://pkg.go.dev/runtime#NumCPU) for more information on how Go checks the number of available CPUs. Also, keep in mind a Redis cluster has `16384` total slots, and those slots are evenly distributed across the primary nodes.
+`slotBatchSize` specifies the number of slots to migrate on each iteration. By default, this value is `100` slots. For most use cases, set this value to the number of logical CPUs. Usually, this is two times the CPU resource limits in the Redis operator deployment. See [runtime.CPU](https://pkg.go.dev/runtime#NumCPU) for more information on how Go checks the number of available CPUs. Also, keep in mind a Redis cluster has `16384` total slots, and those slots are evenly distributed across the primary nodes.
 
 `idleTimeoutMillis` is the maximum idle time at any point during key migration. This means the migration should make progress without blocking for more than the specified number of milliseconds. See the [Redis migrate command](https://redis.io/commands/migrate) for more information about the timeout.
 

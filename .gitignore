@@ -40,4 +40,5 @@ profile.out
 
 vendor
 .idea
+*.iml
 examples

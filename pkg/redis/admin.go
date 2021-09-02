@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/errors"
-
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 
 	"github.com/mediocregopher/radix/v4"
@@ -70,13 +68,7 @@ type AdminInterface interface {
 	// DeleteKeys deletes keys
 	DeleteKeys(ctx context.Context, addr string, keys []string) error
 	// MigrateKeys migrates keys from the source to destination node and returns number of slot migrated
-	MigrateKeys(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration, replace bool) error
-	// MigrateEmptySlot migrates a single empty slot from the source to destination node
-	MigrateEmptySlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch string) error
-	// MigrateEmptySlots migrates slots from the source to destination node
-	MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.RollingUpdate) error
-	// MigrateKeysInSlot migrates all the keys in a single slot
-	MigrateKeysInSlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch, timeout string, replace bool) error
+	MigrateKeys(ctx context.Context, source *Node, dest *Node, slots SlotSlice, spec *rapi.RedisClusterSpec, replace, scaling bool, primaries Nodes) error
 	// FlushAndReset flushes and resets the cluster configuration of the node
 	FlushAndReset(ctx context.Context, addr string, mode string) error
 	// FlushAll flushes all keys in the cluster
@@ -209,7 +201,7 @@ func (a *Admin) GetClusterInfosSelected(ctx context.Context, addrs []string) (*C
 		if nodeinfos.Node != nil && nodeinfos.Node.IPPort() == addr {
 			infos.Infos[addr] = nodeinfos
 		} else {
-			glog.Warningf("Bad node info retreived from %s", addr)
+			glog.Warningf("Bad node info retrieved from %s", addr)
 		}
 	}
 
@@ -241,11 +233,11 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 
 	replicas, err := selectMyReplicas(me.Node, me.Friends)
 	if err != nil {
-		return fmt.Errorf("Unable to found associated replicas, err:%s", err)
+		return fmt.Errorf("unable to found associated replicas, err:%s", err)
 	}
 
 	if len(replicas) == 0 {
-		return fmt.Errorf("Primary id:%s dont have associated replica", me.Node.ID)
+		return fmt.Errorf("primary id:%s dont have associated replica", me.Node.ID)
 	}
 
 	if glog.V(3) {
@@ -270,7 +262,7 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 	}
 
 	if !failoverTriggered {
-		return fmt.Errorf("Unable to trigger failover for node '%s'", me.Node.IPPort())
+		return fmt.Errorf("unable to trigger failover for node '%s'", me.Node.IPPort())
 	}
 
 	for {
@@ -348,7 +340,7 @@ func (a *Admin) ForgetNodeByAddr(ctx context.Context, addr string) error {
 	}
 
 	if me == nil {
-		return fmt.Errorf("Cannot forget node %s, not found in infos", addr)
+		return fmt.Errorf("cannot forget node %s, not found in infos", addr)
 	}
 
 	return a.ForgetNode(ctx, me.ID)
@@ -367,7 +359,7 @@ func (a *Admin) SetSlot(ctx context.Context, addr, action string, slot Slot, nod
 	return nil
 }
 
-// SetSlots use to set SETSLOT command on several slots
+// SetSlots used to set SETSLOT command on several slots
 func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSlice, nodeID string) error {
 	if len(slots) == 0 {
 		return nil
@@ -376,17 +368,25 @@ func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSli
 	if err != nil {
 		return err
 	}
+	wg := sync.WaitGroup{}
 	for _, slot := range slots {
-		if nodeID == "" {
-			c.PipeAppend(radix.Cmd(nil, "CLUSTER", "SETSLOT", slot.String(), action))
-		} else {
-			c.PipeAppend(radix.Cmd(nil, "CLUSTER", "SETSLOT", slot.String(), action, nodeID))
-		}
+		wg.Add(1)
+		slot := slot.String()
+		go func() {
+			defer wg.Done()
+			var resp string
+			var cmdErr error
+			if nodeID == "" {
+				cmdErr = c.DoCmdWithRetries(ctx, &resp, "CLUSTER", "SETSLOT", slot, action)
+			} else {
+				cmdErr = c.DoCmdWithRetries(ctx, &resp, "CLUSTER", "SETSLOT", slot, action, nodeID)
+			}
+			if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, fmt.Sprintf("Unable to run command SETSLOT %s %s %s ", slot, action, addr)); err != nil {
+				glog.Error(err)
+			}
+		}()
 	}
-	if err = c.DoPipe(ctx); err != nil {
-		return fmt.Errorf("Error %v occured on node %s during CLUSTER SETSLOT %s", err, addr, action)
-	}
-	c.PipeReset()
+	wg.Wait()
 	return nil
 }
 
@@ -485,63 +485,7 @@ func (a *Admin) DeleteKeys(ctx context.Context, addr string, keys []string) erro
 	return nil
 }
 
-// MigrateEmptySlot migrates a single empty slot from the source node to the destination
-func (a *Admin) MigrateEmptySlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch string) error {
-	var errs []error
-	for {
-		keys, err := a.GetKeys(ctx, source.IPPort(), slot, batch)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		if len(keys) == 0 {
-			break
-		}
-		if err = a.DeleteKeys(ctx, source.IPPort(), keys); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if err := a.SetSlot(ctx, dest.IPPort(), "NODE", slot, dest); err != nil {
-		errs = append(errs, err)
-	}
-	if err := a.SetSlot(ctx, source.IPPort(), "NODE", slot, dest); err != nil {
-		errs = append(errs, err)
-	}
-	return errors.NewAggregate(errs)
-}
-
-// MigrateEmptySlots migrates empty slots from the source node to the destination
-func (a *Admin) MigrateEmptySlots(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.RollingUpdate) error {
-	glog.Infof("MigrateEmptySlots started for %d slots from %s to %s", len(slots), source.IPPort(), dest.IPPort())
-	if len(slots) == 0 {
-		return nil
-	}
-	keyBatchSize := strconv.Itoa(int(*conf.Migration.KeyBatchSize))
-	slotBatchSize := int(*conf.Migration.SlotBatchSize)
-	for i := 0; i < len(slots); i = i + slotBatchSize {
-		wg := sync.WaitGroup{}
-		batchStart := time.Now()
-		endIndex := int(math.Min(float64(i+slotBatchSize), float64(len(slots))))
-		slotBatch := slots[i:endIndex]
-		for _, slot := range slotBatch {
-			wg.Add(1)
-			tmpSlot := slot
-			go func() {
-				defer wg.Done()
-				if err := a.MigrateEmptySlot(ctx, source, dest, tmpSlot, keyBatchSize); err != nil {
-					glog.Error(err)
-				}
-			}()
-		}
-		wg.Wait()
-		if conf.WarmingDelayMillis > 0 {
-			time.Sleep(time.Duration(conf.WarmingDelayMillis) * time.Millisecond)
-		}
-		glog.Infof("Batch migration of slots %d-%d from %s to %s completed in %s", slots[i], slots[endIndex-1], source.IPPort(), dest.IPPort(), time.Since(batchStart))
-	}
-	return nil
-}
-
-func (a *Admin) MigrateKeysInSlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch, timeout string, replace bool) error {
+func (a *Admin) migrateSlot(ctx context.Context, source *Node, dest *Node, slot Slot, batch, timeout string, replace bool) error {
 	c, err := a.Connections().Get(ctx, source.IPPort())
 	if err != nil {
 		return err
@@ -572,22 +516,111 @@ func (a *Admin) MigrateKeysInSlot(ctx context.Context, source *Node, dest *Node,
 
 // MigrateKeys from the source node to the destination node. If replace is true, replace key on busy error.
 // Timeout is in milliseconds
-func (a *Admin) MigrateKeys(ctx context.Context, source *Node, dest *Node, slots SlotSlice, conf *rapi.Migration, replace bool) error {
-	glog.Infof("MigrateKeys started for %d slots from %s to %s", len(slots), source.IPPort(), dest.IPPort())
-	start := time.Now()
+func (a *Admin) MigrateKeys(ctx context.Context, source *Node, dest *Node, slots SlotSlice, spec *rapi.RedisClusterSpec, replace, scaling bool, primaries Nodes) error {
+	glog.V(2).Infof("batch migration started for %d slots from %s to %s - scaling: %v, spec: %v", len(slots), source.IPPort(), dest.IPPort(), scaling, spec)
 	if len(slots) == 0 {
 		return nil
 	}
 
-	timeout := strconv.Itoa(int(*conf.IdleTimeoutMillis))
-	keyBatchSize := strconv.Itoa(int(*conf.KeyBatchSize))
-	for _, slot := range slots {
-		if err := a.MigrateKeysInSlot(ctx, source, dest, slot, keyBatchSize, timeout, replace); err != nil {
+	start := time.Now()
+	var timeoutStr, keyBatchSize string
+	var slotBatchSize int
+	if scaling {
+		timeoutStr = strconv.Itoa(int(*spec.Scaling.IdleTimeoutMillis))
+		keyBatchSize = strconv.Itoa(int(*spec.Scaling.KeyBatchSize))
+		slotBatchSize = int(*spec.Scaling.SlotBatchSize)
+	} else {
+		timeoutStr = strconv.Itoa(int(*spec.RollingUpdate.IdleTimeoutMillis))
+		keyBatchSize = strconv.Itoa(int(*spec.RollingUpdate.KeyBatchSize))
+		slotBatchSize = int(*spec.RollingUpdate.SlotBatchSize)
+	}
+	slotsLenFloat := float64(len(slots))
+
+	for i := 0; i < len(slots); i = i + slotBatchSize {
+		wg := sync.WaitGroup{}
+		batchStart := time.Now()
+		endIndex := int(math.Min(float64(i+slotBatchSize), slotsLenFloat))
+		slotStart := time.Now()
+		slotSlice := slots[i:endIndex]
+		if err := a.setSlotState(ctx, source, dest, slotSlice); err != nil {
 			return err
 		}
+		for _, slot := range slotSlice {
+			wg.Add(1)
+			slot := slot
+			go func() {
+				defer wg.Done()
+				if scaling || *spec.RollingUpdate.KeyMigration {
+					if err := a.migrateSlot(ctx, source, dest, slot, keyBatchSize, timeoutStr, replace); err != nil {
+						glog.Error(err)
+					}
+				}
+				slotSliceOfOne := SlotSlice{slot}
+				a.setMigrationSlots(ctx, source, dest, slotSliceOfOne)
+				source.Slots = RemoveSlots(source.Slots, slots)
+				a.setPrimarySlots(ctx, source, dest, slotSliceOfOne, primaries)
+			}()
+		}
+		wg.Wait()
+		if !scaling {
+			delay := time.Duration(spec.RollingUpdate.WarmingDelayMillis)*time.Millisecond - time.Since(slotStart)
+			if delay > 0 {
+				time.Sleep(delay)
+			}
+		}
+		glog.V(6).Infof("batch migration of slots %d-%d from %s to %s completed in %s", slots[i], slots[endIndex-1], source.IPPort(), dest.IPPort(), time.Since(batchStart))
 	}
-	glog.Infof("Migration of %d slots from %s to %s completed in %s", len(slots), source.IPPort(), dest.IPPort(), time.Since(start))
+	glog.V(2).Infof("batch migration of %d slots from %s to %s completed in %s", len(slots), source.IPPort(), dest.IPPort(), time.Since(start))
 	return nil
+}
+
+func (a *Admin) setSlotState(ctx context.Context, src *Node, dest *Node, slots SlotSlice) error {
+	err := a.SetSlots(ctx, dest.IPPort(), "IMPORTING", slots, src.ID)
+	if err != nil {
+		glog.Error("error during SETSLOT IMPORTING: ", err)
+		return err
+	}
+	err = a.SetSlots(ctx, src.IPPort(), "MIGRATING", slots, dest.ID)
+	if err != nil {
+		glog.Error("error during SETSLOT MIGRATING: ", err)
+		return err
+	}
+	return nil
+}
+
+func (a *Admin) setMigrationSlots(ctx context.Context, src *Node, dest *Node, slots SlotSlice) {
+	err := a.SetSlots(ctx, dest.IPPort(), "NODE", slots, dest.ID)
+	if err != nil {
+		if glog.V(4) {
+			glog.Warningf("warning during SETSLOT NODE on %s: %v", dest.IPPort(), err)
+		}
+	}
+	err = a.SetSlots(ctx, src.IPPort(), "NODE", slots, dest.ID)
+	if err != nil {
+		if glog.V(4) {
+			glog.Warningf("warning during SETSLOT NODE on %s: %v", src.IPPort(), err)
+		}
+	}
+}
+
+func (a *Admin) setPrimarySlots(ctx context.Context, src *Node, dest *Node, slots SlotSlice, primaries Nodes) {
+	for _, primary := range primaries {
+		if primary.IPPort() == dest.IPPort() || primary.IPPort() == src.IPPort() {
+			// we already did these two
+			continue
+		}
+		if primary.TotalSlots() == 0 {
+			// ignore primaries that no longer have slots
+			// some primaries had their slots completely removed in the previous iteration
+			continue
+		}
+		err := a.SetSlots(ctx, primary.IPPort(), "NODE", slots, dest.ID)
+		if err != nil {
+			if glog.V(4) {
+				glog.Warningf("warning during SETSLOT NODE on %s: %v", primary.IPPort(), err)
+			}
+		}
+	}
 }
 
 // AttachReplicaToPrimary attach a replica to a primary node
@@ -638,7 +671,7 @@ func (a *Admin) FlushAndReset(ctx context.Context, addr string, mode string) err
 	c.PipeAppend(radix.Cmd(nil, "CLUSTER", "RESET", mode))
 
 	if err = c.DoPipe(ctx); err != nil {
-		return fmt.Errorf("error %v occured on node %s during CLUSTER RESET", err, addr)
+		return fmt.Errorf("error %v occurred on node %s during CLUSTER RESET", err, addr)
 	}
 
 	return nil

@@ -123,7 +123,7 @@ rollingUpdate:
   keyMigration: true
   # Number of keys to get from a single slot during each migration iteration
   keyBatchSize: 1000
-  # Number of slots to to migrate on each iteration
+  # Number of slots to migrate on each iteration
   slotBatchSize: 100
   # Maximum idle time at any point during key migration
   idleTimeoutMillis: 30000
@@ -143,7 +143,7 @@ metrics:
     host: docker.io
     namespace: oliver006
     name: redis_exporter
-    tag: v1.13.1
+    tag: v1.24.0
     pullPolicy: IfNotPresent
   port:
     name: metrics

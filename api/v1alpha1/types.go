@@ -84,7 +84,7 @@ type RedisClusterStatus struct {
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 	// (brief) reason for the condition's last transition.
 	Reason string `json:"reason,omitempty"`
-	// Human readable message indicating details about last transition.
+	// Human-readable message indicating details about last transition.
 	Message string `json:"message,omitempty"`
 	// Cluster a view of the current RedisCluster
 	Cluster RedisClusterState `json:"cluster"`
@@ -102,7 +102,7 @@ type RedisClusterCondition struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// (brief) reason for the condition's last transition.
 	Reason string `json:"reason,omitempty"`
-	// Human readable message indicating details about last transition.
+	// Human-readable message indicating details about last transition.
 	Message string `json:"message,omitempty"`
 }
 

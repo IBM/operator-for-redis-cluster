@@ -6479,7 +6479,7 @@ spec:
                       format: date-time
                       type: string
                     message:
-                      description: Human readable message indicating details about
+                      description: Human-readable message indicating details about
                         last transition.
                       type: string
                     reason:
@@ -6497,7 +6497,7 @@ spec:
                   type: object
                 type: array
               message:
-                description: Human readable message indicating details about last
+                description: Human-readable message indicating details about last
                   transition.
                 type: string
               reason:

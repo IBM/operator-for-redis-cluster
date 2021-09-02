@@ -44,7 +44,7 @@ type Admin struct {
 	GetClusterInfosSelectedRet ClusterInfosRetType
 	// GetKeysInSlotRet map of returned data for GetKeysInSlot function
 	GetKeysInSlotRet map[string]GetKeysInSlotRetType
-	// CountKeysInSlotRet map of returned data for for CountKeysInSlot function
+	// CountKeysInSlotRet map of returned data for CountKeysInSlot function
 	CountKeysInSlotRet map[string]CountKeysInSlotRetType
 	// GetKeysRet map of returned data for GetKeys function
 	GetKeysRet map[string]GetKeysInSlotRetType
@@ -207,33 +207,7 @@ func (a *Admin) DeleteKeys(ctx context.Context, addr string, keys []string) erro
 }
 
 // MigrateKeys migrates keys from slots to other slots
-func (a *Admin) MigrateKeys(ctx context.Context, source *redis.Node, dest *redis.Node, slots redis.SlotSlice, conf *rapi.Migration, replace bool) error {
-	val, ok := a.AddrError[source.IPPort()]
-	if !ok {
-		val = nil
-	}
-	return val
-}
-
-// MigrateEmptySlot migrates a single empty slot from the source node to the destination
-func (a *Admin) MigrateEmptySlot(ctx context.Context, source *redis.Node, dest *redis.Node, slot redis.Slot, batch string) error {
-	val, ok := a.AddrError[source.IPPort()]
-	if !ok {
-		val = nil
-	}
-	return val
-}
-
-// MigrateEmptySlots migrates empty slots from the source node to the destination node
-func (a *Admin) MigrateEmptySlots(ctx context.Context, source *redis.Node, dest *redis.Node, slots redis.SlotSlice, conf *rapi.RollingUpdate) error {
-	val, ok := a.AddrError[source.IPPort()]
-	if !ok {
-		val = nil
-	}
-	return val
-}
-
-func (a *Admin) MigrateKeysInSlot(ctx context.Context, source *redis.Node, dest *redis.Node, slot redis.Slot, batch, timeout string, replace bool) error {
+func (a *Admin) MigrateKeys(ctx context.Context, source *redis.Node, dest *redis.Node, slots redis.SlotSlice, conf *rapi.RedisClusterSpec, replace, scaling bool, primaries redis.Nodes) error {
 	val, ok := a.AddrError[source.IPPort()]
 	if !ok {
 		val = nil
