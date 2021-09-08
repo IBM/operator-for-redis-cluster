@@ -6,7 +6,8 @@ on:
       - published
 
 env:
-  HELM_VERSION: v3.5.4
+  GO_VERSION: 1.15
+  HELM_VERSION: v3.6.3
   ICR_USERNAME: iamapikey
   ICR_PASSWORD: ${{ secrets.IBMCLOUD_API_KEY }}
   HELM_REPO_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -217,3 +218,24 @@ jobs:
           cd ./docs
           npm ci
           npx docusaurus deploy
+
+  assets:
+    name: Publish Assets
+    needs: [ docs ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build redis plugin
+        run: make build-kubectl-rc
+
+      - name: Publish redis plugin to assets
+        uses: skx/github-action-publish-binaries@release-0.15
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: './bin/kubectl-rc'
