@@ -3,9 +3,10 @@ package clustering
 import (
 	"context"
 	"fmt"
-	"github.com/golang/glog"
 	"math"
 	"sort"
+
+	"github.com/golang/glog"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"

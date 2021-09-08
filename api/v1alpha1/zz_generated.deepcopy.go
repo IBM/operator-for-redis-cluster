@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -157,13 +157,6 @@ func (in *RedisClusterSpec) DeepCopyInto(out *RedisClusterSpec) {
 		in, out := &in.PodTemplate, &out.PodTemplate
 		*out = new(v1.PodTemplateSpec)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
 	}
 	if in.ZoneAwareReplication != nil {
 		in, out := &in.ZoneAwareReplication, &out.ZoneAwareReplication

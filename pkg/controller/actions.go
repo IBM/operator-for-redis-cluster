@@ -36,20 +36,33 @@ func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterfa
 		return result, err
 	}
 
-	// Start more pods if needed
+	// start more pods if needed
 	if needMorePods(cluster) {
 		if setScalingCondition(&cluster.Status, true) {
 			if _, err = c.updateHandler(cluster); err != nil {
 				return result, err
 			}
 		}
-		pod, err2 := c.podControl.CreatePod(cluster)
-		if err2 != nil {
-			glog.Errorf("[clusterAction] unable to create a pod associated to the RedisCluster: %s/%s, err: %v", cluster.Namespace, cluster.Name, err2)
-			return result, err2
+		kubeNodes, err := getKubeNodes(ctx, c.client, cluster.Spec.PodTemplate.Spec.NodeSelector)
+		if err != nil {
+			glog.Errorf("error getting k8s nodes with label selector %q: %v", cluster.Spec.PodTemplate.Spec.NodeSelector, err)
+			return result, err
+		}
+		ok, err := checkNodeResources(ctx, c.mgr, cluster, kubeNodes)
+		if err != nil {
+			return result, err
+		}
+		if !ok {
+			glog.Warningf("Insufficient resources to schedule a new pod on nodes in this cluster. Please allocate more resources for existing nodes or create additional nodes.")
+			c.recorder.Event(cluster, v1.EventTypeWarning, "InsufficientResources", "Insufficient resources to schedule pod")
+		}
+		pod, err := c.podControl.CreatePod(cluster)
+		if err != nil {
+			glog.Errorf("[clusterAction] unable to create pod for RedisCluster: %s/%s, err: %v", cluster.Namespace, cluster.Name, err)
+			return result, err
 		}
 
-		glog.V(3).Infof("[clusterAction]create a Pod %s/%s", pod.Namespace, pod.Name)
+		glog.V(3).Infof("[clusterAction] create a Pod %s/%s", pod.Namespace, pod.Name)
 		return ctrl.Result{Requeue: true}, nil
 	}
 	if setScalingCondition(&cluster.Status, false) {
@@ -58,7 +71,7 @@ func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterfa
 		}
 	}
 
-	// Reconfigure the cluster if needed
+	// reconfigure the cluster if needed
 	applyResult, err := c.applyConfiguration(ctx, admin, cluster)
 	if err != nil {
 		glog.Errorf("[clusterAction] cluster %s/%s, error: %v ", cluster.Namespace, cluster.Name, err)
@@ -95,9 +108,16 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		return result, err
 	}
 	if needsUpdate {
+		ok, err := checkNodeResources(ctx, c.mgr, cluster, newCluster.KubeNodes)
+		if err != nil {
+			return result, err
+		}
+		if !ok {
+			glog.Warningf("Insufficient resources to perform a rolling update on this cluster. Please allocate more resources for existing nodes or create additional nodes.")
+			c.recorder.Event(cluster, v1.EventTypeWarning, "InsufficientResources", "Insufficient resources to schedule pod")
+		}
 		glog.Info("applyConfiguration needRollingUpdate")
-		updateResult, err := c.manageRollingUpdate(ctx, admin, cluster, newCluster, nodes)
-		return updateResult, err
+		return c.manageRollingUpdate(ctx, admin, cluster, newCluster, nodes)
 	}
 	needsLessPods, err := c.lessPodsCondition(cluster)
 	if err != nil {
@@ -170,16 +190,18 @@ func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *r
 
 	// build redis cluster
 	rCluster := redis.NewCluster(cluster.Name, cluster.Namespace)
-	rCluster.NodeSelector = cluster.Spec.NodeSelector
 
-	nodeList := &v1.NodeList{}
-	err = kubeClient.List(ctx, nodeList, client.MatchingLabels(rCluster.NodeSelector))
+	if cluster.Spec.PodTemplate != nil {
+		rCluster.NodeSelector = cluster.Spec.PodTemplate.Spec.NodeSelector
+	}
+
+	kubeNodes, err := getKubeNodes(ctx, kubeClient, rCluster.NodeSelector)
 	if err != nil {
 		glog.Errorf("error getting k8s nodes with label selector %q: %v", rCluster.NodeSelector, err)
 		return nil, nil, err
 	}
 
-	rCluster.KubeNodes = nodeList.Items
+	rCluster.KubeNodes = kubeNodes
 	for _, node := range nodes {
 		rCluster.Nodes[node.ID] = node
 	}
@@ -202,11 +224,12 @@ func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *r
 // manageRollingUpdate used to manage properly a cluster rolling update if the pod template spec has changed
 func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, nodes redis.Nodes) (ctrl.Result, error) {
 	result := ctrl.Result{}
-	podsCreated, err := c.createPodReplacements(cluster)
-	if err != nil {
-		return result, err
-	}
-	if podsCreated {
+	nbPodsToCreate := getNbPodsToCreate(cluster)
+	if nbPodsToCreate > 0 {
+		err := c.createPods(cluster, nbPodsToCreate)
+		if err != nil {
+			return result, err
+		}
 		result.Requeue = true
 		return result, nil
 	}
@@ -414,20 +437,14 @@ func (c *Controller) reconcileReplicationFactor(ctx context.Context, admin redis
 	return errors.NewAggregate(errs)
 }
 
-func (c *Controller) createPodReplacements(cluster *rapi.RedisCluster) (bool, error) {
-	nbMigrationPods := 1 + *cluster.Spec.ReplicationFactor
-	nbRequiredPods := *cluster.Spec.NumberOfPrimaries * nbMigrationPods
-	nbPodToCreate := nbRequiredPods + nbMigrationPods - cluster.Status.Cluster.NumberOfPods
-	createPods := nbPodToCreate > 0
-	if createPods {
-		for i := int32(0); i < nbPodToCreate; i++ {
-			_, err := c.podControl.CreatePod(cluster)
-			if err != nil {
-				return false, err
-			}
+func (c *Controller) createPods(cluster *rapi.RedisCluster, nbPodToCreate int32) error {
+	for i := int32(0); i < nbPodToCreate; i++ {
+		_, err := c.podControl.CreatePod(cluster)
+		if err != nil {
+			return err
 		}
 	}
-	return createPods, nil
+	return nil
 }
 
 func (c *Controller) removeReplicasFromPrimary(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, rCluster *redis.Cluster, primaryID string, replicas redis.Nodes, allReplicas redis.Nodes, diff int32) error {
@@ -809,4 +826,28 @@ func largestZoneSize(zoneToNodes map[string]redis.Nodes) int {
 		}
 	}
 	return largest
+}
+
+func getNbPodsToCreate(cluster *rapi.RedisCluster) int32 {
+	nbMigrationPods := 1 + *cluster.Spec.ReplicationFactor
+	nbRequiredPods := *cluster.Spec.NumberOfPrimaries * nbMigrationPods
+	return nbRequiredPods + nbMigrationPods - cluster.Status.Cluster.NumberOfPods
+}
+
+func getKubeNodes(ctx context.Context, kubeClient client.Client, nodeSelector map[string]string) ([]v1.Node, error) {
+	nodeList := &v1.NodeList{}
+	err := kubeClient.List(ctx, nodeList, client.MatchingLabels(nodeSelector))
+	if err != nil {
+		return nil, err
+	}
+	return nodeList.Items, nil
+}
+
+func listPods(ctx context.Context, kubeClient client.Client, opts []client.ListOption) ([]v1.Pod, error) {
+	podList := &v1.PodList{}
+	err := kubeClient.List(ctx, podList, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
 }

@@ -242,9 +242,9 @@ func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluste
 		}
 
 		nodeList := &v1.NodeList{}
-		err = kubeClient.List(ctx, nodeList, kclient.MatchingLabels(cluster.Spec.NodeSelector))
+		err = kubeClient.List(ctx, nodeList, kclient.MatchingLabels(cluster.Spec.PodTemplate.Spec.NodeSelector))
 		if err != nil {
-			return LogAndReturnErrorf("error getting k8s nodes with label selector %s", cluster.Spec.NodeSelector)
+			return LogAndReturnErrorf("error getting k8s nodes with label selector %s", cluster.Spec.PodTemplate.Spec.NodeSelector)
 		}
 		kubeNodes := nodeList.Items
 		zones := getZonesFromKubeNodes(kubeNodes)

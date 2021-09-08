@@ -17,7 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-const leaderElectionID = "redis-operator-leader-election-lock"
+const (
+	leaderElectionID = "redis-operator-leader-election-lock"
+)
 
 func main() {
 	scheme := runtime.NewScheme()
@@ -57,10 +59,9 @@ func main() {
 	}
 
 	ctrlCfg := controller.NewConfig(1, config.Redis)
-	redisClusterCtrl := controller.NewController(ctrlCfg, mgr.GetClient(), mgr.GetEventRecorderFor("rediscluster-controller"))
-	err = controller.SetupRedisClusterController(mgr, redisClusterCtrl)
-	if err != nil {
-		glog.Fatalf("couldn't setup rediscluster controller:%v", err)
+	redisClusterCtrl := controller.NewController(ctrlCfg, mgr, mgr.GetClient(), mgr.GetEventRecorderFor("rediscluster-controller"))
+	if err = controller.SetupRedisClusterController(mgr, redisClusterCtrl); err != nil {
+		glog.Fatalf("unable to set up rediscluster controller: %v", err)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

@@ -6,6 +6,8 @@ import (
 	"math"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +29,7 @@ import (
 
 // Controller contains all controller fields
 type Controller struct {
+	mgr    manager.Manager
 	client kclient.Client
 
 	podControl                 pod.RedisClusterControlInterface
@@ -41,8 +44,9 @@ type Controller struct {
 }
 
 // NewController builds and return new controller instance
-func NewController(cfg *Config, kubeClient kclient.Client, recorder record.EventRecorder) *Controller {
+func NewController(cfg *Config, mgr manager.Manager, kubeClient kclient.Client, recorder record.EventRecorder) *Controller {
 	controller := &Controller{
+		mgr:                        mgr,
 		client:                     kubeClient,
 		recorder:                   recorder,
 		config:                     cfg,

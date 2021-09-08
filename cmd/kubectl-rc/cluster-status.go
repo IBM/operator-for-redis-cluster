@@ -158,11 +158,10 @@ func (cs *ClusterStatus) getRedisPods(client kclient.Client) error {
 
 func (cs *ClusterStatus) populateNodeToZoneMap(client kclient.Client) error {
 	nodeList := kapiv1.NodeList{}
-	err := client.List(context.Background(), &nodeList, kclient.MatchingLabels(cs.cluster.Spec.NodeSelector))
+	err := client.List(context.Background(), &nodeList, kclient.MatchingLabels(cs.cluster.Spec.PodTemplate.Spec.NodeSelector))
 	if err != nil {
 		return err
 	}
-
 	for _, node := range nodeList.Items {
 		zone, ok := node.Labels[kapiv1.LabelTopologyZone]
 		if ok {

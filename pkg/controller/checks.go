@@ -1,17 +1,28 @@
 package controller
 
 import (
+	"context"
+	"math"
 	"reflect"
+	"strconv"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
-
 	"github.com/golang/glog"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/fields"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	kapi "k8s.io/api/core/v1"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
 )
+
+type resources struct {
+	cpu    resource.Quantity
+	memory resource.Quantity
+}
 
 func compareStatus(old, new *rapi.RedisClusterState) bool {
 	if compareStringValue("ClusterStatus", string(old.Status), string(new.Status)) {
@@ -261,10 +272,9 @@ func generatePrimaryToReplicas(cluster *rapi.RedisCluster, rCluster *redis.Clust
 	return primaryToReplicas
 }
 
-// checkReplicationFactor checks the primary replication factor.
-// It returns a map with the primary IDs as key and list of replicas as value
-// The second returned value is a boolean. True if replicationFactor is correct for each primary,
-// otherwise it returns false
+// checkReplicationFactor checks the primary replication factor
+// It returns a map with the primary IDs as the key and a list of replicas as the value
+// The second returned value is a boolean. True if replicationFactor is correct for each primary, false otherwise
 func checkReplicationFactor(cluster *rapi.RedisCluster, rCluster *redis.Cluster) (map[string]redis.Nodes, bool) {
 	primaryToReplicas := generatePrimaryToReplicas(cluster, rCluster)
 	if (cluster.Status.Cluster.MaxReplicationFactor != cluster.Status.Cluster.MinReplicationFactor) || (*cluster.Spec.ReplicationFactor != cluster.Status.Cluster.MaxReplicationFactor) {
@@ -274,7 +284,7 @@ func checkReplicationFactor(cluster *rapi.RedisCluster, rCluster *redis.Cluster)
 }
 
 // checkNumberOfPrimaries returns the difference between the number of primaries currently existing and the number of desired primaries
-// also returns true if the number of primary status is equal to the spec
+// Returns true if the number of primary status is equal to the spec
 func checkNumberOfPrimaries(cluster *rapi.RedisCluster) (int32, bool) {
 	nbPrimarySpec := *cluster.Spec.NumberOfPrimaries
 	nbPrimaryStatus := cluster.Status.Cluster.NumberOfPrimaries
@@ -282,30 +292,36 @@ func checkNumberOfPrimaries(cluster *rapi.RedisCluster) (int32, bool) {
 	return nbPrimaryStatus - nbPrimarySpec, same
 }
 
-// shouldDeleteNodes use to detect if some nodes can be removed without impacting the cluster
-// returns true if there are nodes to be deleted, false otherwise
-func shouldDeleteNodes(cluster *rapi.RedisCluster, newCluster *redis.Cluster) ([]*rapi.RedisClusterNode, bool) {
-	uselessNodes := []*rapi.RedisClusterNode{}
-	if !needLessPods(cluster) {
-		return uselessNodes, false
+// checkNodeResources checks if there are resources to schedule a new pod
+// Calculates the allocated memory/cpu across all k8s nodes
+// Returns true if there are sufficient resources, false otherwise
+func checkNodeResources(ctx context.Context, mgr manager.Manager, cluster *rapi.RedisCluster, nodes []kapi.Node) (bool, error) {
+	var podLimits resources
+	// sum cpu and memory across all containers in the pod spec
+	for _, container := range cluster.Spec.PodTemplate.Spec.Containers {
+		podLimits.cpu.Add(*container.Resources.Limits.Cpu())
+		podLimits.memory.Add(*container.Resources.Limits.Memory())
 	}
-
-	_, primaryOK := checkNumberOfPrimaries(cluster)
-	_, replicaOK := checkReplicationFactor(cluster, newCluster)
-	if !primaryOK || !replicaOK {
-		return uselessNodes, false
+	// create a direct client to the k8s API
+	directClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	if err != nil {
+		return false, err
 	}
-
-	for i, node := range cluster.Status.Cluster.Nodes {
-		if node.Role == rapi.RedisClusterNodeRolePrimary && len(node.Slots) == 0 {
-			uselessNodes = append(uselessNodes, &cluster.Status.Cluster.Nodes[i])
-		}
-		if node.Role == rapi.RedisClusterNodeRoleNone {
-			uselessNodes = append(uselessNodes, &cluster.Status.Cluster.Nodes[i])
-		}
+	// find the node with the least allocated resources across all k8s nodes in the cluster
+	nodeAllocated, nodeCapacity := getNodeMinResources(ctx, directClient, nodes)
+	glog.V(6).Infof("allocated node memory: %v, memory capacity: %v, allocated node cpu: %v, cpu capacity: %v", nodeAllocated.memory.String(), nodeCapacity.memory.String(), nodeAllocated.cpu.String(), nodeCapacity.cpu.String())
+	glog.V(6).Infof("required pod memory: %v, required pod cpu: %v", podLimits.memory.String(), podLimits.cpu.String())
+	// add the pod resources to the allocated node resources
+	nodeAllocated.cpu.Add(podLimits.cpu)
+	nodeAllocated.memory.Add(podLimits.memory)
+	// return false if the resources are greater than the node's capacity
+	if nodeAllocated.cpu.Cmp(nodeCapacity.cpu) == 1 {
+		return false, nil
 	}
-
-	return uselessNodes, true
+	if nodeAllocated.memory.Cmp(nodeCapacity.memory) == 1 {
+		return false, nil
+	}
+	return true, nil
 }
 
 func checkReplicasOfReplica(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {
@@ -330,4 +346,63 @@ func checkReplicasOfReplica(cluster *rapi.RedisCluster) (map[string][]*rapi.Redi
 
 	}
 	return replicasOfReplica, len(replicasOfReplica) == 0
+}
+
+func getNodeMinResources(ctx context.Context, directClient client.Client, nodes []kapi.Node) (resources, resources) {
+	var nodeMinAllocated, nodeMinCapacity resources
+	nodeMinAllocated.cpu = resource.MustParse(strconv.Itoa(math.MaxInt32))
+	nodeMinAllocated.memory = resource.MustParse(strconv.Itoa(math.MaxInt32) + "Ei")
+	selector, _ := fields.ParseSelector("status.phase!=" + string(kapi.PodSucceeded) + ",status.phase!=" + string(kapi.PodFailed))
+	for _, node := range nodes {
+		maxPods, _ := node.Status.Allocatable.Pods().AsInt64()
+		opts := []client.ListOption{
+			client.MatchingFieldsSelector{Selector: fields.AndSelectors(selector, fields.OneTermEqualSelector("spec.nodeName", node.Name))},
+			client.Limit(maxPods),
+		}
+		pods, err := listPods(ctx, directClient, opts)
+		if err != nil {
+			glog.Errorf("unable to list pods for node %s: %v", node.Name, err)
+		}
+		var nodeLimitsCpu, nodeLimitsMemory resource.Quantity
+		for _, pod := range pods {
+			for _, container := range pod.Spec.Containers {
+				nodeLimitsCpu.Add(*container.Resources.Limits.Cpu())
+				nodeLimitsMemory.Add(*container.Resources.Limits.Memory())
+			}
+		}
+		// update resources if this node's allocated memory limit is less than the minimum
+		if nodeLimitsMemory.Cmp(nodeMinAllocated.memory) == -1 {
+			nodeMinAllocated.cpu = nodeLimitsCpu
+			nodeMinAllocated.memory = nodeLimitsMemory
+			nodeMinCapacity.cpu = *node.Status.Capacity.Cpu()
+			nodeMinCapacity.memory = *node.Status.Capacity.Memory()
+		}
+	}
+	return nodeMinAllocated, nodeMinCapacity
+}
+
+// shouldDeleteNodes detects if some nodes can be removed without impacting the cluster
+// returns true if there are nodes to be deleted, false otherwise
+func shouldDeleteNodes(cluster *rapi.RedisCluster, newCluster *redis.Cluster) ([]*rapi.RedisClusterNode, bool) {
+	uselessNodes := []*rapi.RedisClusterNode{}
+	if !needLessPods(cluster) {
+		return uselessNodes, false
+	}
+
+	_, primaryOK := checkNumberOfPrimaries(cluster)
+	_, replicaOK := checkReplicationFactor(cluster, newCluster)
+	if !primaryOK || !replicaOK {
+		return uselessNodes, false
+	}
+
+	for i, node := range cluster.Status.Cluster.Nodes {
+		if node.Role == rapi.RedisClusterNodeRolePrimary && len(node.Slots) == 0 {
+			uselessNodes = append(uselessNodes, &cluster.Status.Cluster.Nodes[i])
+		}
+		if node.Role == rapi.RedisClusterNodeRoleNone {
+			uselessNodes = append(uselessNodes, &cluster.Status.Cluster.Nodes[i])
+		}
+	}
+
+	return uselessNodes, true
 }

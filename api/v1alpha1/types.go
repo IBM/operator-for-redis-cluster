@@ -55,9 +55,6 @@ type RedisClusterSpec struct {
 	// PodTemplate contains the pod specification that should run the redis-server process
 	PodTemplate *kapiv1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
-	// NodeSelector determines which kubernetes nodes to use when scheduling pods
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
 	// ZoneAwareReplication spreads primary and replica nodes across all available zones
 	ZoneAwareReplication *bool `json:"zoneAwareReplication,omitempty"`
 

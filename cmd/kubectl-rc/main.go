@@ -44,7 +44,7 @@ func main() {
 
 	kubeconfigFilePath := getKubeConfigDefaultPath(getHomePath())
 	if len(kubeconfigFilePath) == 0 {
-		log.Fatal("error initializing config. The KUBECONFIG environment variable must be defined.")
+		log.Fatal("error initializing config, the KUBECONFIG environment variable must be defined")
 	}
 
 	config, err := configFromPath(kubeconfigFilePath)
@@ -62,14 +62,14 @@ func main() {
 	utilruntime.Must(rapi.AddToScheme(scheme))
 	client, err := kclient.New(restConfig, kclient.Options{Scheme: scheme})
 	if err != nil {
-		glog.Fatalf("Unable to init kubernetes client from kubeconfig:%v", err)
+		glog.Fatalf("unable to init kubernetes client from kubeconfig: %v", err)
 	}
 
 	rcs := &rapi.RedisClusterList{}
 	if clusterName == "" {
 		err = client.List(context.Background(), rcs, kclient.InNamespace(namespace))
 		if err != nil {
-			glog.Fatalf("unable to list redisclusters:%v", err)
+			glog.Fatalf("unable to list redisclusters: %v", err)
 		}
 	} else {
 		cluster := &rapi.RedisCluster{}
