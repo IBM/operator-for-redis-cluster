@@ -35,7 +35,7 @@ func NewPodInfo(pod *kapiv1.Pod, node rapi.RedisClusterNode, nodeToZone map[stri
 		node:  pod.Status.HostIP,
 		id:    node.ID,
 		slots: strings.Join(node.Slots, " "),
-		zone:  nodeToZone[pod.Status.HostIP],
+		zone:  nodeToZone[pod.Spec.NodeName],
 		role:  string(node.Role),
 		pod:   pod,
 	}
@@ -48,7 +48,7 @@ func NewPodInfoFromClusterStatus(pod *kapiv1.Pod, cs *ClusterStatus) *PodInfo {
 		node:  pod.Status.HostIP,
 		id:    "",
 		slots: "",
-		zone:  cs.nodeToZone[pod.Status.HostIP],
+		zone:  cs.nodeToZone[pod.Spec.NodeName],
 		role:  "",
 		pod:   pod,
 	}
