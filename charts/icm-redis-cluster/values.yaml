@@ -118,13 +118,13 @@ zoneAwareReplication: true
 
 # Configuration for redis key migration during rolling updates
 rollingUpdate:
-  # Whether or not to migrate keys during a rolling update
+  # Whether to migrate keys during a rolling update
   # If false, you will lose all current data during migration
   keyMigration: true
   # Number of keys to get from a single slot during each migration iteration
-  keyBatchSize: 1000
+  keyBatchSize: 10000
   # Number of slots to migrate on each iteration
-  slotBatchSize: 100
+  slotBatchSize: 16
   # Maximum idle time at any point during key migration
   idleTimeoutMillis: 30000
   # Used to warm the cache of the new primary node
@@ -133,8 +133,8 @@ rollingUpdate:
 
 # Configuration for redis key migration during scaling operations
 scaling:
-  keyBatchSize: 1000
-  slotBatchSize: 100
+  keyBatchSize: 10000
+  slotBatchSize: 16
   idleTimeoutMillis: 30000
 
 metrics:

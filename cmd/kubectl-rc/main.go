@@ -2,17 +2,20 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/golang/glog"
@@ -49,7 +52,7 @@ func main() {
 		log.Fatalf("error obtaining kubectl config: %v", err)
 	}
 
-	rest, err := config.ClientConfig()
+	restConfig, err := config.ClientConfig()
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -57,7 +60,7 @@ func main() {
 	scheme := apiruntime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(rapi.AddToScheme(scheme))
-	client, err := kclient.New(rest, kclient.Options{Scheme: scheme})
+	client, err := kclient.New(restConfig, kclient.Options{Scheme: scheme})
 	if err != nil {
 		glog.Fatalf("Unable to init kubernetes client from kubeconfig:%v", err)
 	}
@@ -72,7 +75,7 @@ func main() {
 		cluster := &rapi.RedisCluster{}
 		namespacedName := types.NamespacedName{Namespace: namespace, Name: clusterName}
 		err := client.Get(context.Background(), namespacedName, cluster)
-		if err == nil && cluster != nil {
+		if err == nil {
 			rcs.Items = append(rcs.Items, *cluster)
 		}
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -80,11 +83,44 @@ func main() {
 		}
 	}
 
-	data := [][]string{}
+	var wg = sync.WaitGroup{}
+	clusterStatuses := buildRedisClusterStatuses(rcs, client, restConfig, &wg)
+	var data [][]string
 	for _, cluster := range rcs.Items {
 		data = append(data, []string{cluster.Name, cluster.Namespace, buildPodStatus(&cluster), buildClusterStatus(&cluster), string(cluster.Status.Cluster.Status), buildPrimaryStatus(&cluster), buildReplicationStatus(&cluster)})
 	}
+	wg.Wait()
+	for _, cs := range clusterStatuses {
+		cs.outputRedisClusterStatus()
+	}
+	outputRedisClusterState(data)
 
+	os.Exit(0)
+}
+
+func buildRedisClusterStatuses(rcs *rapi.RedisClusterList, client kclient.Client, restConfig *rest.Config, wg *sync.WaitGroup) []*ClusterStatus {
+	// done this way to preserve the ordering of `rcs.Items`
+	clusterStatuses := make([]*ClusterStatus, len(rcs.Items))
+	var lock = sync.Mutex{}
+	for i, cluster := range rcs.Items {
+		wg.Add(1)
+		cluster := cluster
+		index := i
+		go func() {
+			defer wg.Done()
+			cs, err := NewClusterStatus(client, &cluster, restConfig)
+			if err != nil {
+				glog.Fatalf("cannot build redis cluster status for %s/%s: %v", cluster.Namespace, cluster.Name, err)
+			}
+			lock.Lock()
+			clusterStatuses[index] = cs
+			lock.Unlock()
+		}()
+	}
+	return clusterStatuses
+}
+
+func outputRedisClusterState(data [][]string) {
 	if len(data) == 0 {
 		fmt.Println("No resources found.")
 		os.Exit(0)
@@ -105,8 +141,6 @@ func main() {
 		table.Append(v)
 	}
 	table.Render() // Send output
-
-	os.Exit(0)
 }
 
 func hasStatus(cluster *rapi.RedisCluster, conditionType rapi.RedisClusterConditionType, status kapiv1.ConditionStatus) bool {
@@ -119,7 +153,7 @@ func hasStatus(cluster *rapi.RedisCluster, conditionType rapi.RedisClusterCondit
 }
 
 func buildClusterStatus(cluster *rapi.RedisCluster) string {
-	status := []string{}
+	var status []string
 
 	if hasStatus(cluster, rapi.RedisClusterOK, kapiv1.ConditionFalse) {
 		status = append(status, "KO")
@@ -159,6 +193,7 @@ func buildReplicationStatus(cluster *rapi.RedisCluster) string {
 }
 
 func configFromPath(path string) (clientcmd.ClientConfig, error) {
+	flag.Parse()
 	rules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: path}
 	credentials, err := rules.Load()
 	if err != nil {
@@ -171,10 +206,10 @@ func configFromPath(path string) (clientcmd.ClientConfig, error) {
 		},
 	}
 
-	context := os.Getenv("KUBECTL_PLUGINS_GLOBAL_FLAG_CONTEXT")
-	if len(context) > 0 {
+	kcontext := os.Getenv("KUBECTL_PLUGINS_GLOBAL_FLAG_CONTEXT")
+	if len(kcontext) > 0 {
 		rules := clientcmd.NewDefaultClientConfigLoadingRules()
-		return clientcmd.NewNonInteractiveClientConfig(*credentials, context, overrides, rules), nil
+		return clientcmd.NewNonInteractiveClientConfig(*credentials, kcontext, overrides, rules), nil
 	}
 	return clientcmd.NewDefaultClientConfig(*credentials, overrides), nil
 }
