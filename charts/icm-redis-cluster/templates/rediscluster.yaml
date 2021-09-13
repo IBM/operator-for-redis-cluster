@@ -37,26 +37,26 @@ spec:
           labelSelector:
             matchLabels: {{- include "icm-redis-cluster.selectorLabels" . | nindent 14 }}
       {{- end }}
+      {{- with .Values.sysctl }}
       initContainers:
         - name: sysctl-init
-          image: alpine:3.13
-          imagePullPolicy: IfNotPresent
+          image: "{{ .image.repository }}:{{ .image.tag }}"
+          imagePullPolicy: {{ .image.imagePullPolicy }}
           command:
             - sh
             - -c
             - >-
-              sysctl -w net.core.somaxconn={{ .Values.sysctl.netCoreSomaxconn }};
+              sysctl -w net.core.somaxconn={{ .netCoreSomaxconn }};
           resources: {}
           securityContext:
             privileged: true
             procMount: Default
+      {{- end }}
       containers:
         {{- if .Values.metrics.enabled }}
         - name: redis-exporter
-          {{- with .Values.metrics.image }}
-          image: "{{ .host }}/{{ .namespace }}/{{ .name }}:{{ .tag }}"
-          imagePullPolicy: {{ .pullPolicy }}
-          {{- end }}
+          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
           resources: {{- toYaml .Values.metrics.resources | nindent 12 }}
           env:
             - name: REDIS_EXPORTER_SCRIPT

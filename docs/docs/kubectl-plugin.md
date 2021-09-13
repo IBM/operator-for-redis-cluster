@@ -13,6 +13,8 @@ By default, the plugin will install in ```~/.kube/plugins```.
 
 Run `make plugin` to install the plugin. After installation is complete, add the plugin to your PATH so [`kubectl`](https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/#installing-kubectl-plugins) can find it. By default, the plugin is installed to `$HOME/.kube/plugins/rediscluster`.
 
+Alternatively, you can download the plugin manually from the assets tab on the [releases page](https://github.com/TheWeatherCompany/icm-redis-operator/releases)
+
 ## Usage
 Example usage:
 

@@ -140,10 +140,8 @@ scaling:
 metrics:
   enabled: false
   image:
-    host: docker.io
-    namespace: oliver006
-    name: redis_exporter
-    tag: v1.24.0
+    repository: us.icr.io/icm-docker-images/redis-exporter
+    tag: v1
     pullPolicy: IfNotPresent
   port:
     name: metrics
@@ -167,6 +165,10 @@ metrics:
 
 sysctl:
   netCoreSomaxconn: 65000
+  image:
+    repository: us.icr.io/icm-docker-images/debian
+    tag: v11
+    imagePullPolicy: IfNotPresent
 
 redis:
   configuration:

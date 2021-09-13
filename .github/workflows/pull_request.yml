@@ -45,12 +45,21 @@ jobs:
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
+      - name: Authenticate with docker proxy registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
+          username: ${{ secrets.ARTIFACTORY_USER }}
+          password: ${{ secrets.ARTIFACTORY_PASS }}
+
       - name: Build operator image
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.operator
           tags: icm-redis-operator:local
           outputs: type=docker,dest=icm-redis-operator.tar
+          build-args: |
+            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
 
       - name: Upload operator image artifact
         uses: actions/upload-artifact@v2
@@ -70,12 +79,21 @@ jobs:
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
+      - name: Authenticate with docker proxy registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
+          username: ${{ secrets.ARTIFACTORY_USER }}
+          password: ${{ secrets.ARTIFACTORY_PASS }}
+
       - name: Build redis-node image
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.node
           tags: icm-redis-node:local, icm-redis-node:new
           outputs: type=docker,dest=icm-redis-node.tar
+          build-args: |
+            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
 
       - name: Upload cluster-node image artifact
         uses: actions/upload-artifact@v2
