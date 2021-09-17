@@ -143,12 +143,12 @@ func (n *Node) GetRole() v1.RedisClusterNodeRole {
 	return v1.RedisClusterNodeRoleNone
 }
 
-// String string representation of a Instance
+// String string representation of a Redis Node instance
 func (n *Node) String() string {
 	if n.ServerStartTime.IsZero() {
-		return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), n.Slots, len(n.MigratingSlots), len(n.ImportingSlots))
+		return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, zone: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), n.Zone, n.Slots, len(n.MigratingSlots), len(n.ImportingSlots))
 	}
-	return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d, ServerStartTime: %s}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), n.Slots, len(n.MigratingSlots), len(n.ImportingSlots), n.ServerStartTime.Format("2006-01-02 15:04:05"))
+	return fmt.Sprintf("{Redis ID: %s, role: %s, primary: %s, link: %s, status: %s, addr: %s, zone: %s, slots: %s, len(migratingSlots): %d, len(importingSlots): %d, ServerStartTime: %s}", n.ID, n.GetRole(), n.PrimaryReferent, n.LinkState, n.FailStatus, n.IPPort(), n.Zone, n.Slots, len(n.MigratingSlots), len(n.ImportingSlots), n.ServerStartTime.Format("2006-01-02 15:04:05"))
 }
 
 // IPPort returns join Ip Port string

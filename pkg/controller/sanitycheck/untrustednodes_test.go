@@ -212,11 +212,6 @@ func (f *Fakecontrol) CreatePodOnNode(redisCluster *rapi.RedisCluster, nodeName 
 	return f.pod, nil
 }
 
-// AddPodAnnotations used to add annotations to a pod
-func (f *Fakecontrol) AddPodAnnotations(redisCluster *rapi.RedisCluster, podName string, annotations map[string]string) error {
-	return nil
-}
-
 // DeletePod used to delete a pod from its name
 func (f *Fakecontrol) DeletePod(redisCluster *rapi.RedisCluster, podName string) error {
 	f.isPodDeleted[podName] = true

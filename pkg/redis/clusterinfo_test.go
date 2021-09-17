@@ -106,7 +106,7 @@ func TestNodeToString(t *testing.T) {
 		t.Error("nodes should be alone in the cluster:", len(nodeinfos.Friends))
 	} else {
 		output :=
-			`{Redis ID: 67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1, role: Primary, primary: , link: connected, status: [], addr: 127.0.0.1:30002, slots: [5461-5471], len(migratingSlots): 0, len(importingSlots): 0}`
+			`{Redis ID: 67ed2db8d677e59ec4a4cefb06858cf2a1a89fa1, role: Primary, primary: , link: connected, status: [], addr: 127.0.0.1:30002, zone: , slots: [5461-5471], len(migratingSlots): 0, len(importingSlots): 0}`
 
 		if nodeinfos.Node.String() != output {
 			t.Errorf("String output not valide: expected '%s', got '%s'", output, nodeinfos.Node.String())

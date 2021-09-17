@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -324,6 +326,12 @@ func checkNodeResources(ctx context.Context, mgr manager.Manager, cluster *rapi.
 	return true, nil
 }
 
+func checkZoneBalance(cluster *rapi.RedisCluster) bool {
+	zoneToPrimaries, zoneToReplicas := utils.ZoneToRole(cluster.Status.Cluster.Nodes)
+	_, _, ok := utils.GetZoneSkewByRole(zoneToPrimaries, zoneToReplicas)
+	return ok
+}
+
 func checkReplicasOfReplica(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {
 	replicasOfReplica := make(map[string][]*rapi.RedisClusterNode)
 
@@ -359,7 +367,7 @@ func getNodeMinResources(ctx context.Context, directClient client.Client, nodes 
 			client.MatchingFieldsSelector{Selector: fields.AndSelectors(selector, fields.OneTermEqualSelector("spec.nodeName", node.Name))},
 			client.Limit(maxPods),
 		}
-		pods, err := listPods(ctx, directClient, opts)
+		pods, err := utils.ListPods(ctx, directClient, opts)
 		if err != nil {
 			glog.Errorf("unable to list pods for node %s: %v", node.Name, err)
 		}

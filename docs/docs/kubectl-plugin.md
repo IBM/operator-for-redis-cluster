@@ -89,3 +89,4 @@ The Redis cluster state provides additional information that is useful when tryi
 |PODS|Current number of ready pods / current number of total pods / desired number of pods|
 |NB PRIMARY|Current number of primaries / desired number of primaries|
 |REPLICATION|Current min RF - current max RF / desired RF|
+|ZONE SKEW|Primary node zone skew / replica node zone skew / BALANCED \| UNBALANCED |

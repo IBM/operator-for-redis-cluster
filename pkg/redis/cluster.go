@@ -7,10 +7,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const (
-	UnknownZone = "unknown"
-)
-
 // Cluster represents a Redis Cluster
 type Cluster struct {
 	Name           string
@@ -53,7 +49,7 @@ func (c *Cluster) GetZones() []string {
 
 	}
 	if len(set) == 0 {
-		set[UnknownZone] = struct{}{}
+		set[rapi.UnknownZone] = struct{}{}
 	}
 	for key := range set {
 		zones = append(zones, key)
@@ -70,11 +66,11 @@ func (c *Cluster) GetZone(nodeName string) string {
 			if ok {
 				return label
 			} else {
-				return UnknownZone
+				return rapi.UnknownZone
 			}
 		}
 	}
-	return UnknownZone
+	return rapi.UnknownZone
 }
 
 // AddNode used to add new Node in the cluster

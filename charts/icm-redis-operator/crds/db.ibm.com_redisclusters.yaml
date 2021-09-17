@@ -6417,12 +6417,15 @@ spec:
                           items:
                             type: string
                           type: array
+                        zone:
+                          type: string
                       required:
                       - id
                       - ip
                       - podName
                       - port
                       - role
+                      - zone
                       type: object
                     type: array
                   nodesPlacementInfo:

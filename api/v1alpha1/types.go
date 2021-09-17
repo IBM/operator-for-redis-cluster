@@ -173,6 +173,7 @@ const (
 type RedisClusterNode struct {
 	ID         string               `json:"id"`
 	Role       RedisClusterNodeRole `json:"role"`
+	Zone       string               `json:"zone"`
 	IP         string               `json:"ip"`
 	Port       string               `json:"port"`
 	Slots      []string             `json:"slots,omitempty"`
@@ -183,9 +184,9 @@ type RedisClusterNode struct {
 
 func (n RedisClusterNode) String() string {
 	if n.Role != RedisClusterNodeRoleReplica {
-		return fmt.Sprintf("(Primary:%s, Addr:%s:%s, PodName:%s, Slots:%v)", n.ID, n.IP, n.Port, n.PodName, n.Slots)
+		return fmt.Sprintf("(Primary:%s, Zone:%s, Addr:%s:%s, PodName:%s, Slots:%v)", n.ID, n.Zone, n.IP, n.Port, n.PodName, n.Slots)
 	}
-	return fmt.Sprintf("(Replica:%s, Addr:%s:%s, PodName:%s, PrimaryRef:%s)", n.ID, n.IP, n.Port, n.PodName, n.PrimaryRef)
+	return fmt.Sprintf("(Replica:%s, Zone:%s, Addr:%s:%s, PodName:%s, PrimaryRef:%s)", n.ID, n.Zone, n.IP, n.Port, n.PodName, n.PrimaryRef)
 }
 
 // RedisClusterConditionType is the type of RedisClusterCondition

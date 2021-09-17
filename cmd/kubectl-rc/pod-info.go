@@ -28,27 +28,27 @@ type PodInfo struct {
 	pod        *kapiv1.Pod
 }
 
-func NewPodInfo(pod *kapiv1.Pod, node rapi.RedisClusterNode, nodeToZone map[string]string) *PodInfo {
+func NewPodInfo(pod *kapiv1.Pod, node rapi.RedisClusterNode) *PodInfo {
 	return &PodInfo{
 		name:  pod.Name,
 		ip:    pod.Status.PodIP,
 		node:  pod.Status.HostIP,
 		id:    node.ID,
 		slots: strings.Join(node.Slots, " "),
-		zone:  nodeToZone[pod.Spec.NodeName],
+		zone:  node.Zone,
 		role:  string(node.Role),
 		pod:   pod,
 	}
 }
 
-func NewPodInfoFromClusterStatus(pod *kapiv1.Pod, cs *ClusterStatus) *PodInfo {
+func NewPodInfoFromClusterStatus(pod *kapiv1.Pod) *PodInfo {
 	return &PodInfo{
 		name:  pod.Name,
 		ip:    pod.Status.PodIP,
 		node:  pod.Status.HostIP,
 		id:    "",
 		slots: "",
-		zone:  cs.nodeToZone[pod.Spec.NodeName],
+		zone:  "",
 		role:  "",
 		pod:   pod,
 	}

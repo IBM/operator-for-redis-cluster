@@ -19,7 +19,6 @@ import (
 
 type ClusterStatus struct {
 	cluster            *rapi.RedisCluster
-	nodeToZone         map[string]string
 	podNameToInfo      map[string]*PodInfo
 	primaryIDToPodName map[string]string
 	primaryToReplicas  map[string][]string
@@ -27,12 +26,9 @@ type ClusterStatus struct {
 	statusUnknownPods  []*PodInfo
 }
 
-const unknownZone = "unknown"
-
 func NewClusterStatus(client kclient.Client, cluster *rapi.RedisCluster, restConfig *rest.Config) (*ClusterStatus, error) {
 	cs := ClusterStatus{
 		cluster:            cluster,
-		nodeToZone:         map[string]string{},
 		podNameToInfo:      map[string]*PodInfo{},
 		primaryIDToPodName: map[string]string{},
 		primaryToReplicas:  map[string][]string{},
@@ -40,9 +36,6 @@ func NewClusterStatus(client kclient.Client, cluster *rapi.RedisCluster, restCon
 		statusUnknownPods:  []*PodInfo{},
 	}
 
-	if err := cs.populateNodeToZoneMap(client); err != nil {
-		return nil, err
-	}
 	if err := cs.getRedisPods(client); err != nil {
 		return nil, err
 	}
@@ -102,7 +95,7 @@ func (cs *ClusterStatus) populateStatusUnknownPods(restConfig *rest.Config) {
 	unknownPodInfoMap := map[string]*PodInfo{}
 	for _, pod := range cs.pods {
 		if _, ok := cs.podNameToInfo[pod.Name]; !ok {
-			podInfo := NewPodInfoFromClusterStatus(&pod, cs)
+			podInfo := NewPodInfoFromClusterStatus(&pod)
 			cs.statusUnknownPods = append(cs.statusUnknownPods, podInfo)
 			unknownPodInfoMap[pod.Name] = podInfo
 		}
@@ -114,7 +107,7 @@ func (cs *ClusterStatus) populatePodNameToInfoMap() {
 	for _, node := range cs.cluster.Status.Cluster.Nodes {
 		for _, pod := range cs.pods {
 			if pod.Name == node.PodName {
-				cs.podNameToInfo[pod.Name] = NewPodInfo(&pod, node, cs.nodeToZone)
+				cs.podNameToInfo[pod.Name] = NewPodInfo(&pod, node)
 				break
 			}
 		}
@@ -154,23 +147,6 @@ func (cs *ClusterStatus) getRedisPods(client kclient.Client) error {
 		cs.pods = podList.Items
 	}
 	return err
-}
-
-func (cs *ClusterStatus) populateNodeToZoneMap(client kclient.Client) error {
-	nodeList := kapiv1.NodeList{}
-	err := client.List(context.Background(), &nodeList, kclient.MatchingLabels(cs.cluster.Spec.PodTemplate.Spec.NodeSelector))
-	if err != nil {
-		return err
-	}
-	for _, node := range nodeList.Items {
-		zone, ok := node.Labels[kapiv1.LabelTopologyZone]
-		if ok {
-			cs.nodeToZone[node.Name] = zone
-		} else {
-			cs.nodeToZone[node.Name] = unknownZone
-		}
-	}
-	return nil
 }
 
 func (cs *ClusterStatus) outputRedisClusterStatus() {

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -67,27 +69,23 @@ func main() {
 
 	rcs := &rapi.RedisClusterList{}
 	if clusterName == "" {
-		err = client.List(context.Background(), rcs, kclient.InNamespace(namespace))
-		if err != nil {
+		if err = client.List(context.Background(), rcs, kclient.InNamespace(namespace)); err != nil {
 			glog.Fatalf("unable to list redisclusters: %v", err)
 		}
 	} else {
 		cluster := &rapi.RedisCluster{}
 		namespacedName := types.NamespacedName{Namespace: namespace, Name: clusterName}
-		err := client.Get(context.Background(), namespacedName, cluster)
-		if err == nil {
-			rcs.Items = append(rcs.Items, *cluster)
-		}
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err = client.Get(context.Background(), namespacedName, cluster); err != nil && !apierrors.IsNotFound(err) {
 			glog.Fatalf("unable to get rediscluster %s: %v", clusterName, err)
 		}
+		rcs.Items = append(rcs.Items, *cluster)
 	}
 
 	var wg = sync.WaitGroup{}
 	clusterStatuses := buildRedisClusterStatuses(rcs, client, restConfig, &wg)
 	var data [][]string
 	for _, cluster := range rcs.Items {
-		data = append(data, []string{cluster.Name, cluster.Namespace, buildPodStatus(&cluster), buildClusterStatus(&cluster), string(cluster.Status.Cluster.Status), buildPrimaryStatus(&cluster), buildReplicationStatus(&cluster)})
+		data = append(data, []string{cluster.Name, cluster.Namespace, buildPodStatus(&cluster), buildClusterStatus(&cluster), string(cluster.Status.Cluster.Status), buildPrimaryStatus(&cluster), buildReplicationStatus(&cluster), buildZoneSkew(&cluster)})
 	}
 	wg.Wait()
 	for _, cs := range clusterStatuses {
@@ -127,7 +125,7 @@ func outputRedisClusterState(data [][]string) {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Namespace", "Pods", "Ops Status", "Redis Status", "Nb Primary", "Replication"})
+	table.SetHeader([]string{"Name", "Namespace", "Pods", "Ops Status", "Redis Status", "Nb Primary", "Replication", "Zone Skew"})
 	table.SetBorders(tablewriter.Border{Left: false, Top: false, Right: false, Bottom: false})
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetRowLine(false)
@@ -173,9 +171,9 @@ func buildClusterStatus(cluster *rapi.RedisCluster) string {
 }
 
 func buildPodStatus(cluster *rapi.RedisCluster) string {
-	specPrimary := *cluster.Spec.NumberOfPrimaries
-	specReplication := *cluster.Spec.ReplicationFactor
-	podWanted := (1 + specReplication) * specPrimary
+	numberOfPrimaries := *cluster.Spec.NumberOfPrimaries
+	replicationFactor := *cluster.Spec.ReplicationFactor
+	podWanted := numberOfPrimaries * (1 + replicationFactor)
 
 	numPods := cluster.Status.Cluster.NumberOfPods
 	numPodsReady := cluster.Status.Cluster.NumberOfPodsReady
@@ -190,6 +188,15 @@ func buildPrimaryStatus(cluster *rapi.RedisCluster) string {
 func buildReplicationStatus(cluster *rapi.RedisCluster) string {
 	spec := *cluster.Spec.ReplicationFactor
 	return fmt.Sprintf("%d-%d/%d", cluster.Status.Cluster.MinReplicationFactor, cluster.Status.Cluster.MaxReplicationFactor, spec)
+}
+
+func buildZoneSkew(cluster *rapi.RedisCluster) string {
+	balanced := "BALANCED"
+	primarySkew, replicaSkew, ok := utils.GetZoneSkewByRole(utils.ZoneToRole(cluster.Status.Cluster.Nodes))
+	if !ok {
+		balanced = "UNBALANCED"
+	}
+	return fmt.Sprintf("%d/%d/%s", primarySkew, replicaSkew, balanced)
 }
 
 func configFromPath(path string) (clientcmd.ClientConfig, error) {

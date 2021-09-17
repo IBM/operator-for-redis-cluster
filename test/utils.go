@@ -8,7 +8,7 @@ import (
 )
 
 func NewRedisReplicaNode(id, zone, primaryRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
-	node := NewRedisNode(rapi.RedisClusterNodeRoleReplica, id, podName, nodeName, nil)
+	node := newRedisNode(rapi.RedisClusterNodeRoleReplica, id, podName, nodeName, nil)
 	node.PrimaryRef = primaryRef
 	role := "replica"
 	redisNode := redis.Node{ID: id, PrimaryReferent: primaryRef, Zone: zone, Role: role, Pod: node.Pod}
@@ -22,12 +22,12 @@ func NewRedisPrimaryNode(id, zone, podName, nodeName string, slots []string) (ra
 		i, _ := redis.DecodeSlot(s)
 		slotsInt = append(slotsInt, i)
 	}
-	node := NewRedisNode(rapi.RedisClusterNodeRolePrimary, id, podName, nodeName, slots)
+	node := newRedisNode(rapi.RedisClusterNodeRolePrimary, id, podName, nodeName, slots)
 	redisNode := redis.Node{ID: id, Zone: zone, Slots: slotsInt, Role: role, Pod: node.Pod}
 	return node, redisNode
 }
 
-func NewRedisNode(role rapi.RedisClusterNodeRole, id, podName, nodeName string, slots []string) rapi.RedisClusterNode {
+func newRedisNode(role rapi.RedisClusterNodeRole, id, podName, nodeName string, slots []string) rapi.RedisClusterNode {
 	pod := NewPod(podName, nodeName)
 
 	return rapi.RedisClusterNode{ID: id, Slots: slots, Role: role, Pod: pod}

@@ -9,6 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
+	corev1 "k8s.io/api/core/v1"
+
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 
 	"github.com/mediocregopher/radix/v4"
@@ -90,6 +93,31 @@ type AdminOptions struct {
 type Admin struct {
 	hashMaxSlots Slot
 	cnx          AdminConnectionsInterface
+}
+
+// NewRedisAdmin builds and returns new Admin from the list of pods
+func NewRedisAdmin(ctx context.Context, pods []corev1.Pod, cfg *config.Redis) (AdminInterface, error) {
+	nodesAddrs := []string{}
+	for _, pod := range pods {
+		redisPort := DefaultRedisPort
+		for _, container := range pod.Spec.Containers {
+			if container.Name == "redis-node" {
+				for _, port := range container.Ports {
+					if port.Name == "redis" {
+						redisPort = fmt.Sprintf("%d", port.ContainerPort)
+						break
+					}
+				}
+			}
+		}
+		nodesAddrs = append(nodesAddrs, net.JoinHostPort(pod.Status.PodIP, redisPort))
+	}
+	adminConfig := AdminOptions{
+		ConnectionTimeout:  time.Duration(cfg.DialTimeout) * time.Millisecond,
+		RenameCommandsFile: cfg.GetRenameCommandsFile(),
+	}
+
+	return NewAdmin(ctx, nodesAddrs, &adminConfig), nil
 }
 
 // NewAdmin returns new AdminInterface instance

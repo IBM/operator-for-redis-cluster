@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+
 	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -228,48 +230,51 @@ func UpdateConfigRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.
 // ZonesBalancedFunc checks if the RedisCluster node's zones are balanced
 func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
 	return func() error {
-		idToPrimary := make(map[string]rapi.RedisClusterNode)
-		zoneToPrimaries := make(map[string][]rapi.RedisClusterNode)
-		zoneToReplicas := make(map[string][]rapi.RedisClusterNode)
-
+		primaryToReplicas := make(map[string][]rapi.RedisClusterNode)
+		primaryToZone := make(map[string]string)
 		ctx := context.Background()
 		cluster := &rapi.RedisCluster{}
-		clusterName := types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}
-		err := kubeClient.Get(ctx, clusterName, cluster)
-		if err != nil {
+		if err := kubeClient.Get(ctx, types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}, cluster); err != nil {
 			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
 			return err
 		}
-
-		nodeList := &v1.NodeList{}
-		err = kubeClient.List(ctx, nodeList, kclient.MatchingLabels(cluster.Spec.PodTemplate.Spec.NodeSelector))
+		kubeNodes, err := utils.GetKubeNodes(ctx, kubeClient, cluster.Spec.PodTemplate.Spec.NodeSelector)
 		if err != nil {
-			return LogAndReturnErrorf("error getting k8s nodes with label selector %s", cluster.Spec.PodTemplate.Spec.NodeSelector)
+			return err
 		}
-		kubeNodes := nodeList.Items
-		zones := getZonesFromKubeNodes(kubeNodes)
-		nodes := cluster.Status.Cluster.Nodes
-		for _, node := range nodes {
-			pod := &v1.Pod{}
-			err := kubeClient.Get(ctx, types.NamespacedName{Namespace: cluster.Namespace, Name: node.PodName}, pod)
-			if err != nil {
-				return LogAndReturnErrorf("error getting pod for redis node %s", node.ID)
+		// initialize primaries
+		for _, node := range cluster.Status.Cluster.Nodes {
+			if node.Role == rapi.RedisClusterNodeRolePrimary {
+				primaryToReplicas[node.ID] = []rapi.RedisClusterNode{}
+				primaryToZone[node.ID] = node.Zone
 			}
-			addNodeToMaps(node, pod.Spec.NodeName, kubeNodes, idToPrimary, zoneToPrimaries, zoneToReplicas)
 		}
-		// check for primary and replica in the same zone
-		if int(*cluster.Spec.ReplicationFactor) < len(zones) {
-			for zone, replicas := range zoneToReplicas {
-				for _, node := range replicas {
-					if sameZone(node, zone, idToPrimary, kubeNodes) {
-						return LogAndReturnErrorf("primary node cannot be in the same zone as a replica node if RF < number of zones")
+		// attach replicas to primaries
+		for _, node := range cluster.Status.Cluster.Nodes {
+			if node.Role == rapi.RedisClusterNodeRoleReplica && node.PrimaryRef != "" {
+				primaryToReplicas[node.PrimaryRef] = append(primaryToReplicas[node.PrimaryRef], node)
+			}
+		}
+		if int(*cluster.Spec.ReplicationFactor) < len(utils.GetZonesFromKubeNodes(kubeNodes)) {
+			// check for primaries and replicas in same zone
+			for primary, replicas := range primaryToReplicas {
+				for _, replica := range replicas {
+					if replica.Zone == primaryToZone[primary] {
+						glog.Warningf("primary node should not be in the same zone as a replica node if RF < number of zones - primary: %s, replica: %s, zone: %s", primary, replica.ID, replica.Zone)
 					}
 				}
 			}
 		}
 		// check for large zone skew
-		if err = zonesSkewed(zoneToPrimaries, zoneToReplicas); err != nil {
-			return err
+		zoneToPrimaries, zoneToReplicas := utils.ZoneToRole(cluster.Status.Cluster.Nodes)
+		primarySkew, replicaSkew, ok := utils.GetZoneSkewByRole(zoneToPrimaries, zoneToReplicas)
+		if !ok {
+			if primarySkew > 2 {
+				return LogAndReturnErrorf("primary node zones are not balanced, skew is too large: %v", primarySkew)
+			}
+			if replicaSkew > 2 {
+				return LogAndReturnErrorf("replica node zones are not balanced, skew is too large: %v", replicaSkew)
+			}
 		}
 		Logf("RedisCluster node zones are balanced")
 		return nil

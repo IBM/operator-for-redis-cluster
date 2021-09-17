@@ -8,8 +8,8 @@ import (
 var (
 	defaultNumberOfPrimaries = proto.Int32(3)
 	defaultReplicationFactor = proto.Int32(1)
-	defaultKeyBatchSize      = proto.Int32(1000)
-	defaultSlotBatchSize     = proto.Int32(100)
+	defaultKeyBatchSize      = proto.Int32(10000)
+	defaultSlotBatchSize     = proto.Int32(16)
 	defaultIdleTimeoutMillis = proto.Int32(30000)
 )
 
