@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 
 	"k8s.io/api/policy/v1beta1"
@@ -38,6 +40,16 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 			AdditionalLabels:  map[string]string{"foo": "bar"},
 			NumberOfPrimaries: &nbPrimary,
 			ReplicationFactor: &replication,
+			RollingUpdate: &rapi.RollingUpdate{
+				Migration: rapi.Migration{
+					KeyBatchSize:  proto.Int32(10000),
+					SlotBatchSize: proto.Int32(1000),
+				},
+			},
+			Scaling: &rapi.Migration{
+				KeyBatchSize:  proto.Int32(10000),
+				SlotBatchSize: proto.Int32(1000),
+			},
 			PodTemplate: &v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
