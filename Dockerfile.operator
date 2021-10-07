@@ -1,5 +1,5 @@
-ARG BUILDIMAGE=golang:1.15-buster
-ARG BASEIMAGE=debian:buster-slim
+ARG BUILDIMAGE=golang:1.17-bullseye
+ARG BASEIMAGE=debian:bullseye-slim
 ARG DOCKER_PROXY_REGISTRY
 
 FROM ${DOCKER_PROXY_REGISTRY}${BUILDIMAGE} AS builder

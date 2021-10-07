@@ -268,12 +268,13 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 		allPodsReady = false
 	}
 
-	// Now check if the operator needs to execute some operation on the redis cluster
+	// Check if the operator needs to execute some operation on the redis cluster
 	needSanitize, err := c.checkSanity(ctx, redisCluster, admin, clusterInfos)
 	if err != nil {
 		glog.Errorf("checkSanity, error happened in dryrun mode, err:%v", err)
 		return result, err
 	}
+
 	if allPodsReady {
 		if !checkZoneBalance(redisCluster) {
 			glog.Warningf("Node zones are not balanced. Trigger a rolling update to reschedule redis pods across zones.")

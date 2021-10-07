@@ -31,25 +31,29 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Common labels
+Version labels
 */}}
-{{- define "icm-redis-cluster.labels" -}}
+{{- define "icm-redis-cluster.chartLabels" }}
 helm.sh/chart: {{ include "icm-redis-cluster.chart" . }}
-{{ include "icm-redis-cluster.selectorLabels" . }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "icm-redis-cluster.labels" -}}
+{{ include "icm-redis-cluster.selectorLabels" . }}
+{{ include "icm-redis-cluster.chartLabels" . }}
 {{- end }}
 
 {{- define "icm-redis-cluster-metrics.labels" -}}
 app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}-metrics
-helm.sh/chart: {{ include "icm-redis-cluster.chart" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/component: metrics
+{{ include "icm-redis-cluster.chartLabels" . }}
 {{- end }}
 
 {{/*
@@ -58,6 +62,7 @@ Selector labels
 {{- define "icm-redis-cluster.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: database
 {{- end }}
 
 {{/*

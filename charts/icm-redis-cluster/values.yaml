@@ -139,23 +139,37 @@ scaling:
 
 metrics:
   enabled: false
-  image:
-    repository: us.icr.io/icm-docker-images/redis-exporter
-    tag: v1
-    pullPolicy: IfNotPresent
-  port:
-    name: metrics
-    number: 9121
+  exporter:
+    image:
+      repository: us.icr.io/icm-docker-images/redis-exporter
+      tag: v1
+      pullPolicy: IfNotPresent
+    port:
+      name: metrics
+      number: 9121
+    serviceMonitor:
+      enabled: false
+      path: /metrics
+      interval: 30s
+      namespace: ""
+      labels: {}
+  server:
+    image:
+      repository: us.icr.io/icm-docker-images/icm-redis-metrics
+      tag: latest
+      pullPolicy: IfNotPresent
+    port:
+      name: metrics
+      number: 8080
+    serviceMonitor:
+      enabled: false
+      interval: 30s
+      namespace: ""
+      labels: {}
   resources:
     requests:
       cpu: 100m
       memory: 100Mi
-  serviceMonitor:
-    enabled: false
-    path: /metrics
-    interval: 30s
-    namespace: ""
-    labels: {}
   grafanaDashboard:
     enabled: false
     datasourceName: ""

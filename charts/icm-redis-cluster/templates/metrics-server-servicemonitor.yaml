@@ -1,11 +1,11 @@
-{{ if .Values.metrics.serviceMonitor.enabled }}
+{{ if and .Values.metrics.enabled .Values.metrics.server.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "icm-redis-cluster.fullname" . }}-metrics
-  namespace: {{ with .Values.metrics.serviceMonitor.namespace }}{{ . }}{{ else }}{{ $.Release.Namespace }}{{ end }}
+  namespace: {{ with .Values.metrics.server.serviceMonitor.namespace }}{{ . }}{{ else }}{{ $.Release.Namespace }}{{ end }}
   labels: {{ include "icm-redis-cluster-metrics.labels" . | nindent 4 }}
-    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- with .Values.metrics.server.serviceMonitor.labels }}
     {{- . | toYaml | nindent 4 }}
     {{- end }}
 spec:
@@ -14,10 +14,11 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}-metrics
       app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: metrics
   namespaceSelector:
     matchNames: [{{ .Release.Namespace }}]
   endpoints:
-    - port: {{ .Values.metrics.port.name }}
-      path: {{ .Values.metrics.serviceMonitor.path }}
-      interval: {{ .Values.metrics.serviceMonitor.interval }}
+    - port: {{ .Values.metrics.server.port.name }}
+      path: /metrics
+      interval: {{ .Values.metrics.server.serviceMonitor.interval }}
 {{ end }}

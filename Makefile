@@ -1,13 +1,11 @@
 ARTIFACT_OPERATOR=redis-operator
 ARTIFACT_INITCONTAINER=init-container
 
-# 0.0 shouldn't clobber any released builds
 PREFIX=us.icr.io/icm-docker-images/
-#PREFIX = gcr.io/google_containers/
 
 SOURCES := $(shell find . ! -name "*_test.go" -name '*.go')
 
-CMDBINS := operator node
+CMDBINS := operator node metrics
 CRD_OPTIONS ?= "crd:crdVersions=v1,trivialVersions=false,generateEmbeddedObjectMeta=true"
 
 ifeq (,$(shell go env GOBIN))

@@ -55,8 +55,8 @@ spec:
       containers:
         {{- if .Values.metrics.enabled }}
         - name: redis-exporter
-          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
-          imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
+          image: "{{ .Values.metrics.exporter.image.repository }}:{{ .Values.metrics.exporter.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.exporter.image.pullPolicy }}
           resources: {{- toYaml .Values.metrics.resources | nindent 12 }}
           env:
             - name: REDIS_EXPORTER_SCRIPT
@@ -65,8 +65,8 @@ spec:
             - name: redis-exporter-lua-metrics
               mountPath: /redis-metrics
           ports:
-          - containerPort: {{ .Values.metrics.port.number }}
-            name: {{ .Values.metrics.port.name }}
+          - containerPort: {{ .Values.metrics.exporter.port.number }}
+            name: {{ .Values.metrics.exporter.port.name }}
         {{- end }}
         - name: redis-node
           securityContext: {{- toYaml .Values.securityContext | nindent 12 }}

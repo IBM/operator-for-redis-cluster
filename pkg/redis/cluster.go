@@ -42,11 +42,10 @@ func (c *Cluster) GetZones() []string {
 	for _, node := range c.KubeNodes {
 		zone, ok := node.Labels[corev1.LabelTopologyZone]
 		if ok {
-			if _, hasZone := set[zone]; !hasZone {
-				set[zone] = struct{}{}
-			}
+			set[zone] = struct{}{}
+		} else {
+			set[rapi.UnknownZone] = struct{}{}
 		}
-
 	}
 	if len(set) == 0 {
 		set[rapi.UnknownZone] = struct{}{}

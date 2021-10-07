@@ -107,6 +107,27 @@ func GetZone(nodeName string, kubeNodes []corev1.Node) string {
 	return rapi.UnknownZone
 }
 
+func GetZones(nodes []corev1.Node) []string {
+	set := make(map[string]struct{})
+	var zones []string
+	for _, node := range nodes {
+		zone, ok := node.Labels[corev1.LabelTopologyZone]
+		if ok {
+			set[zone] = struct{}{}
+		} else {
+			set[rapi.UnknownZone] = struct{}{}
+		}
+	}
+	if len(set) == 0 {
+		set[rapi.UnknownZone] = struct{}{}
+	}
+	for key := range set {
+		zones = append(zones, key)
+	}
+	sort.Strings(zones)
+	return zones
+}
+
 func GetZoneSkewByRole(zoneToPrimaries map[string][]string, zoneToReplicas map[string][]string) (int, int, bool) {
 	primarySkew := GetZoneSkew(zoneToPrimaries)
 	replicaSkew := GetZoneSkew(zoneToReplicas)

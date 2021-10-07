@@ -20,13 +20,17 @@ limitations under the License.
 package v1alpha1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/rest"
 )
 
 const (
 	GroupName = "db.ibm.com"
-	// ResourcePlural is the id to indentify pluarals
+	// ResourcePlural is the id to identify plural resource
 	ResourcePlural = "redisclusters"
 	// ResourceSingular represents the id for identify singular resource
 	ResourceSingular = "rediscluster"
@@ -40,11 +44,32 @@ var (
 	// GroupVersion is group version used to register these objects
 	GroupVersion = schema.GroupVersion{Group: GroupName, Version: ResourceVersion}
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
-	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
+	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
 
-func init() {
-	SchemeBuilder.Register(&RedisCluster{}, &RedisClusterList{})
+func addKnownTypes(scheme *runtime.Scheme) error {
+	scheme.AddKnownTypes(GroupVersion,
+		&RedisCluster{},
+		&RedisClusterList{},
+	)
+	metav1.AddToGroupVersion(scheme, GroupVersion)
+	return nil
+}
+
+func NewClient(cfg *rest.Config) (*rest.RESTClient, error) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(SchemeBuilder.AddToScheme(scheme))
+	config := *cfg
+	config.GroupVersion = &GroupVersion
+	config.APIPath = "/apis"
+	config.ContentType = runtime.ContentTypeJSON
+	config.UserAgent = rest.DefaultKubernetesUserAgent()
+	config.NegotiatedSerializer = serializer.NewCodecFactory(scheme).WithoutConversion()
+	client, err := rest.RESTClientFor(&config)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }

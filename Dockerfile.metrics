@@ -1,5 +1,5 @@
 ARG BUILDIMAGE=golang:1.17-bullseye
-ARG BASEIMAGE=redis:6.2.5-buster
+ARG BASEIMAGE=debian:bullseye-slim
 ARG DOCKER_PROXY_REGISTRY
 
 FROM ${DOCKER_PROXY_REGISTRY}${BUILDIMAGE} AS builder
@@ -9,7 +9,7 @@ ARG BUILDTIME
 ARG VERSION
 ARG REVISION
 
-ENV DEBIAN_FRONTEND=noninteractive 
+ENV DEBIAN_FRONTEND=noninteractive
 ENV INSTALL_DIRECTORY=/usr/local/bin
 ENV GOPROXY=https://proxy.golang.org
 
@@ -26,7 +26,7 @@ RUN go mod download
 COPY cmd/ cmd/
 COPY api/ api/
 COPY pkg/ pkg/
-COPY cmd/node/main.go ./
+COPY cmd/metrics/main.go ./
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
@@ -36,10 +36,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
       -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.VERSION=$VERSION \
       -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REVISION=$REVISION" \
     -a \
-    -o redis-node \
+    -o metrics \
     .
 
 FROM ${DOCKER_PROXY_REGISTRY}${BASEIMAGE}
 LABEL maintainer="William Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>, Kenny Scharm <kenny.scharm@ibm.com>"
-COPY --from=builder /go/src/icm-redis-operator/redis-node /
-ENTRYPOINT ["/redis-node"]
+COPY --from=builder /go/src/icm-redis-operator/metrics /
+ENTRYPOINT ["/metrics"]

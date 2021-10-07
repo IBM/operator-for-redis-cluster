@@ -27,8 +27,8 @@ data:
       "editable": true,
       "gnetId": 763,
       "graphTooltip": 0,
-      "id": 135,
-      "iteration": 1628542138439,
+      "id": 169,
+      "iteration": 1632254170495,
       "links": [],
       "panels": [
         {
@@ -46,35 +46,22 @@ data:
           "type": "row"
         },
         {
-          "id": 12,
-          "gridPos": {
-            "h": 7,
-            "w": 4,
-            "x": 0,
-            "y": 1
-          },
-          "type": "piechart",
-          "title": "Total Clients",
+          "cacheTimeout": null,
           "datasource": "{{ required "Field .Values.metrics.grafanaDashboard.datasourceName is required" .Values.metrics.grafanaDashboard.datasourceName }}",
-          "pluginVersion": "7.2.0",
-          "timeFrom": "1m",
-          "hideTimeOverride": true,
-          "maxDataPoints": 100,
-          "links": [],
           "fieldConfig": {
             "defaults": {
-              "custom": {
-                "hideFrom": {
-                  "tooltip": false,
-                  "viz": false,
-                  "legend": false
-                }
-              },
               "color": {
                 "mode": "palette-classic"
               },
-              "mappings": [],
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
               "decimals": 0,
+              "mappings": [],
               "max": 0,
               "unit": "none"
             },
@@ -111,56 +98,69 @@ data:
               }
             ]
           },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 0,
+            "y": 1
+          },
+          "hideTimeOverride": true,
+          "id": 12,
+          "interval": null,
+          "links": [],
+          "maxDataPoints": 100,
           "options": {
-            "reduceOptions": {
-              "values": false,
-              "calcs": [
-                  "sum"
-              ],
-              "fields": ""
-            },
-            "pieType": "pie",
-            "tooltip": {
-              "mode": "single"
-            },
             "legend": {
+              "calcs": [],
               "displayMode": "table",
               "placement": "bottom",
               "values": [
                   "value",
                   "percent"
+              ]
+            },
+            "pieType": "pie",
+            "reduceOptions": {
+              "calcs": [
+                  "sum"
               ],
-              "calcs": []
+              "fields": "",
+              "values": false
+            },
+            "tooltip": {
+              "mode": "single"
             }
           },
+          "pluginVersion": "7.2.0",
           "targets": [
             {
-              "expr": "sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
-              "legendFormat": "connected clients",
-              "interval": "",
               "exemplar": true,
+              "expr": "sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
               "format": "time_series",
               "hide": false,
+              "instant": true,
+              "interval": "",
               "intervalFactor": 2,
+              "legendFormat": "connected clients",
               "metric": "",
               "refId": "A",
-              "step": 2,
-              "instant": true
+              "step": 2
             },
             {
-              "expr": "max(redis_config_maxclients) - sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
-              "legendFormat": "available clients",
-              "interval": "",
               "exemplar": true,
+              "expr": "max(redis_config_maxclients) - sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
               "hide": false,
               "instant": true,
+              "interval": "",
               "intervalFactor": 2,
+              "legendFormat": "available clients",
               "refId": "B"
             }
           ],
-          "cacheTimeout": null,
-          "interval": null,
-          "timeShift": null
+          "timeFrom": "1m",
+          "timeShift": null,
+          "title": "Total Clients",
+          "type": "piechart"
         },
         {
           "cacheTimeout": null,
@@ -205,7 +205,7 @@ data:
           "gridPos": {
             "h": 7,
             "w": 4,
-            "x": 4,
+            "x": 6,
             "y": 1
           },
           "hideTimeOverride": true,
@@ -229,7 +229,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "sum(redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) / sum(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) * 100",
+              "expr": "sum(redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) / sum(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) * 100",
               "format": "time_series",
               "intervalFactor": 2,
               "metric": "",
@@ -240,6 +240,209 @@ data:
           "timeFrom": "1m",
           "timeShift": null,
           "title": "Total Memory Usage",
+          "type": "gauge"
+        },
+        {
+          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "label_topology_kubernetes_io_zone": {
+                      "index": 0,
+                      "text": "zone"
+                    }
+                  },
+                  "type": "value"
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 10,
+            "y": 1
+          },
+          "id": 30,
+          "options": {
+            "displayLabels": [
+                "name"
+            ],
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "values": [
+                  "value"
+              ]
+            },
+            "pieType": "pie",
+            "reduceOptions": {
+              "calcs": [
+                  "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(node_per_zone{namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) by (name)",
+              "format": "time_series",
+              "instant": true,
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{ "{{ name }}" }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Pods per Zone",
+          "type": "piechart"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "max": 4,
+              "min": 0,
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-green",
+                    "value": null
+                  },
+                  {
+                    "color": "dark-orange",
+                    "value": 2
+                  },
+                  {
+                    "color": "dark-red",
+                    "value": 3
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 16,
+            "y": 1
+          },
+          "id": 32,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                  "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "8.0.5",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "zone_skew{name=\"primaries\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }",
+              "hide": false,
+              "interval": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Master Zone Skew",
+          "type": "gauge"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "max": 4,
+              "min": 0,
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-green",
+                    "value": null
+                  },
+                  {
+                    "color": "dark-orange",
+                    "value": 2
+                  },
+                  {
+                    "color": "dark-red",
+                    "value": 3
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 20,
+            "y": 1
+          },
+          "id": 33,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                  "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "8.0.5",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "zone_skew{name=\"replicas\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }",
+              "hide": false,
+              "interval": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Slave Zone Skew",
           "type": "gauge"
         },
         {
@@ -297,9 +500,9 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 8,
-            "x": 8,
-            "y": 1
+            "w": 12,
+            "x": 0,
+            "y": 8
           },
           "id": 2,
           "links": [],
@@ -316,7 +519,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "rate(redis_commands_processed_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\"}[1m])",
+              "expr": "rate(redis_commands_processed_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\"}[1m])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -388,9 +591,9 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 8,
-            "x": 16,
-            "y": 1
+            "w": 12,
+            "x": 12,
+            "y": 8
           },
           "id": 1,
           "links": [],
@@ -407,7 +610,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "irate(redis_keyspace_hits_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m])",
+              "expr": "irate(redis_keyspace_hits_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -419,7 +622,7 @@ data:
               "target": ""
             },
             {
-              "expr": "irate(redis_keyspace_misses_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m])",
+              "expr": "irate(redis_keyspace_misses_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -525,7 +728,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 8
+            "y": 15
           },
           "id": 7,
           "links": [],
@@ -542,8 +745,10 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }",
+              "exemplar": true,
+              "expr": "redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }",
               "format": "time_series",
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{ "{{ pod }}" }}",
               "metric": "",
@@ -553,7 +758,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "max(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
+              "expr": "max(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
               "format": "time_series",
               "hide": false,
               "instant": false,
@@ -585,7 +790,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 8
+            "y": 15
           },
           "hiddenSeries": false,
           "id": 10,
@@ -622,7 +827,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "rate(redis_net_input_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m])",
+              "expr": "rate(redis_net_input_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{ "{{ pod }}" }} in",
@@ -630,7 +835,7 @@ data:
               "step": 240
             },
             {
-              "expr": "rate(redis_net_output_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m])",
+              "expr": "rate(redis_net_output_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -682,34 +887,83 @@ data:
           }
         },
         {
-          "id": 5,
+          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 15
+            "y": 22
           },
-          "type": "timeseries",
-          "title": "Total Items per DB",
-          "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "pluginVersion": "8.0.5",
+          "id": 5,
           "links": [],
           "options": {
-            "tooltip": {
-              "mode": "single"
-            },
             "legend": {
-              "displayMode": "table",
-              "placement": "right",
               "calcs": [
                   "lastNotNull"
-              ]
+              ],
+              "displayMode": "table",
+              "placement": "right"
+            },
+            "tooltip": {
+              "mode": "single"
             }
           },
+          "pluginVersion": "8.0.5",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) by (db,pod)",
+              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) by (db,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -719,59 +973,10 @@ data:
               "target": ""
             }
           ],
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "drawStyle": "line",
-                "lineInterpolation": "linear",
-                "barAlignment": 0,
-                "lineWidth": 2,
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "spanNulls": false,
-                "showPoints": "never",
-                "pointSize": 5,
-                "stacking": {
-                  "mode": "normal",
-                  "group": "A"
-                },
-                "axisPlacement": "auto",
-                "axisLabel": "",
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "hideFrom": {
-                  "tooltip": false,
-                  "viz": false,
-                  "legend": false
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "color": {
-                "mode": "palette-classic"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "value": null,
-                    "color": "green"
-                  },
-                  {
-                    "value": 80,
-                    "color": "red"
-                  }
-                ]
-              },
-              "mappings": [],
-              "unit": "none"
-            },
-            "overrides": []
-          },
           "timeFrom": null,
-          "timeShift": null
+          "timeShift": null,
+          "title": "Total Items per DB",
+          "type": "timeseries"
         },
         {
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
@@ -830,7 +1035,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 15
+            "y": 22
           },
           "id": 13,
           "links": [],
@@ -847,7 +1052,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) - sum (redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
+              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) - sum (redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -857,7 +1062,7 @@ data:
               "target": ""
             },
             {
-              "expr": "sum(redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" })",
+              "expr": "sum(redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -887,7 +1092,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 22
+            "y": 29
           },
           "hiddenSeries": false,
           "id": 8,
@@ -924,7 +1129,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(redis_expired_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m]))",
+              "expr": "sum(rate(redis_expired_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m]))",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -936,7 +1141,7 @@ data:
               "target": ""
             },
             {
-              "expr": "sum(rate(redis_evicted_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }[5m]))",
+              "expr": "sum(rate(redis_evicted_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m]))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1044,7 +1249,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 22
+            "y": 29
           },
           "id": 14,
           "links": [],
@@ -1061,7 +1266,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "topk(5, sum by (cmd) (irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" } [1m])))",
+              "expr": "topk(5, sum by (cmd) (irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" } [1m])))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1077,55 +1282,45 @@ data:
           "type": "timeseries"
         },
         {
-          "id": 15,
-          "gridPos": {
-            "h": 12,
-            "w": 14,
-            "x": 0,
-            "y": 29
-          },
-          "type": "timeseries",
-          "title": "Slots Distribution Timeline",
           "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
-          "pluginVersion": "8.0.5",
-          "links": [],
           "fieldConfig": {
             "defaults": {
-              "custom": {
-                "drawStyle": "line",
-                "lineInterpolation": "linear",
-                "barAlignment": 0,
-                "lineWidth": 3,
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "spanNulls": false,
-                "showPoints": "auto",
-                "pointSize": 2,
-                "stacking": {
-                  "mode": "normal",
-                  "group": "A"
-                },
-                "axisPlacement": "auto",
-                "axisLabel": "",
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "hideFrom": {
-                  "tooltip": false,
-                  "viz": false,
-                  "legend": false
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                },
-                "lineStyle": {
-                  "fill": "solid"
-                },
-                "axisSoftMin": 0
-              },
               "color": {
                 "mode": "palette-classic"
               },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "axisSoftMin": 0,
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 3,
+                "pointSize": 2,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1138,30 +1333,38 @@ data:
                     "value": 80
                   }
                 ]
-              },
-              "mappings": []
+              }
             },
             "overrides": []
           },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 36
+          },
+          "id": 15,
+          "links": [],
           "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
             "tooltip": {
               "mode": "single"
-            },
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom",
-              "calcs": []
             }
           },
+          "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
-              "legendFormat": "{{ "{{ pod }}" }}",
-              "interval": "",
               "exemplar": true,
+              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\", key=\"slots_owned\" }",
               "format": "time_series",
               "hide": false,
+              "interval": "",
               "intervalFactor": 2,
+              "legendFormat": "{{ "{{ pod }}" }}",
               "metric": "",
               "refId": "A",
               "step": 240,
@@ -1169,7 +1372,9 @@ data:
             }
           ],
           "timeFrom": null,
-          "timeShift": null
+          "timeShift": null,
+          "title": "Slots Distribution Timeline",
+          "type": "timeseries"
         },
         {
           "cacheTimeout": null,
@@ -1193,10 +1398,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 12,
-            "w": 10,
-            "x": 14,
-            "y": 29
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 36
           },
           "id": 16,
           "interval": null,
@@ -1205,15 +1410,15 @@ data:
             "legend": {
               "calcs": [],
               "displayMode": "table",
-              "placement": "bottom",
+              "placement": "right",
               "values": [
-                  "value"
+                "value"
               ]
             },
             "pieType": "pie",
             "reduceOptions": {
               "calcs": [
-                  "lastNotNull"
+                "lastNotNull"
               ],
               "fields": "",
               "values": false
@@ -1226,17 +1431,17 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\", key=\"slots_owned\" }",
+              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\", key=\"slots_owned\" }",
               "format": "time_series",
               "hide": false,
+              "instant": true,
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{ "{{ pod }}" }}",
               "metric": "",
               "refId": "A",
               "step": 240,
-              "target": "",
-              "instant": true
+              "target": ""
             }
           ],
           "timeFrom": null,
@@ -1251,55 +1456,47 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 41
+            "y": 45
           },
           "id": 20,
           "panels": [
             {
-              "id": 22,
-              "gridPos": {
-                "h": 7,
-                "w": 24,
-                "x": 0,
-                "y": 2
-              },
-              "type": "timeseries",
-              "title": "CPU Usage per Pod",
-              "pluginVersion": "8.0.5",
-              "links": [],
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
               "fieldConfig": {
                 "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
                   "custom": {
-                    "drawStyle": "line",
-                    "lineInterpolation": "linear",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
                     "barAlignment": 0,
-                    "lineWidth": 2,
+                    "drawStyle": "line",
                     "fillOpacity": 0,
                     "gradientMode": "none",
-                    "spanNulls": false,
-                    "showPoints": "never",
-                    "pointSize": 5,
-                    "stacking": {
-                      "mode": "none",
-                      "group": "A"
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
                     },
-                    "axisPlacement": "auto",
-                    "axisLabel": "",
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
                     "scaleDistribution": {
                       "type": "linear"
                     },
-                    "hideFrom": {
-                      "tooltip": false,
-                      "viz": false,
-                      "legend": false
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
                     }
                   },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
+                  "mappings": [],
+                  "min": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -1313,22 +1510,29 @@ data:
                       }
                     ]
                   },
-                  "mappings": [],
-                  "min": 0,
                   "unit": "short"
                 },
                 "overrides": []
               },
+              "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 2
+              },
+              "id": 22,
+              "links": [],
               "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
                 "tooltip": {
                   "mode": "single"
-                },
-                "legend": {
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "calcs": []
                 }
               },
+              "pluginVersion": "8.0.5",
               "targets": [
                 {
                   "exemplar": true,
@@ -1342,73 +1546,66 @@ data:
                   "step": 10
                 },
                 {
-                  "expr": "max(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
-                  "legendFormat": "requests",
-                  "interval": "",
                   "exemplar": true,
-                  "refId": "B",
+                  "expr": "max(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
                   "hide": false,
-                  "intervalFactor": 2
+                  "interval": "",
+                  "intervalFactor": 2,
+                  "legendFormat": "requests",
+                  "refId": "B"
                 },
                 {
-                  "expr": "max(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
-                  "legendFormat": "limits",
-                  "interval": "",
                   "exemplar": true,
-                  "refId": "C",
+                  "expr": "max(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"cpu\"})",
                   "hide": false,
-                  "intervalFactor": 2
+                  "interval": "",
+                  "intervalFactor": 2,
+                  "legendFormat": "limits",
+                  "refId": "C"
                 }
               ],
               "timeFrom": null,
               "timeShift": null,
-              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
+              "title": "CPU Usage per Pod",
+              "type": "timeseries"
             },
             {
-              "id": 24,
-              "gridPos": {
-                "h": 7,
-                "w": 24,
-                "x": 0,
-                "y": 9
-              },
-              "type": "timeseries",
-              "title": "Memory Usage per Pod",
-              "pluginVersion": "8.0.5",
-              "links": [],
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
               "fieldConfig": {
                 "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
                   "custom": {
-                    "drawStyle": "line",
-                    "lineInterpolation": "linear",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
                     "barAlignment": 0,
-                    "lineWidth": 2,
+                    "drawStyle": "line",
                     "fillOpacity": 0,
                     "gradientMode": "none",
-                    "spanNulls": false,
-                    "showPoints": "never",
-                    "pointSize": 5,
-                    "stacking": {
-                      "mode": "none",
-                      "group": "A"
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
                     },
-                    "axisPlacement": "auto",
-                    "axisLabel": "",
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
                     "scaleDistribution": {
                       "type": "linear"
                     },
-                    "hideFrom": {
-                      "tooltip": false,
-                      "viz": false,
-                      "legend": false
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
                     }
                   },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
+                  "mappings": [],
+                  "min": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -1422,8 +1619,6 @@ data:
                       }
                     ]
                   },
-                  "mappings": [],
-                  "min": 0,
                   "unit": "bytes"
                 },
                 "overrides": [
@@ -1509,16 +1704,25 @@ data:
                   }
                 ]
               },
+              "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 9
+              },
+              "id": 24,
+              "links": [],
               "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
                 "tooltip": {
                   "mode": "single"
-                },
-                "legend": {
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "calcs": []
                 }
               },
+              "pluginVersion": "8.0.5",
               "targets": [
                 {
                   "exemplar": true,
@@ -1533,79 +1737,163 @@ data:
                   "step": 10
                 },
                 {
-                  "expr": "max(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
-                  "legendFormat": "requests",
-                  "interval": "",
                   "exemplar": true,
+                  "expr": "max(kube_pod_container_resource_requests{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
                   "format": "time_series",
+                  "hide": false,
+                  "interval": "",
                   "intervalFactor": 2,
+                  "legendFormat": "requests",
                   "legendLink": null,
                   "refId": "B",
-                  "step": 10,
-                  "hide": false
+                  "step": 10
                 },
                 {
-                  "expr": "max(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
-                  "legendFormat": "limits",
-                  "interval": "",
                   "exemplar": true,
+                  "expr": "max(kube_pod_container_resource_limits{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", resource=\"memory\"})",
                   "format": "time_series",
+                  "hide": false,
+                  "interval": "",
                   "intervalFactor": 2,
+                  "legendFormat": "limits",
                   "legendLink": null,
                   "refId": "C",
-                  "step": 10,
-                  "hide": false
+                  "step": 10
                 }
               ],
               "timeFrom": null,
               "timeShift": null,
-              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
+              "title": "Memory Usage per Pod",
+              "type": "timeseries"
             },
             {
-              "id": 26,
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "min": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "short"
+                },
+                "overrides": []
+              },
               "gridPos": {
                 "h": 7,
                 "w": 24,
                 "x": 0,
                 "y": 56
               },
-              "type": "timeseries",
-              "title": "CPU Usage per Node",
-              "pluginVersion": "8.0.5",
+              "id": 26,
               "links": [],
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "single"
+                }
+              },
+              "pluginVersion": "8.0.5",
+              "targets": [
+                {
+                  "exemplar": true,
+                  "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\"}) by (node)",
+                  "format": "time_series",
+                  "interval": "",
+                  "intervalFactor": 2,
+                  "legendFormat": "{{ "{{ pod }}" }}",
+                  "legendLink": null,
+                  "refId": "A",
+                  "step": 10
+                }
+              ],
+              "timeFrom": null,
+              "timeShift": null,
+              "title": "CPU Usage per Node",
+              "type": "timeseries"
+            },
+            {
+              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}",
               "fieldConfig": {
                 "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
                   "custom": {
-                    "drawStyle": "line",
-                    "lineInterpolation": "linear",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
                     "barAlignment": 0,
-                    "lineWidth": 2,
+                    "drawStyle": "line",
                     "fillOpacity": 0,
                     "gradientMode": "none",
-                    "spanNulls": false,
-                    "showPoints": "never",
-                    "pointSize": 5,
-                    "stacking": {
-                      "mode": "none",
-                      "group": "A"
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
                     },
-                    "axisPlacement": "auto",
-                    "axisLabel": "",
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
                     "scaleDistribution": {
                       "type": "linear"
                     },
-                    "hideFrom": {
-                      "tooltip": false,
-                      "viz": false,
-                      "legend": false
+                    "showPoints": "never",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
                     }
                   },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
+                  "mappings": [],
+                  "min": 0,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -1619,120 +1907,36 @@ data:
                       }
                     ]
                   },
-                  "mappings": [],
-                  "min": 0,
-                  "unit": "short"
+                  "unit": "bytes"
                 },
                 "overrides": []
               },
-              "options": {
-                "tooltip": {
-                  "mode": "single"
-                },
-                "legend": {
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "calcs": []
-                }
-              },
-              "targets": [
-                {
-                  "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\"}) by (node)",
-                  "legendFormat": "{{ "{{ pod }}" }}",
-                  "interval": "",
-                  "exemplar": true,
-                  "format": "time_series",
-                  "intervalFactor": 2,
-                  "legendLink": null,
-                  "refId": "A",
-                  "step": 10
-                }
-              ],
-              "timeFrom": null,
-              "timeShift": null,
-              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
-            },
-            {
-              "id": 28,
               "gridPos": {
                 "h": 7,
                 "w": 24,
                 "x": 0,
                 "y": 63
               },
-              "type": "timeseries",
-              "title": "Memory Usage per Node",
-              "pluginVersion": "8.0.5",
+              "id": 28,
               "links": [],
-              "fieldConfig": {
-                "defaults": {
-                  "custom": {
-                    "drawStyle": "line",
-                    "lineInterpolation": "linear",
-                    "barAlignment": 0,
-                    "lineWidth": 2,
-                    "fillOpacity": 0,
-                    "gradientMode": "none",
-                    "spanNulls": false,
-                    "showPoints": "never",
-                    "pointSize": 5,
-                    "stacking": {
-                      "mode": "none",
-                      "group": "A"
-                    },
-                    "axisPlacement": "auto",
-                    "axisLabel": "",
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "hideFrom": {
-                      "tooltip": false,
-                      "viz": false,
-                      "legend": false
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": null
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  },
-                  "mappings": [],
-                  "min": 0,
-                  "unit": "bytes"
-                },
-                "overrides": []
-              },
               "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
                 "tooltip": {
                   "mode": "single"
-                },
-                "legend": {
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "calcs": []
                 }
               },
+              "pluginVersion": "8.0.5",
               "targets": [
                 {
+                  "exemplar": true,
                   "expr": "sum(node_namespace_pod_container:container_memory_working_set_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\"}) by (node)",
                   "legendFormat": "{{ "{{ pod }}" }}",
-                  "interval": "",
-                  "exemplar": true,
                   "format": "time_series",
+                  "interval": "",
                   "intervalFactor": 2,
                   "legendLink": null,
                   "refId": "A",
@@ -1741,7 +1945,8 @@ data:
               ],
               "timeFrom": null,
               "timeShift": null,
-              "datasource": "{{ .Values.metrics.grafanaDashboard.datasourceName }}"
+              "title": "Memory Usage per Node",
+              "type": "timeseries"
             }
           ],
           "title": "Kubernetes Metrics",
@@ -1813,7 +2018,7 @@ data:
             "name": "instance",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
+              "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }, pod)",
               "refId": "Prometheus-instance-Variable-Query"
             },
             "refresh": 2,
@@ -1842,7 +2047,7 @@ data:
             "name": "masters",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }, pod)",
+              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }, pod)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,

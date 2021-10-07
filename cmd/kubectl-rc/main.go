@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -46,17 +45,17 @@ func main() {
 
 	kubeconfigFilePath := getKubeConfigDefaultPath(getHomePath())
 	if len(kubeconfigFilePath) == 0 {
-		log.Fatal("error initializing config, the KUBECONFIG environment variable must be defined")
+		glog.Fatal("error initializing config, the KUBECONFIG environment variable must be defined")
 	}
 
 	config, err := configFromPath(kubeconfigFilePath)
 	if err != nil {
-		log.Fatalf("error obtaining kubectl config: %v", err)
+		glog.Fatalf("error obtaining kubectl config: %v", err)
 	}
 
 	restConfig, err := config.ClientConfig()
 	if err != nil {
-		log.Fatalf(err.Error())
+		glog.Fatal(err)
 	}
 
 	scheme := apiruntime.NewScheme()

@@ -57,8 +57,7 @@ func (p *RedisClusterControl) GetRedisClusterPods(redisCluster *rapi.RedisCluste
 		return nil, err
 	}
 	podList := &kapiv1.PodList{}
-	err = p.KubeClient.List(context.Background(), podList, client.InNamespace(redisCluster.Namespace), client.MatchingLabelsSelector{Selector: selector})
-	if err != nil {
+	if err = p.KubeClient.List(context.Background(), podList, client.InNamespace(redisCluster.Namespace), client.MatchingLabelsSelector{Selector: selector}); err != nil {
 		return nil, err
 	}
 	return podList.Items, nil
@@ -71,8 +70,7 @@ func (p *RedisClusterControl) CreatePod(redisCluster *rapi.RedisCluster) (*kapiv
 		return pod, err
 	}
 	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.GenerateName)
-	err = p.KubeClient.Create(context.Background(), pod)
-	if err != nil {
+	if err = p.KubeClient.Create(context.Background(), pod); err != nil {
 		return nil, err
 	}
 	return pod, nil
@@ -86,8 +84,7 @@ func (p *RedisClusterControl) CreatePodOnNode(redisCluster *rapi.RedisCluster, n
 	}
 	pod.Spec.NodeName = nodeName
 	glog.V(6).Infof("CreatePodOnNode: %s/%s", redisCluster.Namespace, pod.GenerateName)
-	err = p.KubeClient.Create(context.Background(), pod)
-	if err != nil {
+	if err = p.KubeClient.Create(context.Background(), pod); err != nil {
 		return nil, err
 	}
 	return pod, nil
@@ -157,7 +154,6 @@ func initPod(redisCluster *rapi.RedisCluster) (*kapiv1.Pod, error) {
 		return nil, err
 	}
 	pod.Annotations[rapi.PodSpecMD5LabelKey] = hash
-
 	return pod, nil
 }
 
@@ -168,8 +164,7 @@ func GenerateMD5Spec(spec *kapiv1.PodSpec) (string, error) {
 		return "", err
 	}
 	hash := md5.New()
-	_, err = io.Copy(hash, bytes.NewReader(b))
-	if err != nil {
+	if _, err = io.Copy(hash, bytes.NewReader(b)); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
@@ -184,7 +179,6 @@ func BuildOwnerReference(cluster *rapi.RedisCluster) metav1.OwnerReference {
 		UID:        cluster.UID,
 		Controller: boolPtr(true),
 	}
-
 	return controllerRef
 }
 

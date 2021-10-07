@@ -64,10 +64,10 @@ func main() {
 		glog.Fatalf("unable to set up rediscluster controller: %v", err)
 	}
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+	if err = mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		glog.Fatalf("unable to set up health check: %v", err)
 	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+	if err = mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		glog.Fatalf("unable to set up ready check: %v", err)
 	}
 
@@ -77,7 +77,7 @@ func main() {
 	go gc.Run(ctx.Done())
 
 	glog.Info("starting manager")
-	if err := mgr.Start(ctx); err != nil {
+	if err = mgr.Start(ctx); err != nil {
 		glog.Fatalf("problem running manager: %v", err)
 	}
 }
