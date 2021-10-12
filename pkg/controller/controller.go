@@ -6,6 +6,8 @@ import (
 	"math"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -67,6 +69,7 @@ func SetupRedisClusterController(mgr ctrl.Manager, redisClusterController *Contr
 		For(&rapi.RedisCluster{}).
 		Owns(&v1.Pod{}).
 		Owns(&v1.Service{}).
+		Owns(&v1.ConfigMap{}).
 		Owns(&policy.PodDisruptionBudget{}).
 		//WithEventFilter(predicate.NewRedisClusterPredicate()). //uncomment to see kubernetes events in the logs, e.g. ConfigMap updates
 		Complete(redisClusterController)
@@ -125,6 +128,23 @@ func (c *Controller) Reconcile(ctx context.Context, namespacedName ctrl.Request)
 	return result, err
 }
 
+func (c *Controller) reconcileConfigMap(ctx context.Context, cluster *rapi.RedisCluster) (*v1.ConfigMap, error) {
+	cm, err := c.getRedisClusterConfigMap(cluster)
+	if err != nil {
+		glog.Errorf("unable to get redis cluster config map: %v", err)
+		return nil, err
+	}
+	if len(cm.OwnerReferences) == 0 {
+		if err = controllerutil.SetControllerReference(cluster, cm, c.mgr.GetScheme()); err != nil {
+			return nil, err
+		}
+		if err = c.client.Update(ctx, cm); err != nil {
+			return nil, err
+		}
+	}
+	return cm, nil
+}
+
 func (c *Controller) getRedisCluster(ctx context.Context, namespace, name string) (*rapi.RedisCluster, error) {
 	newCluster := &rapi.RedisCluster{}
 	namespacedName := types.NamespacedName{
@@ -180,36 +200,53 @@ func (c *Controller) getRedisClusterPodDisruptionBudget(redisCluster *rapi.Redis
 	return pdb, nil
 }
 
+func (c *Controller) getRedisClusterConfigMap(redisCluster *rapi.RedisCluster) (*v1.ConfigMap, error) {
+	configMap := &v1.ConfigMap{}
+	namespacedName := types.NamespacedName{
+		Name:      redisCluster.Name,
+		Namespace: redisCluster.Namespace,
+	}
+	return configMap, c.client.Get(context.Background(), namespacedName, configMap)
+}
+
 func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCluster) (ctrl.Result, error) {
 	glog.V(6).Info("syncCluster START")
 	defer glog.V(6).Info("syncCluster STOP")
 	result := ctrl.Result{}
+
+	redisClusterConfigMap, err := c.reconcileConfigMap(ctx, redisCluster)
+	if err != nil {
+		glog.Errorf("RedisCluster-Operator.Reconcile unable to update config map associated with RedisCluster %s/%s: %v", redisClusterConfigMap.Namespace, redisCluster.Name, err)
+		return result, err
+	}
+
 	redisClusterService, err := c.getRedisClusterService(redisCluster)
 	if err != nil {
-		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieves service associated to the RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
+		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieve service associated with RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
 		return result, err
 	}
 	if redisClusterService == nil {
 		if _, err = c.serviceControl.CreateRedisClusterService(redisCluster); err != nil {
-			glog.Errorf("RedisCluster-Operator.Reconcile unable to create service associated to the RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
+			glog.Errorf("RedisCluster-Operator.Reconcile unable to create service associated with RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
 			return result, err
 		}
 	}
 
 	redisClusterPodDisruptionBudget, err := c.getRedisClusterPodDisruptionBudget(redisCluster)
 	if err != nil {
-		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieves podDisruptionBudget associated to the RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
+		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieve podDisruptionBudget associated with RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
 		return result, err
 	}
 	if redisClusterPodDisruptionBudget == nil {
 		if _, err = c.podDisruptionBudgetControl.CreateRedisClusterPodDisruptionBudget(redisCluster); err != nil {
-			glog.Errorf("RedisCluster-Operator.Reconcile unable to create podDisruptionBudget associated to the RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
+			glog.Errorf("RedisCluster-Operator.Reconcile unable to create podDisruptionBudget associated with RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
 			return result, err
 		}
 	}
+
 	redisPods, err := c.podControl.GetRedisClusterPods(redisCluster)
 	if err != nil {
-		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieves pod associated to the RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
+		glog.Errorf("RedisCluster-Operator.Reconcile unable to retrieve pods associated with RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
 		return result, err
 	}
 
@@ -222,7 +259,6 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 		redisPods = pods
 	}
 
-	// RedisAdmin is used access the Redis process in the different pods.
 	admin, err := redis.NewRedisAdmin(ctx, redisPods, &c.config.redis)
 	if err != nil {
 		return result, fmt.Errorf("unable to create the redis.Admin, err:%v", err)
@@ -276,6 +312,16 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 	}
 
 	if allPodsReady {
+		configChanges, err := checkServerConfig(ctx, admin, redisClusterConfigMap)
+		if err != nil {
+			glog.Warningf("unable to get server config: %v", err)
+		}
+		if len(configChanges) > 0 {
+			if err = updateConfig(ctx, admin, configChanges); err != nil {
+				return result, err
+			}
+			c.recorder.Event(redisCluster, v1.EventTypeNormal, "ConfigUpdate", "Server configuration updated")
+		}
 		if !checkZoneBalance(redisCluster) {
 			glog.Warningf("Node zones are not balanced. Trigger a rolling update to reschedule redis pods across zones.")
 			c.recorder.Event(redisCluster, v1.EventTypeWarning, "UnbalancedZones", "Zones are unbalanced")

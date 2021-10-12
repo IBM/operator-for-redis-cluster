@@ -4,12 +4,27 @@ import (
 	"context"
 	"errors"
 	"math"
+	"regexp"
 	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/golang/glog"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	kilobyte = 1000
+	kibibyte = 1024
+)
+
+var (
+	unitsRegex, _  = regexp.Compile("[bkmgBKMG]*")
+	digitsRegex, _ = regexp.Compile("[0-9]+")
 )
 
 // IsPodReady check if pod is in ready condition, return the error message otherwise
@@ -152,4 +167,29 @@ func GetNbPodsToCreate(cluster *rapi.RedisCluster) int32 {
 	nbMigrationPods := 1 + *cluster.Spec.ReplicationFactor
 	nbRequiredPods := *cluster.Spec.NumberOfPrimaries * nbMigrationPods
 	return nbRequiredPods + nbMigrationPods - cluster.Status.Cluster.NumberOfPods
+}
+
+func StringToByteString(value string) string {
+	lower := strings.ToLower(value)
+	digits, err := strconv.Atoi(unitsRegex.ReplaceAllString(lower, ""))
+	if err != nil {
+		glog.Errorf("error converting to int: %v", err)
+	}
+	units := digitsRegex.ReplaceAllString(lower, "")
+	result := int64(digits)
+	switch units {
+	case "k":
+		result *= kilobyte
+	case "kb":
+		result *= kibibyte
+	case "m":
+		result *= int64(math.Pow(kilobyte, 2))
+	case "mb":
+		result *= int64(math.Pow(kibibyte, 2))
+	case "g":
+		result *= int64(math.Pow(kilobyte, 3))
+	case "gb":
+		result *= int64(math.Pow(kibibyte, 3))
+	}
+	return strconv.FormatInt(result, 10)
 }

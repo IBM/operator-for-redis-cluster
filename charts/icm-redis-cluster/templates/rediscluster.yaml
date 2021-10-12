@@ -149,6 +149,9 @@ spec:
         - name: extra-conf
           configMap:
             name: {{ include "icm-redis-cluster.fullname" . }}
+            items:
+              - key: redis.conf
+                path: redis.conf
         {{- end }}
         - name: podinfo
           downwardAPI:

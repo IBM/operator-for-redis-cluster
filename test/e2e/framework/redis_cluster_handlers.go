@@ -239,7 +239,30 @@ func UpdateConfigRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.
 	}
 }
 
-// ZonesBalancedFunc checks if the RedisCluster node's zones are balanced
+// CreateRedisClusterConfigMapFunc returns a func to create a RedisCluster server configuration config map
+func CreateRedisClusterConfigMapFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+	return func() error {
+		configMap := &v1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      rediscluster.Name,
+				Namespace: rediscluster.Namespace,
+			},
+			Data: map[string]string{
+				"maxmemory-policy": "volatile-lfu",
+				"maxmemory":        "8gb",
+				"cluster-enabled":  "yes",
+			},
+		}
+		if err := kubeClient.Create(context.Background(), configMap); err != nil {
+			glog.Warningf("cannot create ConfigMap %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			return err
+		}
+		Logf("ConfigMap created")
+		return nil
+	}
+}
+
+// ZonesBalancedFunc checks if a RedisCluster's node zones are balanced
 func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
 	return func() error {
 		primaryToReplicas := make(map[string][]rapi.RedisClusterNode)

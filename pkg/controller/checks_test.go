@@ -711,7 +711,7 @@ func Test_checkShouldDeletePods(t *testing.T) {
 	}
 }
 
-func Test_checkreplicaOfReplica(t *testing.T) {
+func Test_checkReplicasOfReplica(t *testing.T) {
 	primary1 := rapi.RedisClusterNode{ID: "primary1", Slots: []string{"1"}, Role: rapi.RedisClusterNodeRolePrimary}
 	primary2 := rapi.RedisClusterNode{ID: "primary2", Slots: []string{"2"}, Role: rapi.RedisClusterNodeRolePrimary}
 	primary3 := rapi.RedisClusterNode{ID: "primary3", Slots: []string{"3"}, Role: rapi.RedisClusterNodeRolePrimary}
@@ -839,9 +839,9 @@ func Test_needClusterOperation(t *testing.T) {
 							NumberOfPods:         3,
 							NumberOfPodsReady:    3,
 							Nodes: []rapi.RedisClusterNode{
-								{ID: "Primary1", Role: rapi.RedisClusterNodeRolePrimary, Pod: newPodWithContainer("pod1", "vm1", map[string]string{"redis": "redis:4.0.0"})},
-								{ID: "Replica1", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "Primary1", Pod: newPodWithContainer("pod2", "vm3", map[string]string{"redis": "redis:4.0.0"})},
-								{ID: "Replica2", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "Primary1", Pod: newPodWithContainer("pod3", "vm3", map[string]string{"redis": "redis:4.0.0"})},
+								{ID: "Primary1", Role: rapi.RedisClusterNodeRolePrimary, Pod: newPodWithContainer("pod1", map[string]string{"redis": "redis:4.0.0"})},
+								{ID: "Replica1", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "Primary1", Pod: newPodWithContainer("pod2", map[string]string{"redis": "redis:4.0.0"})},
+								{ID: "Replica2", Role: rapi.RedisClusterNodeRoleReplica, PrimaryRef: "Primary1", Pod: newPodWithContainer("pod3", map[string]string{"redis": "redis:4.0.0"})},
 							},
 						},
 					},
@@ -996,11 +996,11 @@ func Test_needClusterOperation(t *testing.T) {
 }
 
 func Test_comparePodsWithPodTemplate(t *testing.T) {
-	Node1 := rapi.RedisClusterNode{ID: "replica1", Pod: newPodWithContainer("pod1", "vm1", map[string]string{"redis": "redis:4.0.0"})}
-	Node1bis := rapi.RedisClusterNode{ID: "primary1", Pod: newPodWithContainer("pod3", "vm3", map[string]string{"redis": "redis:4.0.0"})}
+	Node1 := rapi.RedisClusterNode{ID: "replica1", Pod: newPodWithContainer("pod1", map[string]string{"redis": "redis:4.0.0"})}
+	Node1bis := rapi.RedisClusterNode{ID: "primary1", Pod: newPodWithContainer("pod3", map[string]string{"redis": "redis:4.0.0"})}
 
-	Node2 := rapi.RedisClusterNode{ID: "primary2", Pod: newPodWithContainer("pod2", "vm2", map[string]string{"redis": "redis:4.0.6"})}
-	Node2bis := rapi.RedisClusterNode{ID: "primary3", Pod: newPodWithContainer("pod4", "vm4", map[string]string{"redis": "redis:4.0.6"})}
+	Node2 := rapi.RedisClusterNode{ID: "primary2", Pod: newPodWithContainer("pod2", map[string]string{"redis": "redis:4.0.6"})}
+	Node2bis := rapi.RedisClusterNode{ID: "primary3", Pod: newPodWithContainer("pod4", map[string]string{"redis": "redis:4.0.6"})}
 
 	type args struct {
 		cluster *rapi.RedisCluster
@@ -1117,29 +1117,6 @@ func Test_comparePodsWithPodTemplate(t *testing.T) {
 	}
 }
 
-func newPodWithContainer(name, node string, containersInfos map[string]string) *kapiv1.Pod {
-	var containers []kapiv1.Container
-	for name, image := range containersInfos {
-		containers = append(containers, kapiv1.Container{Name: name, Image: image})
-	}
-
-	spec := kapiv1.PodSpec{
-		Containers: containers,
-	}
-
-	hash, _ := ctrlpod.GenerateMD5Spec(&spec)
-
-	pod := &kapiv1.Pod{
-		ObjectMeta: kmetav1.ObjectMeta{
-			Name:        name,
-			Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hash)},
-		},
-		Spec: spec,
-	}
-
-	return pod
-}
-
 func Test_comparePodSpec(t *testing.T) {
 	podSpec1 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:3.0.3"}}}
 	podSpec2 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:4.0.8"}}}
@@ -1212,4 +1189,27 @@ func Test_filterLostNodes(t *testing.T) {
 	if !(len(ok) == 2 || len(ko) == 1) {
 		t.Errorf("filterLostNodes() wrong result ok: %v, ko: %v", ok, ko)
 	}
+}
+
+func newPodWithContainer(name string, containersInfos map[string]string) *kapiv1.Pod {
+	var containers []kapiv1.Container
+	for name, image := range containersInfos {
+		containers = append(containers, kapiv1.Container{Name: name, Image: image})
+	}
+
+	spec := kapiv1.PodSpec{
+		Containers: containers,
+	}
+
+	hash, _ := ctrlpod.GenerateMD5Spec(&spec)
+
+	pod := &kapiv1.Pod{
+		ObjectMeta: kmetav1.ObjectMeta{
+			Name:        name,
+			Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hash)},
+		},
+		Spec: spec,
+	}
+
+	return pod
 }

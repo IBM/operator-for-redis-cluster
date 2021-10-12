@@ -89,5 +89,5 @@ Builds a list of extra arguments for the Redis cluster
 Tests to see if there is extra config
 */}}
 {{- define "icm-redis-cluster.hasextraconfig" -}}
-{{- or .Values.redis.configuration.file .Values.redis.configuration.value }}
+{{- or .Values.redis.configuration.file .Values.redis.configuration.valueMap }}
 {{- end -}}

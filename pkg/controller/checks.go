@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strconv"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
@@ -212,6 +214,22 @@ func comparePodsWithPodTemplate(cluster *rapi.RedisCluster) bool {
 	return true
 }
 
+func compareConfig(oldConfig, newConfig map[string]string) map[string]string {
+	configChanges := make(map[string]string)
+	for field, newVal := range newConfig {
+		if oldVal, ok := oldConfig[field]; ok {
+			if field == "maxmemory" {
+				oldVal = utils.StringToByteString(oldVal)
+				newVal = utils.StringToByteString(newVal)
+			}
+			if oldVal != newVal {
+				configChanges[field] = newVal
+			}
+		}
+	}
+	return configChanges
+}
+
 func comparePodSpecMD5Hash(hash string, pod *kapi.Pod) bool {
 	if val, ok := pod.Annotations[rapi.PodSpecMD5LabelKey]; ok {
 		if val != hash {
@@ -285,7 +303,7 @@ func checkReplicationFactor(cluster *rapi.RedisCluster, rCluster *redis.Cluster)
 	return primaryToReplicas, true
 }
 
-// checkNumberOfPrimaries returns the difference between the number of primaries currently existing and the number of desired primaries
+// checkNumberOfPrimaries returns the difference between the number of existing primaries and the number of desired primaries
 // Returns true if the number of primary status is equal to the spec
 func checkNumberOfPrimaries(cluster *rapi.RedisCluster) (int32, bool) {
 	nbPrimarySpec := *cluster.Spec.NumberOfPrimaries
@@ -326,10 +344,32 @@ func checkNodeResources(ctx context.Context, mgr manager.Manager, cluster *rapi.
 	return true, nil
 }
 
+// checkZoneBalance checks if zones are balanced across the cluster
+// Calculates the zone skew for primaries and replicas
+// Returns true if zone balance <= 2, false otherwise
 func checkZoneBalance(cluster *rapi.RedisCluster) bool {
 	zoneToPrimaries, zoneToReplicas := utils.ZoneToRole(cluster.Status.Cluster.Nodes)
 	_, _, ok := utils.GetZoneSkewByRole(zoneToPrimaries, zoneToReplicas)
 	return ok
+}
+
+// checkServerConfig checks if the running redis server config matches
+// the server config stored in the redis cluster config map
+// Returns a map of the changed configuration, if any
+func checkServerConfig(ctx context.Context, admin redis.AdminInterface, redisClusterConfigMap *kapi.ConfigMap) (map[string]string, error) {
+	var values string
+	if val, ok := redisClusterConfigMap.Data["redis.yaml"]; ok {
+		values = val
+	}
+	clusterConfig := make(map[string]string)
+	if err := yaml.Unmarshal([]byte(values), &clusterConfig); err != nil {
+		return nil, err
+	}
+	serverConfig, err := admin.GetConfig(ctx, "*")
+	if err != nil {
+		return nil, err
+	}
+	return compareConfig(serverConfig, clusterConfig), nil
 }
 
 func checkReplicasOfReplica(cluster *rapi.RedisCluster) (map[string][]*rapi.RedisClusterNode, bool) {

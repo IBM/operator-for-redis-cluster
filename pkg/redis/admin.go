@@ -78,8 +78,12 @@ type AdminInterface interface {
 	FlushAll(ctx context.Context, addr string) error
 	// GetHashMaxSlot gets the max slot value
 	GetHashMaxSlot() Slot
-	//RebuildConnectionMap rebuilds the connection map according to the given addresses
+	// RebuildConnectionMap rebuilds the connection map according to the given addresses
 	RebuildConnectionMap(ctx context.Context, addrs []string, options *AdminOptions)
+	// GetConfig gets the running redis server configuration matching the pattern
+	GetConfig(ctx context.Context, pattern string) (map[string]string, error)
+	// SetConfig sets the specified redis server configuration
+	SetConfig(ctx context.Context, addr string, config []string) error
 }
 
 // AdminOptions optional options for redis admin
@@ -165,7 +169,7 @@ func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 		}
 		var resp string
 		cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "MEET", ip, port)
-		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Cannot attach node to cluster"); err != nil {
+		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "unable to attach node to cluster"); err != nil {
 			return err
 		}
 	}
@@ -200,7 +204,7 @@ func (a *Admin) GetClusterInfos(ctx context.Context) (*ClusterInfos, error) {
 		if nodeinfos.Node != nil && nodeinfos.Node.IPPort() == addr {
 			infos.Infos[addr] = nodeinfos
 		} else {
-			glog.Warningf("Bad node info retrieved from %s", addr)
+			glog.Warningf("bad node info retrieved from %s", addr)
 		}
 	}
 
@@ -229,7 +233,7 @@ func (a *Admin) GetClusterInfosSelected(ctx context.Context, addrs []string) (*C
 		if nodeinfos.Node != nil && nodeinfos.Node.IPPort() == addr {
 			infos.Infos[addr] = nodeinfos
 		} else {
-			glog.Warningf("Bad node info retrieved from %s", addr)
+			glog.Warningf("bad node info retrieved from %s", addr)
 		}
 	}
 
@@ -270,7 +274,7 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 
 	if glog.V(3) {
 		for _, replica := range replicas {
-			glog.Info("- Replica: ", replica.ID)
+			glog.Info("- replica: ", replica.ID)
 		}
 	}
 
@@ -282,7 +286,7 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 		}
 		var resp string
 		cmdErr := replicaClient.DoCmd(ctx, &resp, "CLUSTER", "FAILOVER")
-		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, aReplica.IPPort(), "Unable to execute Failover"); err != nil {
+		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, aReplica.IPPort(), "unable to execute CLUSTER FAILOVER"); err != nil {
 			continue
 		}
 		failoverTriggered = true
@@ -337,7 +341,7 @@ func (a *Admin) ForgetNode(ctx context.Context, id string) error {
 		}
 		var resp string
 		err = c.DoCmd(ctx, &resp, "CLUSTER", "FORGET", id)
-		_ = a.Connections().ValidateResp(ctx, &resp, err, nodeAddr, "Unable to execute FORGET command")
+		_ = a.Connections().ValidateResp(ctx, &resp, err, nodeAddr, "unable to execute CLUSTER FORGET")
 		glog.V(6).Infof("node %s forgot node %s:%s", nodeinfos.Node.ID, id, resp)
 	}
 
@@ -381,7 +385,7 @@ func (a *Admin) SetSlot(ctx context.Context, addr, action string, slot Slot, nod
 		return err
 	}
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "SETSLOT", slot.String(), action, node.ID)
-	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, node.IPPort(), "Unable to run command CLUSTER SETSLOT"); err != nil {
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, node.IPPort(), "unable to execute CLUSTER SETSLOT"); err != nil {
 		return err
 	}
 	return nil
@@ -409,7 +413,7 @@ func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSli
 			} else {
 				cmdErr = c.DoCmdWithRetries(ctx, &resp, "CLUSTER", "SETSLOT", slot, action, nodeID)
 			}
-			if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, fmt.Sprintf("Unable to run command SETSLOT %s %s %s ", slot, action, addr)); err != nil {
+			if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, fmt.Sprintf("unable to execute SETSLOT %s %s %s ", slot, action, addr)); err != nil {
 				glog.Error(err)
 			}
 		}()
@@ -431,7 +435,7 @@ func (a *Admin) AddSlots(ctx context.Context, addr string, slots SlotSlice) erro
 	args := []string{"ADDSLOTS"}
 	args = append(args, slots.ConvertToStrings()...)
 	err = c.DoCmd(ctx, &resp, "CLUSTER", args...)
-	return a.Connections().ValidateResp(ctx, &resp, err, addr, "Unable to run CLUSTER ADDSLOTS")
+	return a.Connections().ValidateResp(ctx, &resp, err, addr, "unable to execute ADDSLOTS")
 }
 
 // DelSlots uses the DELSLOTS command to delete several slots
@@ -447,7 +451,7 @@ func (a *Admin) DelSlots(ctx context.Context, addr string, slots SlotSlice) erro
 	args := []string{"DELSLOTS"}
 	args = append(args, slots.ConvertToStrings()...)
 	err = c.DoCmd(ctx, &resp, "CLUSTER", args...)
-	return a.Connections().ValidateResp(ctx, &resp, err, addr, "Unable to run CLUSTER DELSLOTS")
+	return a.Connections().ValidateResp(ctx, &resp, err, addr, "unable to execute DELSLOTS")
 }
 
 // GetKeysInSlot exec the redis command to get the keys in the given slot on the node we are connected to
@@ -479,7 +483,7 @@ func (a *Admin) CountKeysInSlot(ctx context.Context, addr string, slot Slot) (in
 
 	var resp int64
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "COUNTKEYSINSLOT", slot.String())
-	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to run command COUNTKEYSINSLOT"); err != nil {
+	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "unable to execute COUNTKEYSINSLOT"); err != nil {
 		return 0, err
 	}
 	return resp, nil
@@ -493,7 +497,7 @@ func (a *Admin) GetKeys(ctx context.Context, addr string, slot Slot, batch strin
 		return keys, err
 	}
 	cmdErr := c.DoCmd(ctx, &keys, "CLUSTER", "GETKEYSINSLOT", slot.String(), batch)
-	if err = a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "Unable to run command GETKEYSINSLOT"); err != nil {
+	if err = a.Connections().ValidateResp(ctx, &keys, cmdErr, addr, "unable to execute GETKEYSINSLOT"); err != nil {
 		return keys, err
 	}
 	return keys, nil
@@ -507,7 +511,7 @@ func (a *Admin) DeleteKeys(ctx context.Context, addr string, keys []string) erro
 		return err
 	}
 	cmdErr := c.DoCmd(ctx, &resp, "DEL", keys...)
-	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to run command DEL keys"); err != nil {
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "unable to execute DEL keys"); err != nil {
 		return err
 	}
 	return nil
@@ -534,7 +538,7 @@ func (a *Admin) migrateSlot(ctx context.Context, source *Node, dest *Node, slot 
 		}
 		var resp string
 		cmdErr := c.DoCmdWithRetries(ctx, &resp, "MIGRATE", args...)
-		if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, source.IPPort(), "Unable to run command MIGRATE"); err != nil {
+		if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, source.IPPort(), "unable to run command MIGRATE"); err != nil {
 			return err
 		}
 	}
@@ -659,7 +663,7 @@ func (a *Admin) AttachReplicaToPrimary(ctx context.Context, replica *Node, prima
 	}
 	var resp string
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "REPLICATE", primary.ID)
-	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "Unable to run command REPLICATE"); err != nil {
+	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "unable to execute REPLICATE"); err != nil {
 		return err
 	}
 
@@ -676,7 +680,7 @@ func (a *Admin) DetachReplica(ctx context.Context, replica *Node) error {
 	}
 	var resp string
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "RESET", ResetSoft)
-	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "Cannot attach node to cluster"); err != nil {
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "cannot attach node to cluster"); err != nil {
 		return err
 	}
 
@@ -726,16 +730,15 @@ func selectMyReplicas(me *Node, nodes Nodes) (Nodes, error) {
 func (a *Admin) getInfos(ctx context.Context, c ClientInterface, addr string) (*NodeInfos, error) {
 	var resp string
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "NODES")
-	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to retrieve node info"); err != nil {
+	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "unable to retrieve node info"); err != nil {
 		return nil, err
 	}
 	nodeInfos := DecodeNodeInfos(&resp, addr)
 
 	if glog.V(3) {
 		// Retrieve server info for debugging
-		var resp string
 		cmdErr = c.DoCmd(ctx, &resp, "INFO", "SERVER")
-		if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "Unable to retrieve node info"); err != nil {
+		if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "unable to retrieve node info"); err != nil {
 			return nil, err
 		}
 
@@ -756,4 +759,36 @@ func (a *Admin) getInfos(ctx context.Context, c ClientInterface, addr string) (*
 func (a *Admin) RebuildConnectionMap(ctx context.Context, addrs []string, options *AdminOptions) {
 	a.cnx.Reset()
 	a.cnx = NewAdminConnections(ctx, addrs, options)
+}
+
+// GetConfig gets the running redis server configuration matching the pattern
+func (a *Admin) GetConfig(ctx context.Context, pattern string) (map[string]string, error) {
+	cfg := make(map[string]string)
+	c, err := a.Connections().GetRandom()
+	if err != nil {
+		return cfg, err
+	}
+	var resp []string
+	if err = c.DoCmd(ctx, &resp, "CONFIG", "GET", pattern); err != nil {
+		return nil, fmt.Errorf("unable to execute CONFIG GET: %v", err)
+	}
+	for i := 0; i < len(resp)-1; i += 2 {
+		cfg[resp[i]] = resp[i+1]
+	}
+	return cfg, nil
+}
+
+// SetConfig sets the specified redis server configuration
+func (a *Admin) SetConfig(ctx context.Context, addr string, config []string) error {
+	var resp string
+	c, err := a.Connections().Get(ctx, addr)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"SET"}, config...)
+	cmdErr := c.DoCmd(ctx, &resp, "CONFIG", args...)
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, "unable to execute CONFIG SET"); err != nil {
+		return err
+	}
+	return nil
 }

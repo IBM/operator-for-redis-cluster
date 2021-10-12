@@ -644,6 +644,19 @@ func getOldNodesToRemove(currPrimaries, newPrimaries, nodes redis.Nodes) (redis.
 	return removedPrimaries, removedReplicas
 }
 
+func updateConfig(ctx context.Context, admin redis.AdminInterface, config map[string]string) error {
+	var errs []error
+	for field, val := range config {
+		glog.V(6).Infof("updating config option from %s to %s", field, val)
+		for addr := range admin.Connections().GetAll() {
+			if err := admin.SetConfig(ctx, addr, []string{field, val}); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.NewAggregate(errs)
+}
+
 func detachAndForgetNodes(ctx context.Context, admin redis.AdminInterface, primaries, replicas redis.Nodes) (redis.Nodes, error) {
 	detachReplicas(ctx, admin, replicas)
 	removedNodes := append(primaries, replicas...)

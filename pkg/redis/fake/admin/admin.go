@@ -254,3 +254,17 @@ func (a *Admin) FlushAll(ctx context.Context, addr string) error {
 //RebuildConnectionMap rebuilds the connection map according to the given addresses
 func (a *Admin) RebuildConnectionMap(ctx context.Context, addrs []string, options *redis.AdminOptions) {
 }
+
+// GetConfig gets the running redis server configuration matching the pattern
+func (a *Admin) GetConfig(ctx context.Context, pattern string) (map[string]string, error) {
+	return map[string]string{}, nil
+}
+
+// SetConfig sets the specified redis server configuration
+func (a *Admin) SetConfig(ctx context.Context, addr string, config []string) error {
+	val, ok := a.AddrError[addr]
+	if !ok {
+		val = nil
+	}
+	return val
+}

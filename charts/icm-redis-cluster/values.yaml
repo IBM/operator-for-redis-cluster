@@ -186,23 +186,23 @@ sysctl:
 
 redis:
   configuration:
-    # you can provide the path of a redis configuration file that will be added in a configMap and included
+    # You can provide the path of a redis configuration file that will be added in a configMap and included
     # in the redis-server configuration in each redis-cluster node.
-    # the file must be local of the helm chart (in the chart folder).
+    # The file must be local to the helm chart (in the chart folder).
     file: ""
-    # You can provide the redis config directly as a value instead through a file as shown in the example below.
+    # You can provide the redis config directly as a map instead of a file as shown in the example below.
     # If BOTH the "file" and "value" are defined, the value will be used, i.e. treated as an override value.
     # Please see the redis.io docs for details on each of the fields below.
     # memory-related --> https://redis.io/topics/lru-cache
     # cluster-related --> https://redis.io/topics/cluster-tutorial
-    # value: |
-    #  maxmemory-policy volatile-lfu
-    #  maxmemory 26843545600
-    #  lazyfree-lazy-eviction yes
-    #  lazyfree-lazy-expire yes
-    #  lazyfree-lazy-server-del yes
-    #  replica-lazy-flush yes
-    #  cluster-enabled yes
-    #  cluster-require-full-coverage no
-    #  cluster-allow-reads-when-down yes
-    value: ""
+    # valueMap:
+    #  maxmemory-policy: "volatile-lfu"
+    #  maxmemory: "26843545600"
+    #  lazyfree-lazy-eviction: "yes"
+    #  lazyfree-lazy-expire: "yes"
+    #  lazyfree-lazy-server-del: "yes"
+    #  replica-lazy-flush: "yes"
+    #  cluster-enabled: "yes"
+    #  cluster-require-full-coverage: "no"
+    #  cluster-allow-reads-when-down: "yes"
+    valueMap: {}
