@@ -69,7 +69,7 @@ func (p *RedisClusterControl) CreatePod(redisCluster *rapi.RedisCluster) (*kapiv
 	if err != nil {
 		return pod, err
 	}
-	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.GenerateName)
+	glog.V(6).Infof("CreatePod: %s/%s", redisCluster.Namespace, pod.Name)
 	if err = p.KubeClient.Create(context.Background(), pod); err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (p *RedisClusterControl) CreatePodOnNode(redisCluster *rapi.RedisCluster, n
 		return pod, err
 	}
 	pod.Spec.NodeName = nodeName
-	glog.V(6).Infof("CreatePodOnNode: %s/%s", redisCluster.Namespace, pod.GenerateName)
+	glog.V(6).Infof("CreatePodOnNode: %s/%s", redisCluster.Namespace, pod.Name)
 	if err = p.KubeClient.Create(context.Background(), pod); err != nil {
 		return nil, err
 	}

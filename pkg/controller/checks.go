@@ -119,12 +119,12 @@ func compareNodes(nodeA, nodeB *rapi.RedisClusterNode) bool {
 		sizeSlotsB = len(nodeB.Slots)
 	}
 	if sizeSlotsA != sizeSlotsB {
-		glog.Infof("compare Node.Slote size: %d - %d", sizeSlotsA, sizeSlotsB)
+		glog.Infof("compare Node.Slot size: %d - %d", sizeSlotsA, sizeSlotsB)
 		return true
 	}
 
 	if (sizeSlotsA != 0) && !reflect.DeepEqual(nodeA.Slots, nodeB.Slots) {
-		glog.Infof("compare Node.Slote deepEqual: %v - %v", nodeA.Slots, nodeB.Slots)
+		glog.Infof("compare Node.Slot deepEqual: %v - %v", nodeA.Slots, nodeB.Slots)
 		return true
 	}
 

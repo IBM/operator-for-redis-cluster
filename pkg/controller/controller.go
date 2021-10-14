@@ -31,6 +31,10 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
+const (
+	requeueDelay = time.Second * 5
+)
+
 // Controller contains all controller fields
 type Controller struct {
 	mgr    manager.Manager

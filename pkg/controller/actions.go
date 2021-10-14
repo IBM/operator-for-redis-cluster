@@ -48,7 +48,7 @@ func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterfa
 		if _, err = c.createPod(ctx, cluster); err != nil {
 			return result, err
 		}
-		result.Requeue = true
+		result.RequeueAfter = requeueDelay
 		return result, nil
 	}
 	if setScalingCondition(&cluster.Status, false) {
@@ -99,8 +99,8 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		if err != nil {
 			return result, err
 		}
-		result.Requeue = len(pods) > 0
-		if result.Requeue {
+		if len(pods) > 0 {
+			result.RequeueAfter = requeueDelay
 			return result, nil
 		}
 		oldNodes, newNodes, err := getNodesWithNewHash(cluster, nodes)

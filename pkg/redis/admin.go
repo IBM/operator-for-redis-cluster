@@ -385,7 +385,7 @@ func (a *Admin) SetSlot(ctx context.Context, addr, action string, slot Slot, nod
 		return err
 	}
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "SETSLOT", slot.String(), action, node.ID)
-	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, node.IPPort(), "unable to execute CLUSTER SETSLOT"); err != nil {
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, node.IPPort(), fmt.Sprintf("unable to execute CLUSTER SETSLOT %s %s %s ", slot, action, addr)); err != nil {
 		return err
 	}
 	return nil
@@ -413,7 +413,7 @@ func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSli
 			} else {
 				cmdErr = c.DoCmdWithRetries(ctx, &resp, "CLUSTER", "SETSLOT", slot, action, nodeID)
 			}
-			if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, fmt.Sprintf("unable to execute SETSLOT %s %s %s ", slot, action, addr)); err != nil {
+			if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, addr, fmt.Sprintf("unable to execute CLUSTER SETSLOT %s %s %s ", slot, action, addr)); err != nil {
 				glog.Error(err)
 			}
 		}()
