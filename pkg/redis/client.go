@@ -39,11 +39,6 @@ type Client struct {
 	pipeline        *radix.Pipeline
 }
 
-const (
-	retryAttempts = 3
-	retryTimeout  = 3
-)
-
 // NewClient build a client connection and connect to a redis address
 func NewClient(ctx context.Context, addr string, cnxTimeout time.Duration, commandsMapping map[string]string) (*Client, error) {
 	var err error
@@ -71,14 +66,14 @@ func (c *Client) DoCmd(ctx context.Context, rcv interface{}, cmd string, args ..
 }
 
 func (c *Client) delayLinear(i int, cmd string) {
-	delay := retryTimeout * time.Duration(i) * time.Second
-	glog.Warningf("%s attempt %d/%d. Retry in %s", cmd, i, retryAttempts, delay)
+	delay := defaultRetryTimeout * time.Duration(i)
+	glog.Warningf("%s attempt %d/%d. Retry in %s", cmd, i, defaultRetryAttempts, delay)
 	time.Sleep(delay)
 }
 
 func (c *Client) doCmdWithRetries(ctx context.Context, rcv interface{}, cmd string, i int, args ...string) error {
 	if err := c.DoCmd(ctx, &rcv, cmd, args...); err != nil {
-		if i = i + 1; i >= retryAttempts {
+		if i = i + 1; i >= defaultRetryAttempts {
 			return err
 		}
 		c.delayLinear(i, cmd)
@@ -102,7 +97,7 @@ func (c *Client) PipeReset() {
 	c.pipeline.Reset()
 }
 
-// DoPipe executes all of the commands in the pipeline.
+// DoPipe executes all the commands in the pipeline.
 func (c *Client) DoPipe(ctx context.Context) error {
 	return c.client.Do(ctx, c.pipeline)
 }

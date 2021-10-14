@@ -13,7 +13,6 @@ func TestReplacePrimaries(t *testing.T) {
 	_, primary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
 	_, primary2 := test.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
 	_, primary3 := test.NewRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
-
 	_, primary4 := test.NewRedisPrimaryNode("primary4", "zone1", "pod4", "node1", []string{""})
 
 	type args struct {

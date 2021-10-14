@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	// Interval represent the interval to run Garbage Collection
+	// Interval represents the interval to run Garbage Collection
 	Interval = 5 * time.Second
 )
 
@@ -33,12 +33,12 @@ type Interface interface {
 var _ Interface = &GarbageCollector{}
 
 // GarbageCollector represents a Workflow Garbage Collector.
-// It collects orphaned Jobs
+// It collects orphaned Jobs.
 type GarbageCollector struct {
 	kubeClient client.Client
 }
 
-// NewGarbageCollector builds initializes and returns a GarbageCollector
+// NewGarbageCollector initializes and returns a GarbageCollector
 func NewGarbageCollector(kubeClient client.Client) *GarbageCollector {
 	return &GarbageCollector{
 		kubeClient: kubeClient,
@@ -59,8 +59,8 @@ func (c *GarbageCollector) Run(stop <-chan struct{}) {
 	}
 }
 
-// CollectRedisClusterGarbage collect the orphaned pods and services. First looking in the rediscluster informer list
-// then retrieve from the API and in case NotFound then remove via DeleteCollection primitive
+// CollectRedisClusterGarbage collects the orphaned pods and services.
+// Looks through the informer list and removes missing pods via DeleteCollection primitive.
 func (c *GarbageCollector) CollectRedisClusterGarbage() error {
 	errs := []error{}
 	if err := c.collectRedisClusterPods(); err != nil {
@@ -72,8 +72,7 @@ func (c *GarbageCollector) CollectRedisClusterGarbage() error {
 	return utilerrors.NewAggregate(errs)
 }
 
-// collectRedisClusterPods collect the orphaned pods. First looking in the rediscluster informer list
-// then retrieve from the API and in case NotFound then remove via DeleteCollection primitive
+// collectRedisClusterPods collects the orphaned pods
 func (c *GarbageCollector) collectRedisClusterPods() error {
 	glog.V(4).Infof("Collecting garbage pods")
 	pods := &v1.PodList{}
@@ -120,8 +119,7 @@ func (c *GarbageCollector) collectRedisClusterPods() error {
 	return utilerrors.NewAggregate(errs)
 }
 
-// collectRedisClusterServices collect the orphaned services. First looking in the rediscluster informer list
-// then retrieve from the API and in case NotFound then remove via DeleteCollection primitive
+// collectRedisClusterServices collects the orphaned services
 func (c *GarbageCollector) collectRedisClusterServices() error {
 	glog.V(4).Infof("Collecting garbage services")
 	services := &v1.ServiceList{}
@@ -132,29 +130,29 @@ func (c *GarbageCollector) collectRedisClusterServices() error {
 	errs := []error{}
 	collected := make(map[string]struct{})
 	for _, service := range services.Items {
-		redisclusterName, found := service.Labels[rapi.ClusterNameLabelKey]
-		if !found || len(redisclusterName) == 0 {
+		clusterName, found := service.Labels[rapi.ClusterNameLabelKey]
+		if !found || len(clusterName) == 0 {
 			errs = append(errs, fmt.Errorf("Unable to find rediscluster name for service: %s/%s", service.Namespace, service.Name))
 			continue
 		}
-		if _, done := collected[path.Join(service.Namespace, redisclusterName)]; done {
+		if _, done := collected[path.Join(service.Namespace, clusterName)]; done {
 			continue // already collected so skip
 		}
-		err = c.kubeClient.Get(context.Background(), types.NamespacedName{Namespace: service.Namespace, Name: redisclusterName}, &rapi.RedisCluster{})
+		err = c.kubeClient.Get(context.Background(), types.NamespacedName{Namespace: service.Namespace, Name: clusterName}, &rapi.RedisCluster{})
 		if err == nil || !apierrors.IsNotFound(err) {
 			if err != nil {
-				errs = append(errs, fmt.Errorf("Unexpected error retrieving rediscluster %s/%s cache: %v", service.Namespace, redisclusterName, err))
+				errs = append(errs, fmt.Errorf("Unexpected error retrieving rediscluster %s/%s cache: %v", service.Namespace, clusterName, err))
 			}
 			continue
 		}
 		// NotFound error: Hence remove all the pods.
-		if err := c.deleteRedisClusterServices(service.Namespace, redisclusterName); err != nil {
-			errs = append(errs, fmt.Errorf("Unable to delete Collection of services for rediscluster %s/%s", service.Namespace, redisclusterName))
+		if err := c.deleteRedisClusterServices(service.Namespace, clusterName); err != nil {
+			errs = append(errs, fmt.Errorf("Unable to delete Collection of services for rediscluster %s/%s", service.Namespace, clusterName))
 			continue
 		}
 
-		collected[path.Join(service.Namespace, redisclusterName)] = struct{}{} // inserted in the collected map
-		glog.Infof("Removed all services for rediscluster %s/%s", service.Namespace, redisclusterName)
+		collected[path.Join(service.Namespace, clusterName)] = struct{}{} // inserted in the collected map
+		glog.Infof("Removed all services for rediscluster %s/%s", service.Namespace, clusterName)
 	}
 	return utilerrors.NewAggregate(errs)
 }

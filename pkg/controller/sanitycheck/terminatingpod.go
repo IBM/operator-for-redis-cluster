@@ -26,17 +26,17 @@ func FixTerminatingPods(cluster *rapi.RedisCluster, podControl pod.RedisClusterC
 	}
 
 	now := time.Now()
-	for _, pod := range currentPods {
-		if pod.DeletionTimestamp == nil {
+	for _, p := range currentPods {
+		if p.DeletionTimestamp == nil {
 			// ignore pod without deletion timestamp
 			continue
 		}
-		maxTime := pod.DeletionTimestamp.Add(maxDuration) // adding MaxDuration for configuration
+		maxTime := p.DeletionTimestamp.Add(maxDuration) // adding MaxDuration for configuration
 		if maxTime.Before(now) {
 			actionDone = true
 			// it means that this pod should already been deleted since a wild
 			if !dryRun {
-				if err := podControl.DeletePod(cluster, pod.Name); err != nil {
+				if err := podControl.DeletePod(cluster, p.Name); err != nil {
 					errs = append(errs, err)
 				}
 			}

@@ -222,8 +222,7 @@ func addReplicasToPrimariesByZone(cluster *redis.Cluster, primaryToReplicas map[
 				glog.Errorf("unable to find primary with id: %s", primaryID)
 				break
 			}
-			err = addReplicasToPrimary(zones, primary, primaryToReplicas, zoneToReplicas, replicationFactor)
-			if err != nil {
+			if err = addReplicasToPrimary(zones, primary, primaryToReplicas, zoneToReplicas, replicationFactor); err != nil {
 				return err
 			}
 		}
@@ -317,20 +316,20 @@ func GetZoneIndex(zones []string, primaryZone string, replicas redis.Nodes) int 
 // k8sNodeToRedisNodes returns a mapping from kubernetes nodes to a list of redis nodes that will be hosted on the node
 func k8sNodeToRedisNodes(cluster *redis.Cluster, nodes redis.Nodes) map[string]redis.Nodes {
 	nodeToRedisNodes := make(map[string]redis.Nodes)
-	for _, rnode := range nodes {
-		cnode, err := cluster.GetNodeByID(rnode.ID)
+	for _, rNode := range nodes {
+		cNode, err := cluster.GetNodeByID(rNode.ID)
 		if err != nil {
-			glog.Errorf("[k8sNodeToRedisNodes] unable to find the node with redis ID:%s", rnode.ID)
-			continue // if not then next line with cnode.Pod will cause a panic since cnode is nil
+			glog.Errorf("[k8sNodeToRedisNodes] unable to find the node with redis ID:%s", rNode.ID)
+			continue
 		}
 		nodeName := unknownNodeName
-		if cnode.Pod != nil && cnode.Pod.Spec.NodeName != "" {
-			nodeName = cnode.Pod.Spec.NodeName
+		if cNode.Pod != nil && cNode.Pod.Spec.NodeName != "" {
+			nodeName = cNode.Pod.Spec.NodeName
 		}
 		if _, ok := nodeToRedisNodes[nodeName]; !ok {
 			nodeToRedisNodes[nodeName] = redis.Nodes{}
 		}
-		nodeToRedisNodes[nodeName] = append(nodeToRedisNodes[nodeName], rnode)
+		nodeToRedisNodes[nodeName] = append(nodeToRedisNodes[nodeName], rNode)
 	}
 
 	return nodeToRedisNodes

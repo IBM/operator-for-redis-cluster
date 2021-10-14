@@ -41,7 +41,5 @@ func GetAnnotationsSet(cluster *rapi.RedisCluster) (labels.Set, error) {
 	for k, v := range cluster.Annotations {
 		desiredAnnotations[k] = v
 	}
-
-	// TODO: add createdByRef
-	return desiredAnnotations, nil // no error for the moment, when we'll add createdByRef an error could be returned
+	return desiredAnnotations, nil
 }

@@ -22,7 +22,7 @@ func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *co
 	if actionDone, err = FixFailedNodes(ctx, admin, cluster, infos, dryRun); err != nil {
 		return actionDone, err
 	} else if actionDone {
-		glog.V(2).Infof("FixFailedNodes done an action on the cluster (dryRun:%v)", dryRun)
+		glog.V(2).Infof("FixFailedNodes executed an action on the cluster (dryRun: %v)", dryRun)
 		return actionDone, nil
 	}
 
@@ -30,7 +30,7 @@ func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *co
 	if actionDone, err = FixUntrustedNodes(ctx, admin, podControl, cluster, infos, dryRun); err != nil {
 		return actionDone, err
 	} else if actionDone {
-		glog.V(2).Infof("FixUntrustedNodes done an action on the cluster (dryRun:%v)", dryRun)
+		glog.V(2).Infof("FixUntrustedNodes executed an action on the cluster (dryRun: %v)", dryRun)
 		return actionDone, nil
 	}
 
@@ -38,7 +38,7 @@ func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *co
 	if actionDone, err = FixTerminatingPods(cluster, podControl, 5*time.Minute, dryRun); err != nil {
 		return actionDone, err
 	} else if actionDone {
-		glog.V(2).Infof("FixTerminatingPods done an action on the cluster (dryRun:%v)", dryRun)
+		glog.V(2).Infof("FixTerminatingPods executed an action on the cluster (dryRun: %v)", dryRun)
 		return actionDone, nil
 	}
 
@@ -46,7 +46,7 @@ func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *co
 	if actionDone, err = FixClusterSplit(ctx, admin, config, infos, dryRun); err != nil {
 		return actionDone, err
 	} else if actionDone {
-		glog.V(2).Infof("FixClusterSplit done an action on the cluster (dryRun:%v)", dryRun)
+		glog.V(2).Infof("FixClusterSplit executed an action on the cluster (dryRun: %v)", dryRun)
 		return actionDone, nil
 	}
 

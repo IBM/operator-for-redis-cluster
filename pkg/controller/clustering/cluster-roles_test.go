@@ -14,7 +14,7 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
 )
 
-func TestAssignReplica(t *testing.T) {
+func TestDispatchReplica(t *testing.T) {
 	// TODO currently only test there is no error, more accurate testing is needed
 	primaryRole := "primary"
 	replicaRole := "replica"
@@ -79,7 +79,7 @@ func TestAssignReplica(t *testing.T) {
 	}
 }
 
-func TestClassifyNodes(t *testing.T) {
+func TestClassifyNodesByRole(t *testing.T) {
 	primaryRole := "primary"
 	replicaRole := "replica"
 	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, IP: "1.1.1.1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: test.NewPod("pod1", "node1")}

@@ -34,11 +34,11 @@ func IsPodReady(pod *corev1.Pod) (bool, error) {
 	}
 
 	// get ready condition
-	var readycondition corev1.PodCondition
+	var readyCondition corev1.PodCondition
 	found := false
 	for _, cond := range pod.Status.Conditions {
 		if cond.Type == corev1.PodReady {
-			readycondition = cond
+			readyCondition = cond
 			found = true
 			break
 		}
@@ -48,8 +48,8 @@ func IsPodReady(pod *corev1.Pod) (bool, error) {
 		return false, errors.New("couldn't find ready condition")
 	}
 
-	if readycondition.Status != corev1.ConditionTrue {
-		return false, errors.New(readycondition.Message)
+	if readyCondition.Status != corev1.ConditionTrue {
+		return false, errors.New(readyCondition.Message)
 	}
 
 	return true, nil

@@ -13,12 +13,12 @@ import (
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
 )
 
-// FixUntrustedNodes used to remove Nodes that are not trusted by other nodes. It can append when a node
-// are removed from the cluster (with the "forget nodes" command) but try to rejoins the cluster.
+// FixUntrustedNodes used to remove nodes that are not trusted by other nodes.
+// It is useful when a node is removed from the cluster (with the FORGET command) but tries to rejoin the cluster.
 func FixUntrustedNodes(ctx context.Context, admin redis.AdminInterface, podControl pod.RedisClusterControlInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos, dryRun bool) (bool, error) {
 	untrustedNode := listUntrustedNodes(infos)
 	var errs []error
-	doneAnAction := false
+	doAction := false
 
 	currentPods, err := podControl.GetRedisClusterPods(cluster)
 	if err != nil {
@@ -39,16 +39,16 @@ func FixUntrustedNodes(ctx context.Context, admin redis.AdminInterface, podContr
 			continue
 		}
 		if len(node2) > 0 {
-			// it means the POD is used by another Redis node ID so we should not delete the pod.
+			// pod is used by another Redis node ID, so we should not delete the pod
 			continue
 		}
-		exist, reused := checkIfPodNameExistAndIsReused(uNode, currentPods)
+		exist, reused := checkIfPodNameExistsAndIsReused(uNode, currentPods)
 		if exist && !reused {
 			if err := podControl.DeletePod(cluster, uNode.Pod.Name); err != nil {
 				errs = append(errs, err)
 			}
 		}
-		doneAnAction = true
+		doAction = true
 		if !dryRun {
 			if err := admin.ForgetNode(ctx, id); err != nil {
 				errs = append(errs, err)
@@ -56,7 +56,7 @@ func FixUntrustedNodes(ctx context.Context, admin redis.AdminInterface, podContr
 		}
 	}
 
-	return doneAnAction, errors.NewAggregate(errs)
+	return doAction, errors.NewAggregate(errs)
 }
 
 func listUntrustedNodes(infos *redis.ClusterInfos) map[string]*redis.Node {
@@ -64,8 +64,8 @@ func listUntrustedNodes(infos *redis.ClusterInfos) map[string]*redis.Node {
 	if infos == nil || infos.Infos == nil {
 		return untrustedNodes
 	}
-	for _, nodeinfos := range infos.Infos {
-		for _, node := range nodeinfos.Friends {
+	for _, nodeInfos := range infos.Infos {
+		for _, node := range nodeInfos.Friends {
 			// only forget it when no more part of kubernetes, or if noaddress
 			if node.HasStatus(redis.NodeStatusHandshake) {
 				if _, found := untrustedNodes[node.ID]; !found {
@@ -77,7 +77,7 @@ func listUntrustedNodes(infos *redis.ClusterInfos) map[string]*redis.Node {
 	return untrustedNodes
 }
 
-func checkIfPodNameExistAndIsReused(node *redis.Node, podlist []kapi.Pod) (exist bool, reused bool) {
+func checkIfPodNameExistsAndIsReused(node *redis.Node, podlist []kapi.Pod) (exist bool, reused bool) {
 	if node.Pod == nil {
 		return exist, reused
 	}
@@ -85,11 +85,10 @@ func checkIfPodNameExistAndIsReused(node *redis.Node, podlist []kapi.Pod) (exist
 		if currentPod.Name == node.Pod.Name {
 			exist = true
 			if currentPod.Status.PodIP == node.Pod.Status.PodIP {
-				// this check is use to see if the Pod name is not use by another RedisNode.
-				// for that we check the the Pod name from the Redis node is not used by another
-				// Redis node, by comparing the IP of the current Pod with the Pod from the cluster bom.
-				// if the Pod  IP and Name from the redis info is equal to the IP/NAME from the getPod; it
-				// means that the Pod is still use and the Redis Node is not a ghost
+				// This check is used to see if the pod name is used by another redis node.
+				// We compare the IP of the current pod with the pod from the cluster bom.
+				// If the pod IP/name from the redis info equals the IP/name from the getPod, it
+				// means the pod is still in use and the redis node is not a ghost
 				reused = true
 				break
 			}

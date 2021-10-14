@@ -306,10 +306,8 @@ func checkReplicationFactor(cluster *rapi.RedisCluster, rCluster *redis.Cluster)
 // checkNumberOfPrimaries returns the difference between the number of existing primaries and the number of desired primaries
 // Returns true if the number of primary status is equal to the spec
 func checkNumberOfPrimaries(cluster *rapi.RedisCluster) (int32, bool) {
-	nbPrimarySpec := *cluster.Spec.NumberOfPrimaries
-	nbPrimaryStatus := cluster.Status.Cluster.NumberOfPrimaries
-	same := (nbPrimaryStatus) == nbPrimarySpec
-	return nbPrimaryStatus - nbPrimarySpec, same
+	same := *cluster.Spec.NumberOfPrimaries == cluster.Status.Cluster.NumberOfPrimaries
+	return cluster.Status.Cluster.NumberOfPrimaries - *cluster.Spec.NumberOfPrimaries, same
 }
 
 // checkNodeResources checks if there are resources to schedule a new pod

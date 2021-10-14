@@ -19,17 +19,6 @@ import (
 	"github.com/golang/glog"
 )
 
-const (
-	// defaultHashMaxSlots higher value of slot
-	// as slots start at 0, total number of slots is defaultHashMaxSlots+1
-	defaultHashMaxSlots = 16383
-
-	// ResetHard HARD mode for RESET command
-	ResetHard = "HARD"
-	// ResetSoft SOFT mode for RESET command
-	ResetSoft = "SOFT"
-)
-
 // AdminInterface redis cluster admin interface
 type AdminInterface interface {
 	// Connections returns the connection map of all clients
@@ -125,10 +114,10 @@ func NewRedisAdmin(ctx context.Context, pods []corev1.Pod, cfg *config.Redis) (A
 }
 
 // NewAdmin returns new AdminInterface instance
-// at the same time it connects to all Redis Nodes thanks to the addrs list
+// at the same time it connects to all Redis Nodes thanks to the address list
 func NewAdmin(ctx context.Context, addrs []string, options *AdminOptions) AdminInterface {
 	a := &Admin{
-		hashMaxSlots: defaultHashMaxSlots,
+		hashMaxSlots: HashMaxSlots,
 	}
 
 	// perform initial connections
@@ -142,7 +131,7 @@ func (a *Admin) Connections() AdminConnectionsInterface {
 	return a.cnx
 }
 
-// Close used to close all possible resources instanciate by the Admin
+// Close used to close all possible resources instantiated by the Admin
 func (a *Admin) Close() {
 	a.Connections().Reset()
 }
@@ -152,7 +141,7 @@ func (a *Admin) GetHashMaxSlot() Slot {
 	return a.hashMaxSlots
 }
 
-// AttachNodeToCluster command use to connect a Node to the cluster
+// AttachNodeToCluster command used to connect a Node to the cluster
 func (a *Admin) AttachNodeToCluster(ctx context.Context, addr string) error {
 	ip, port, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -282,6 +271,7 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 	for _, aReplica := range replicas {
 		var replicaClient ClientInterface
 		if replicaClient, err = a.Connections().Get(ctx, aReplica.IPPort()); err != nil {
+			glog.Errorf("unable to get connection for ip %s: %v", aReplica.IPPort(), err)
 			continue
 		}
 		var resp string
@@ -332,10 +322,9 @@ func (a *Admin) ForgetNode(ctx context.Context, id string) error {
 		}
 
 		if IsReplica(nodeinfos.Node) && nodeinfos.Node.PrimaryReferent == id {
-			err = a.DetachReplica(ctx, nodeinfos.Node)
-			if err != nil {
+			if err = a.DetachReplica(ctx, nodeinfos.Node); err != nil {
 				glog.Errorf("unable to detach replica %q of primary %q", nodeinfos.Node.ID, id)
-				return err
+				continue
 			}
 			glog.V(2).Infof("detach replica id: %s of primary: %s", nodeinfos.Node.ID, id)
 		}
@@ -353,11 +342,11 @@ func (a *Admin) ForgetNode(ctx context.Context, id string) error {
 func (a *Admin) ForgetNodeByAddr(ctx context.Context, addr string) error {
 	infos, _ := a.GetClusterInfos(ctx)
 	var me *Node
-	myinfo, ok := infos.Infos[addr]
+	myInfo, ok := infos.Infos[addr]
 	if !ok {
 		// get its id from a random node that still knows it
-		for _, nodeinfos := range infos.Infos {
-			for _, node := range nodeinfos.Friends {
+		for _, nodeInfos := range infos.Infos {
+			for _, node := range nodeInfos.Friends {
 				if node.IPPort() == addr {
 					me = node
 					break
@@ -368,7 +357,7 @@ func (a *Admin) ForgetNodeByAddr(ctx context.Context, addr string) error {
 			}
 		}
 	} else {
-		me = myinfo.Node
+		me = myInfo.Node
 	}
 
 	if me == nil {
@@ -538,7 +527,7 @@ func (a *Admin) migrateSlot(ctx context.Context, source *Node, dest *Node, slot 
 		}
 		var resp string
 		cmdErr := c.DoCmdWithRetries(ctx, &resp, "MIGRATE", args...)
-		if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, source.IPPort(), "unable to run command MIGRATE"); err != nil {
+		if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, source.IPPort(), "unable to run command MIGRATE"); err != nil {
 			return err
 		}
 	}
@@ -607,28 +596,22 @@ func (a *Admin) MigrateKeys(ctx context.Context, source *Node, dest *Node, slots
 }
 
 func (a *Admin) setSlotState(ctx context.Context, src *Node, dest *Node, slots SlotSlice) error {
-	err := a.SetSlots(ctx, dest.IPPort(), "IMPORTING", slots, src.ID)
-	if err != nil {
-		glog.Error("error during SETSLOT IMPORTING: ", err)
-		return err
+	if err := a.SetSlots(ctx, dest.IPPort(), "IMPORTING", slots, src.ID); err != nil {
+		glog.Warningf("error during SETSLOT IMPORTING: %v", err)
 	}
-	err = a.SetSlots(ctx, src.IPPort(), "MIGRATING", slots, dest.ID)
-	if err != nil {
-		glog.Error("error during SETSLOT MIGRATING: ", err)
-		return err
+	if err := a.SetSlots(ctx, src.IPPort(), "MIGRATING", slots, dest.ID); err != nil {
+		glog.Warningf("error during SETSLOT MIGRATING: %v", err)
 	}
 	return nil
 }
 
 func (a *Admin) setMigrationSlots(ctx context.Context, src *Node, dest *Node, slots SlotSlice) {
-	err := a.SetSlots(ctx, dest.IPPort(), "NODE", slots, dest.ID)
-	if err != nil {
+	if err := a.SetSlots(ctx, dest.IPPort(), "NODE", slots, dest.ID); err != nil {
 		if glog.V(4) {
 			glog.Warningf("warning during SETSLOT NODE on %s: %v", dest.IPPort(), err)
 		}
 	}
-	err = a.SetSlots(ctx, src.IPPort(), "NODE", slots, dest.ID)
-	if err != nil {
+	if err := a.SetSlots(ctx, src.IPPort(), "NODE", slots, dest.ID); err != nil {
 		if glog.V(4) {
 			glog.Warningf("warning during SETSLOT NODE on %s: %v", src.IPPort(), err)
 		}
@@ -663,7 +646,7 @@ func (a *Admin) AttachReplicaToPrimary(ctx context.Context, replica *Node, prima
 	}
 	var resp string
 	cmdErr := c.DoCmd(ctx, &resp, "CLUSTER", "REPLICATE", primary.ID)
-	if err := a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "unable to execute REPLICATE"); err != nil {
+	if err = a.Connections().ValidateResp(ctx, &resp, cmdErr, replica.IPPort(), "unable to execute REPLICATE"); err != nil {
 		return err
 	}
 
@@ -701,11 +684,9 @@ func (a *Admin) FlushAndReset(ctx context.Context, addr string, mode string) err
 	}
 	c.PipeAppend(radix.Cmd(nil, "FLUSHALL"))
 	c.PipeAppend(radix.Cmd(nil, "CLUSTER", "RESET", mode))
-
 	if err = c.DoPipe(ctx); err != nil {
 		return fmt.Errorf("error %v occurred on node %s during CLUSTER RESET", err, addr)
 	}
-
 	return nil
 }
 

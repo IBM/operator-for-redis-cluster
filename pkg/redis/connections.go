@@ -14,14 +14,6 @@ import (
 	"github.com/golang/glog"
 )
 
-const (
-	defaultClientTimeout = 2 * time.Second
-	defaultClientName    = ""
-
-	// ErrNotFound cannot find a node to connect to
-	ErrNotFound = "Unable to find a node to connect"
-)
-
 // AdminConnectionsInterface interface representing the map of admin connections to redis cluster nodes
 type AdminConnectionsInterface interface {
 	// Add connect to the given address and
@@ -259,8 +251,7 @@ func (cnx *AdminConnections) handleError(ctx context.Context, addr string, err e
 		return false
 	} else if netError, ok := err.(net.Error); ok && netError.Timeout() {
 		// timeout, reconnect
-		err := cnx.Reconnect(ctx, addr)
-		if err != nil {
+		if err = cnx.Reconnect(ctx, addr); err != nil {
 			glog.Errorf("Can't reconnect to %s", addr)
 		}
 		return true
@@ -268,8 +259,7 @@ func (cnx *AdminConnections) handleError(ctx context.Context, addr string, err e
 	switch err.(type) {
 	case *net.OpError:
 		// connection refused, reconnect
-		err := cnx.Reconnect(ctx, addr)
-		if err != nil {
+		if err = cnx.Reconnect(ctx, addr); err != nil {
 			glog.Errorf("Can't reconnect to %s", addr)
 		}
 		return true
@@ -297,7 +287,7 @@ func buildCommandReplaceMapping(filePath string) map[string]string {
 	mapping := make(map[string]string)
 	file, err := os.Open(filePath)
 	if err != nil {
-		glog.Errorf("Cannor open %s: %v", filePath, err)
+		glog.Errorf("Cannot open %s: %v", filePath, err)
 		return mapping
 	}
 	defer file.Close()
@@ -310,8 +300,8 @@ func buildCommandReplaceMapping(filePath string) map[string]string {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		glog.Errorf("Cannor parse %s: %v", filePath, err)
+	if err = scanner.Err(); err != nil {
+		glog.Errorf("Cannot parse %s: %v", filePath, err)
 		return mapping
 	}
 	return mapping

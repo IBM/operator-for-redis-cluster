@@ -81,16 +81,12 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		return result, err
 	}
 
-	needsUpdate, err := c.rollingUpdateCondition(cluster)
-	if err != nil {
+	if needsUpdate, err := c.rollingUpdateCondition(cluster); err != nil {
 		return result, err
-	}
-	if needsUpdate {
-		ok, err := checkNodeResources(ctx, c.mgr, cluster, newCluster.KubeNodes)
-		if err != nil {
+	} else if needsUpdate {
+		if ok, err := checkNodeResources(ctx, c.mgr, cluster, newCluster.KubeNodes); err != nil {
 			return result, err
-		}
-		if !ok {
+		} else if !ok {
 			glog.Warningf("Insufficient resources to perform a rolling update on this cluster. Please allocate more resources for existing nodes or create additional nodes.")
 			c.recorder.Event(cluster, v1.EventTypeWarning, "InsufficientResources", "Insufficient resources to schedule pod")
 		}
@@ -110,11 +106,9 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		return result, c.manageRollingUpdate(ctx, admin, cluster, newCluster, oldNodes, newNodes)
 	}
 
-	needsLessPods, err := c.lessPodsCondition(cluster)
-	if err != nil {
+	if needsLessPods, err := c.lessPodsCondition(cluster); err != nil {
 		return result, err
-	}
-	if needsLessPods {
+	} else if needsLessPods {
 		glog.Info("applyConfiguration needPodScaleDown")
 		result.Requeue, err = c.managePodScaleDown(ctx, admin, cluster, newCluster, nodes)
 		return result, err
@@ -185,12 +179,12 @@ func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminI
 
 	// now we can move slot from old primary to new primary
 	if err = clustering.DispatchSlotsToNewPrimaries(ctx, admin, cluster, rCluster, selectedPrimaries, currentPrimaries, allPrimaries, false); err != nil {
-		glog.Error("unable to dispatch slot on new primary, err: ", err)
+		glog.Errorf("unable to dispatch slot on new primary: %v", err)
 	}
 
 	for _, node := range append(removedPrimaries, removedReplicas...) {
 		if err = c.detachForgetDeleteNode(ctx, admin, cluster, node); err != nil {
-			return err
+			glog.Errorf("unable to detach, forget, and delete node %s: %v", node.ID, err)
 		}
 	}
 
@@ -202,11 +196,7 @@ func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminIn
 	glog.V(6).Info("managePodScaleDown START")
 	defer glog.V(6).Info("managePodScaleDown STOP")
 	if nodesToDelete, ok := shouldDeleteNodes(cluster, newCluster); ok {
-		for _, node := range nodesToDelete {
-			if err := c.podControl.DeletePod(cluster, node.PodName); err != nil {
-				return false, err
-			}
-		}
+		return false, c.deletePods(cluster, nodesToDelete)
 	}
 
 	if replicasOfReplica, ok := checkReplicasOfReplica(cluster); !ok {
@@ -257,16 +247,16 @@ func (c *Controller) lessPodsCondition(cluster *rapi.RedisCluster) (bool, error)
 }
 
 func (c *Controller) removeReplicasOfReplica(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, nodes redis.Nodes, replicasOfReplica map[string][]*rapi.RedisClusterNode) {
-	// Currently the algorithm assumes redis is able to attach a replica to another replica.
+	// Currently, the algorithm assumes redis is able to attach a replica to another replica.
 	// In practice, we detach the replicas and the controller reassigns the replica to a primary if needed.
 	for _, replicas := range replicasOfReplica {
 		for _, replica := range replicas {
 			node, err := nodes.GetNodeByID(replica.ID)
 			if err != nil {
 				glog.Errorf("unable to find node with ID %s: %v", replica.ID, err)
-			} else if err := admin.DetachReplica(ctx, node); err != nil {
+			} else if err = admin.DetachReplica(ctx, node); err != nil {
 				glog.Errorf("unable to detach replica with ID %s: %v", node.ID, err)
-			} else if err := c.podControl.DeletePod(cluster, replica.PodName); err != nil {
+			} else if err = c.podControl.DeletePod(cluster, replica.PodName); err != nil {
 				glog.Errorf("unable to delete pod %s corresponding to replica with the ID %s: %v", replica.PodName, node.ID, err)
 			}
 		}
@@ -434,6 +424,16 @@ func (c *Controller) createPods(ctx context.Context, cluster *rapi.RedisCluster,
 		pods = append(pods, pod)
 	}
 	return pods, nil
+}
+
+func (c *Controller) deletePods(cluster *rapi.RedisCluster, nodes []*rapi.RedisClusterNode) error {
+	var errs []error
+	for _, node := range nodes {
+		if err := c.podControl.DeletePod(cluster, node.PodName); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.NewAggregate(errs)
 }
 
 func newRedisCluster(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, kubeClient client.Client) (*redis.Cluster, redis.Nodes, error) {

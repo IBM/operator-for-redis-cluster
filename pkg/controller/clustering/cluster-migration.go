@@ -51,10 +51,8 @@ func DispatchSlotsToNewPrimaries(ctx context.Context, admin redis.AdminInterface
 			if glog.V(4) {
 				glog.Warning("Adding slots that have probably been lost during scale down, destination: ", nodesInfo.To.ID, " total:", len(slots), " : ", slots)
 			}
-			err := admin.AddSlots(ctx, nodesInfo.To.IPPort(), slots)
-			if err != nil {
+			if err := admin.AddSlots(ctx, nodesInfo.To.IPPort(), slots); err != nil {
 				glog.Error("error during ADDSLOTS: ", err)
-				return err
 			}
 		} else {
 			glog.V(6).Info("3) Migrate keys")

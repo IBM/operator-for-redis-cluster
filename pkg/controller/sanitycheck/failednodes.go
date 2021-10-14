@@ -18,7 +18,7 @@ func FixFailedNodes(ctx context.Context, admin redis.AdminInterface, cluster *ra
 	doneAnAction := false
 	for id := range forgetSet {
 		doneAnAction = true
-		glog.Infof("Sanitychecks: Forgetting failed node %s, this command might fail, this is not an error", id)
+		glog.Infof("Sanitychecks: Forgetting failed node %s. This command might fail, but it is not an error", id)
 		if !dryRun {
 			if err := admin.ForgetNode(ctx, id); err != nil {
 				errs = append(errs, err)
@@ -38,12 +38,11 @@ func listGhostNodes(cluster *rapi.RedisCluster, infos *redis.ClusterInfos) map[s
 	}
 	for _, nodeinfos := range infos.Infos {
 		for _, node := range nodeinfos.Friends {
-			// only forget it when no more part of kubernetes, or if noaddress
+			// forget it when it no longer has an IP address, or is in a failure state
 			if node.HasStatus(redis.NodeStatusNoAddr) {
 				ghostNodesSet[node.ID] = true
 			}
 			if node.HasStatus(redis.NodeStatusFail) || node.HasStatus(redis.NodeStatusPFail) {
-				// only forget it when no more part of kubernetes, or if noaddress
 				found := false
 				for _, pod := range cluster.Status.Cluster.Nodes {
 					if pod.ID == node.ID {
