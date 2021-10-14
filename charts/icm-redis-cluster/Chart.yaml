@@ -1,12 +1,11 @@
 apiVersion: v2
 name: icm-redis-cluster
-description: A Helm chart for Kubernetes
+type: application
+version: 0.0.0     # Overridden by release workflow
+appVersion: 0.0.0  # Overridden by release workflow
+description: ICM Redis Cluster for interfacing with Redis
 maintainers:
-  - name: tpolekhin  # Tymofii Polekhin
   - name: tomashibm  # Tomash Sidei
   - name: cin        # Craig Ingram
   - name: antonioua  # Anton Kuznietsov
   - name: kscharm    # Kenny Scharm
-type: application
-version: 0.0.0
-appVersion: 0.0.0

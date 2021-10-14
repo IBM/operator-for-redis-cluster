@@ -6,54 +6,45 @@
 
 This is an ongoing project.
 
-The aim of this project is to ease the deployment and operations of a [Redis-cluster](https://redis.io/topics/cluster-tutorial) in a [kubernetes](https://kubernetes.io/) environment. It started internally at Amadeus in 2016, we initially designed this project to run on [Openshift](https://www.openshift.com/). This is the second version of our Redis-Operator that is based now on Kubernetes CustomResourceDefinition (CRD) for representing the RedisCluster configuration.
+The goal of this project is to simplify the deployment and management of a [Redis cluster](https://redis.io/topics/cluster-tutorial) in a [Kubernetes](https://kubernetes.io/) environment. It started internally at Amadeus in 2016, where it was initially designed to run on [Openshift](https://www.openshift.com/). This is the third version of the Redis operator, which leverages the [Operator SDK](https://sdk.operatorframework.io/) framework for operators.
 
 ## Overview
 
-The Redis-cluster will be deployed thanks to a unique deployment. Each node of the icm-redis-cluster is running in its own Pod; At startup, each node has no active role (not replica nor primary with slot), it just joins the cluster as a primary without slot. See representation in the schema below 
+This project contains two Helm charts, namely `icm-redis-operator` and `icm-redis-cluster`. The first chart deploys the Redis operator, `RedisCluster` Custom Resource Definition (CRD), and various other k8s resources. The second chart deploys the `RedisCluster` resource and various other k8s resources. Each node in the Redis cluster runs in its own Pod. Upon startup, each node joins the cluster as a primary node with no slots. See the cluster representation in the diagram below:
 
 ![Initial state](docs/static/images/overview_1.png)
 
-At this point you have your redis process running, each node is aware of each other, but only one primary process all slots.
+At this point, your Redis process is running and each node is aware of each other, but only one primary has all the slots. In order to properly configure each node in the cluster, we introduce the `Redis Operator`.
 
-In order to configure properly the different redis-servers and setup the redis cluster, we introduce the `icm-redis-operator`.
-
-The `icm-redis-operator` is watching a new kind of Custom-Resource `RedisCluster` that stores the redis-cluster configuration: number of primaries, and the replication factor (number of replicas by primary) and the pod template. Then `icm-redis-operator` tries to apply this configuration to the set of redis-server processes. If the number of redis-servers doesn't correspond to the provided configuration, the manager scales the redis-node pods to obtain the proper number of redis-nodes.
-
-Then reconciliation is constantly done between the state of the cluster and the configuration stored in the `RedisCluster` CR.
-
-### Development
-
-If you want to take part in the development process, refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+The `Redis Operator` watches the `RedisCluster` CR that stores cluster configuration: number of primaries, replication factor (number of replicas per primary), and the pod template. Then the operator tries to apply this configuration to the set of Redis server processes. If the number of Redis servers doesn't match the provided configuration, the manager scales the number of pods to obtain the proper number of Redis nodes. The operator continuously reconciles the state of the cluster with the configuration stored in the `RedisCluster` CR until they match. To understand how the reconciliation loop works, see the [Operator SDK docs](https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/#reconcile-loop).
 
 ## Deployment
 
-You can follow the [cookbook.md](docs/docs/cookbook.md) deploy the operator and a redis-cluster with minikube.
+You can follow the [cookbook](docs/docs/cookbook.md) to deploy the operator and Redis cluster with Minikube.
 
-### Deployment environment requirements
+### Environment requirements
 
-As said, the project was initially designed to works on Openshift, but now support also Kubernetes. Please check the minimum environment version in the table below.
+The project may have started on Openshift, but it now supports Kubernetes as well. Please check the minimum environment version in the table below.
 
 | Environment  | Version |
 |--------------|---------|
 | Openshift    | >= 3.7  |
 | Kubernetes   | >= 1.7  |
 
-### Helm deployment
+### Helm chart deployment
 
-You can found in the `charts` folder two helm charts:
+You can find two Helm charts in the `charts` folder:
 
-- `icm-redis-operator`: used to deploy the `icm-redis-operator` into your kubernetes cluster.
-- `icm-redis-cluster`: used to create a `RedisCluster` custom resource that will be processed by `icm-redis-operator`.
+- `icm-redis-operator` used to deploy the operator in your Kubernetes cluster.
+- `icm-redis-cluster` used to create the `RedisCluster` CR that will be managed by the operator.
 
-#### Instantiate the `icm-redis-operator`
-
+Operator deployment example:
 ```console
 helm install icm-redis-operator charts/icm-redis-operator
 NAME: icm-redis-operator
-LAST DEPLOYED: Tue Jan  9 23:41:13 2018
+LAST DEPLOYED: Fri Aug 13 11:48:29 2021
 NAMESPACE: default
-STATUS: DEPLOYED
+STATUS: deployed
 
 RESOURCES:
 ==> v1/Deployment
@@ -61,16 +52,19 @@ NAME                DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
 icm-redis-operator  1        1        1           1          10s
 ```
 
-TODO: document RBAC support.
+#### Create the RedisCluster
 
-#### Create your "RedisCluster"
+You can configure the topology of the cluster by editing the provided `values.yaml`, using an override file, and/or setting each value with `--set` when you execute `helm install`.
 
-Using `charts/icm-redis-cluster` you can create a `RedisCluster` Custom Resource which will be processed by the `icm-redis-operator`.
-
-You can configure the Topology of the cluster by providing your own `values.yml` file to helm, or settings the value with the `--set` parameters when you execute `helm install`
-
+Redis cluster deployment example:
 ```console
 helm install icm-redis-cluster charts/icm-redis-cluster
+NAME: icm-redis-cluster
+LAST DEPLOYED: Fri Aug 13 11:48:29 2021
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
 ```
 
 > **! Warning !**, if you want to use the docker images corresponding to the level of code present in the "main" branch. You need to set the image tag when you instantiate the icm-redis-cluster chart and the icm-redis-operator chart. The "latest" tag is corresponding to the last validated release.
@@ -79,25 +73,25 @@ helm install icm-redis-cluster charts/icm-redis-cluster
 helm install icm-redis-cluster charts/icm-redis-cluster --set image.tag=main-$COMMIT-dev
 ```
 
-#### Install the kubectl redis-cluster plugin
+### Install kubectl redis-cluster plugin
 
-To install the redis-cluster plugin, follow the steps [here](docs/docs/kubectl-plugin.md).
+Docs available [here](docs/docs/kubectl-plugin.md).
 
 ### Deployment from source code
 
-#### Build the container images
+#### Build container images
 
 ```console
 cd $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
 make container
 ```
 
-you can define the docker images tag by adding the variable "VERSION"
+you can define the docker images tag by adding the variable "TAG"
 ```console
 make TAG=<Your-TAG> container
 ```
 
-### How to Release the Redis-Operator
+### How to Release the Redis Operator
 
 > THIS IS FOR RELEASE INTO ICM REPOS:
 >
@@ -106,4 +100,8 @@ make TAG=<Your-TAG> container
 > 2. Push the commit and tag
 > 3. ICM automation will build and push docker images and helm charts with git tag version
 >
-> NOTE: If you need to test the build prior to the above steps, you can run: `make build` and resolve any isssues.
+> NOTE: If you need to test the build prior to the above steps, you can run: `make build` and resolve any issues.
+
+### How to Upgrade Redis Client Version
+
+To upgrade your Redis client version, you will need to update the `REDIS_VERSION` variable in both the [Dockerfile for Redis node](Dockerfile.node) and the [Github release workflow](.github/workflows/release.yml). Please note that upgrading the Redis client version may impact functionality because the operator depends on the [radix library](https://github.com/mediocregopher/radix) for executing Redis commands.

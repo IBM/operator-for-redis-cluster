@@ -8,6 +8,7 @@ on:
 env:
   GO_VERSION: 1.15
   HELM_VERSION: v3.6.3
+  REDIS_VERSION: 6.2.6
   ICR_USERNAME: iamapikey
   ICR_PASSWORD: ${{ secrets.IBMCLOUD_API_KEY }}
   HELM_REPO_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -90,7 +91,7 @@ jobs:
           build-args: |
             DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
 
 
@@ -169,7 +170,7 @@ jobs:
           build-args: |
             DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
 
   metrics:
@@ -247,7 +248,7 @@ jobs:
           build-args: |
             DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
 
   helm-release:
@@ -264,29 +265,29 @@ jobs:
 
       - name: Package icm-redis-operator chart
         env:
-          VERSION: ${{ needs.operator.outputs.version }}
-        run: helm package charts/icm-redis-operator --version=$VERSION --app-version=$VERSION
+          OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
+        run: helm package charts/icm-redis-operator --version=$OPERATOR_VERSION
 
       - name: Package icm-redis-cluster chart
         env:
-          VERSION: ${{ needs.cluster-node.outputs.version }}
-        run: helm package charts/icm-redis-cluster --version=$VERSION --app-version=$VERSION
+          OPERATOR_VERSION: ${{ needs.cluster-node.outputs.version }}
+        run: helm package charts/icm-redis-cluster --version=$OPERATOR_VERSION --app-version=${{ env.REDIS_VERSION }}
 
       - name: Publish icm-redis-operator chart
         env:
-          VERSION: ${{ needs.operator.outputs.version }}
+          OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
         run: |
-          md5sum_var=$(md5sum ./icm-redis-operator-$VERSION.tgz | awk '{ print $1 }')
-          sha1sum_var=$(sha1sum ./icm-redis-operator-$VERSION.tgz | awk '{ print $1 }')
-          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-operator-$VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-operator-$VERSION.tgz
+          md5sum_var=$(md5sum ./icm-redis-operator-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          sha1sum_var=$(sha1sum ./icm-redis-operator-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-operator-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-operator-$OPERATOR_VERSION.tgz
 
       - name: Publish icm-redis-cluster chart
         env:
-          VERSION: ${{ needs.cluster-node.outputs.version }}
+          OPERATOR_VERSION: ${{ needs.cluster-node.outputs.version }}
         run: |
-          md5sum_var=$(md5sum ./icm-redis-cluster-$VERSION.tgz | awk '{ print $1 }')
-          sha1sum_var=$(sha1sum ./icm-redis-cluster-$VERSION.tgz | awk '{ print $1 }')
-          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-cluster-$VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-cluster-$VERSION.tgz
+          md5sum_var=$(md5sum ./icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz | awk '{ print $1 }')
+          sha1sum_var=$(sha1sum ./icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz | awk '{ print $1 }')
+          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz
 
   docs:
     name: Publish Docs

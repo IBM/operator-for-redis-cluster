@@ -49,7 +49,7 @@ var _ = Describe("RedisCluster CRUD operations", func() {
 
 		Eventually(framework.IsPodDisruptionBudgetCreatedFunc(kubeClient, cluster), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.IsRedisClusterStartedFunc(kubeClient, cluster), "5m", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.IsRedisClusterStartedFunc(kubeClient, cluster), "8m", "5s").ShouldNot(HaveOccurred())
 
 		Eventually(framework.ZonesBalancedFunc(kubeClient, cluster), "10s", "1s").ShouldNot(HaveOccurred())
 	})

@@ -1,12 +1,10 @@
 apiVersion: v2
 name: icm-redis-operator
+type: application
+version: 0.0.0  # Overridden by release workflow
 description: ICM Redis Operator for creating and managing Redis clusters
 maintainers:
-  - name: tpolekhin  # Tymofii Polekhin
   - name: tomashibm  # Tomash Sidei
   - name: cin        # Craig Ingram
   - name: antonioua  # Anton Kuznietsov
   - name: kscharm    # Kenny Scharm
-type: application
-version: 0.0.0
-appVersion: 0.0.0
