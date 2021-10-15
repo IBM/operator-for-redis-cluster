@@ -143,7 +143,7 @@ func (a *Admin) SetSlot(ctx context.Context, addr, action string, slot redis.Slo
 }
 
 // SetSlots uses SETSLOT command on several slots
-func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots redis.SlotSlice, nodeID string) error {
+func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots redis.SlotSlice, nodeID string, retryAttempt int) error {
 	val, ok := a.AddrError[addr]
 	if !ok {
 		val = nil

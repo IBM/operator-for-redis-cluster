@@ -219,7 +219,7 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 
 	redisClusterConfigMap, err := c.reconcileConfigMap(ctx, redisCluster)
 	if err != nil {
-		glog.Errorf("RedisCluster-Operator.Reconcile unable to update config map associated with RedisCluster %s/%s: %v", redisClusterConfigMap.Namespace, redisCluster.Name, err)
+		glog.Errorf("RedisCluster-Operator.Reconcile unable to update config map associated with RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 		return result, err
 	}
 

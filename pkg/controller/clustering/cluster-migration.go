@@ -55,7 +55,6 @@ func DispatchSlotsToNewPrimaries(ctx context.Context, admin redis.AdminInterface
 				glog.Error("error during ADDSLOTS: ", err)
 			}
 		} else {
-			glog.V(6).Info("3) Migrate keys")
 			if err := admin.MigrateKeys(ctx, nodesInfo.From, nodesInfo.To, slots, &cluster.Spec, true, scaling, allPrimaryNodes); err != nil {
 				glog.Error("error during key migration: ", err)
 			}
