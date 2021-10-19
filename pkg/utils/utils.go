@@ -3,13 +3,12 @@ package utils
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/golang/glog"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,8 +17,8 @@ import (
 )
 
 const (
-	kilobyte = 1000
-	kibibyte = 1024
+	Kilobyte = 1000
+	Kibibyte = 1024
 )
 
 var (
@@ -71,24 +70,6 @@ func ListPods(ctx context.Context, kubeClient client.Client, opts []client.ListO
 		return nil, err
 	}
 	return podList.Items, nil
-}
-
-func GetZonesFromKubeNodes(nodes []corev1.Node) []string {
-	set := make(map[string]struct{})
-	var zones []string
-	for _, node := range nodes {
-		zone, ok := node.Labels[corev1.LabelTopologyZone]
-		if ok {
-			set[zone] = struct{}{}
-		} else {
-			set[rapi.UnknownZone] = struct{}{}
-		}
-	}
-	for key := range set {
-		zones = append(zones, key)
-	}
-	sort.Strings(zones)
-	return zones
 }
 
 func GetZoneSkew(zoneToNodes map[string][]string) int {
@@ -169,27 +150,30 @@ func GetNbPodsToCreate(cluster *rapi.RedisCluster) int32 {
 	return nbRequiredPods + nbMigrationPods - cluster.Status.Cluster.NumberOfPods
 }
 
-func StringToByteString(value string) string {
+func StringToByteString(value string) (string, error) {
 	lower := strings.ToLower(value)
 	digits, err := strconv.Atoi(unitsRegex.ReplaceAllString(lower, ""))
 	if err != nil {
-		glog.Errorf("error converting to int: %v", err)
+		return "", err
 	}
 	units := digitsRegex.ReplaceAllString(lower, "")
+	if units != "" && unitsRegex.FindString(units) == "" {
+		return "", fmt.Errorf("invalid units for value %s", value)
+	}
 	result := int64(digits)
 	switch units {
 	case "k":
-		result *= kilobyte
+		result *= Kilobyte
 	case "kb":
-		result *= kibibyte
+		result *= Kibibyte
 	case "m":
-		result *= int64(math.Pow(kilobyte, 2))
+		result *= int64(math.Pow(Kilobyte, 2))
 	case "mb":
-		result *= int64(math.Pow(kibibyte, 2))
+		result *= int64(math.Pow(Kibibyte, 2))
 	case "g":
-		result *= int64(math.Pow(kilobyte, 3))
+		result *= int64(math.Pow(Kilobyte, 3))
 	case "gb":
-		result *= int64(math.Pow(kibibyte, 3))
+		result *= int64(math.Pow(Kibibyte, 3))
 	}
-	return strconv.FormatInt(result, 10)
+	return strconv.FormatInt(result, 10), nil
 }

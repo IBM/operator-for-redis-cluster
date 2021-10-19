@@ -27,7 +27,7 @@ type Node struct {
 	RedisAdmin redis.AdminInterface
 }
 
-// NewNode return a instance of a Node
+// NewNode return an instance of a Node
 func NewNode(c *Config, admin redis.AdminInterface) *Node {
 	n := &Node{
 		config:     c,
@@ -38,9 +38,8 @@ func NewNode(c *Config, admin redis.AdminInterface) *Node {
 	return n
 }
 
-// Clear clear possible initialize ressource
+// Clear clear possible initialized resources
 func (n *Node) Clear() {
-
 	if n.RedisAdmin != nil {
 		n.RedisAdmin.Close()
 	}

@@ -6,9 +6,7 @@ import (
 	api "k8s.io/api/core/v1"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	// for test lisibility
 	. "github.com/onsi/ginkgo"
-	// for test lisibility
 	. "github.com/onsi/gomega"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
@@ -54,6 +52,23 @@ var _ = Describe("RedisCluster CRUD operations", func() {
 		Eventually(framework.ZonesBalancedFunc(kubeClient, cluster), "10s", "1s").ShouldNot(HaveOccurred())
 	})
 	Context("a RedisCluster is created", func() {
+		It("should update RedisCluster server config", func() {
+			newConfig := map[string]string{
+				"redis.yaml": `
+maxmemory-policy: volatile-lfu
+maxmemory: 4gb
+cluster-enabled: yes
+lazyfree-lazy-expire: yes`,
+				"redis.conf": `
+maxmemory-policy volatile-lfu
+maxmemory 4gb
+cluster-enabled yes
+lazyfree-lazy-expire yes`,
+			}
+			Eventually(framework.UpdateRedisClusterConfigMapFunc(kubeClient, cluster, newConfig), "5s", "1s").ShouldNot(HaveOccurred())
+
+			Eventually(framework.GetConfigUpdateEventFunc(kubeClient, cluster), "5s", "1s").ShouldNot(HaveOccurred())
+		})
 		It("should update the RedisCluster", func() {
 			newTag := "new"
 			cluster = framework.NewRedisCluster(clusterName, clusterNs, newTag, defaultPrimaries, defaultReplicas)

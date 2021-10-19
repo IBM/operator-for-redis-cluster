@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/test"
+	"github.com/TheWeatherCompany/icm-redis-operator/internal/testutil"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,10 +16,10 @@ import (
 
 func TestDispatchSlotToPrimary(t *testing.T) {
 	simpleAdmin := admin.NewFakeAdmin()
-	_, primary1 := test.NewRedisPrimaryNode("1", "zone1", "pod1", "node1", []string{redis.BuildSlotSlice(0, simpleAdmin.GetHashMaxSlot()).String()})
-	_, primary2 := test.NewRedisPrimaryNode("2", "zone2", "pod2", "node2", []string{""})
-	_, primary3 := test.NewRedisPrimaryNode("3", "zone3", "pod3", "node3", []string{""})
-	_, primary4 := test.NewRedisPrimaryNode("4", "zone4", "pod4", "node4", []string{""})
+	_, primary1 := testutil.NewRedisPrimaryNode("1", "zone1", "pod1", "node1", []string{redis.BuildSlotSlice(0, simpleAdmin.GetHashMaxSlot()).String()})
+	_, primary2 := testutil.NewRedisPrimaryNode("2", "zone2", "pod2", "node2", []string{""})
+	_, primary3 := testutil.NewRedisPrimaryNode("3", "zone3", "pod3", "node3", []string{""})
+	_, primary4 := testutil.NewRedisPrimaryNode("4", "zone4", "pod4", "node4", []string{""})
 
 	kubeNodes := []v1.Node{
 		{

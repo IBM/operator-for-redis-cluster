@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/test"
+	"github.com/TheWeatherCompany/icm-redis-operator/internal/testutil"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,13 +13,13 @@ import (
 )
 
 func TestPlacePrimaries(t *testing.T) {
-	_, primary1 := test.NewRedisPrimaryNode("1", "zone1", "pod1", "node1", []string{""})
-	_, primary2 := test.NewRedisPrimaryNode("2", "zone1", "pod2", "node1", []string{""})
-	_, primary3 := test.NewRedisPrimaryNode("3", "zone2", "pod3", "node2", []string{""})
-	_, primary4 := test.NewRedisPrimaryNode("4", "zone3", "pod4", "node3", []string{""})
+	_, primary1 := testutil.NewRedisPrimaryNode("1", "zone1", "pod1", "node1", []string{""})
+	_, primary2 := testutil.NewRedisPrimaryNode("2", "zone1", "pod2", "node1", []string{""})
+	_, primary3 := testutil.NewRedisPrimaryNode("3", "zone2", "pod3", "node2", []string{""})
+	_, primary4 := testutil.NewRedisPrimaryNode("4", "zone3", "pod4", "node3", []string{""})
 
-	_, primary5 := test.NewRedisPrimaryNode("2", "zone2", "pod2", "node2", []string{""})
-	_, primary6 := test.NewRedisPrimaryNode("4", "zone2", "pod4", "node2", []string{""})
+	_, primary5 := testutil.NewRedisPrimaryNode("2", "zone2", "pod2", "node2", []string{""})
+	_, primary6 := testutil.NewRedisPrimaryNode("4", "zone2", "pod4", "node2", []string{""})
 
 	node1 := v1.Node{
 		ObjectMeta: metav1.ObjectMeta{

@@ -124,7 +124,8 @@ func (n *Node) SetRole(flags string) error {
 
 // GetRole returns the Redis Cluster Node's role
 func (n *Node) GetRole() v1.RedisClusterNodeRole {
-	switch n.Role {
+	role := strings.ToLower(n.Role)
+	switch role {
 	case redisMasterRole, redisPrimaryRole:
 		return v1.RedisClusterNodeRolePrimary
 	case redisSlaveRole, redisReplicaRole:

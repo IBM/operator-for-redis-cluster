@@ -219,8 +219,8 @@ func compareConfig(oldConfig, newConfig map[string]string) map[string]string {
 	for field, newVal := range newConfig {
 		if oldVal, ok := oldConfig[field]; ok {
 			if field == "maxmemory" {
-				oldVal = utils.StringToByteString(oldVal)
-				newVal = utils.StringToByteString(newVal)
+				oldVal, _ = utils.StringToByteString(oldVal)
+				newVal, _ = utils.StringToByteString(newVal)
 			}
 			if oldVal != newVal {
 				configChanges[field] = newVal

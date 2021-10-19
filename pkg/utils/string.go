@@ -1,6 +1,6 @@
 package utils
 
-// Stringer implement the string interface
+// Stringer implements the string interface
 type Stringer interface {
 	String() string
 }

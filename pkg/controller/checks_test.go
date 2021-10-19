@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/TheWeatherCompany/icm-redis-operator/internal/testutil"
+
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
-	"github.com/TheWeatherCompany/icm-redis-operator/test"
-
 	kapiv1 "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -22,13 +22,13 @@ func Test_checkReplicationFactor(t *testing.T) {
 		cluster  *rapi.RedisCluster
 		rCluster *redis.Cluster
 	}
-	redisPrimary1, primary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{})
-	redisPrimary2, primary2 := test.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{})
-	redisReplica1, replica1 := test.NewRedisReplicaNode("replica1", "zone2", primary1.ID, "pod3", "node2")
-	redisReplica2, replica2 := test.NewRedisReplicaNode("replica2", "zone3", primary1.ID, "pod4", "node3")
-	node1 := test.NewNode("node1", "zone1")
-	node2 := test.NewNode("node2", "zone2")
-	node3 := test.NewNode("node3", "zone3")
+	redisPrimary1, primary1 := testutil.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{})
+	redisPrimary2, primary2 := testutil.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{})
+	redisReplica1, replica1 := testutil.NewRedisReplicaNode("replica1", "zone2", primary1.ID, "pod3", "node2")
+	redisReplica2, replica2 := testutil.NewRedisReplicaNode("replica2", "zone3", primary1.ID, "pod4", "node3")
+	node1 := testutil.NewNode("node1", "zone1")
+	node2 := testutil.NewNode("node2", "zone2")
+	node3 := testutil.NewNode("node3", "zone3")
 	tests := []struct {
 		name   string
 		args   args
@@ -601,17 +601,17 @@ func Test_checkNumberOfPrimaries(t *testing.T) {
 }
 
 func Test_checkShouldDeletePods(t *testing.T) {
-	redisPrimary1, primary1 := test.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
-	redisPrimary2, primary2 := test.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
-	redisPrimary3, primary3 := test.NewRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
-	redisPrimary4, primary4 := test.NewRedisPrimaryNode("primary4", "zone1", "pod4", "node1", []string{})
-	redisReplica1, replica1 := test.NewRedisReplicaNode("replica1", "zone2", primary1.ID, "pod5", "node2")
-	redisReplica2, replica2 := test.NewRedisReplicaNode("replica2", "zone3", primary2.ID, "pod6", "node3")
-	redisReplica3, replica3 := test.NewRedisReplicaNode("replica3", "zone1", primary3.ID, "pod7", "node1")
+	redisPrimary1, primary1 := testutil.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{"1"})
+	redisPrimary2, primary2 := testutil.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{"2"})
+	redisPrimary3, primary3 := testutil.NewRedisPrimaryNode("primary3", "zone3", "pod3", "node3", []string{"3"})
+	redisPrimary4, primary4 := testutil.NewRedisPrimaryNode("primary4", "zone1", "pod4", "node1", []string{})
+	redisReplica1, replica1 := testutil.NewRedisReplicaNode("replica1", "zone2", primary1.ID, "pod5", "node2")
+	redisReplica2, replica2 := testutil.NewRedisReplicaNode("replica2", "zone3", primary2.ID, "pod6", "node3")
+	redisReplica3, replica3 := testutil.NewRedisReplicaNode("replica3", "zone1", primary3.ID, "pod7", "node1")
 
-	node1 := test.NewNode("node1", "zone1")
-	node2 := test.NewNode("node2", "zone2")
-	node3 := test.NewNode("node3", "zone3")
+	node1 := testutil.NewNode("node1", "zone1")
+	node2 := testutil.NewNode("node2", "zone2")
+	node3 := testutil.NewNode("node3", "zone3")
 
 	type args struct {
 		cluster  *rapi.RedisCluster

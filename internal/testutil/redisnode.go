@@ -1,4 +1,4 @@
-package test
+package testutil
 
 import (
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
@@ -7,30 +7,28 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewRedisReplicaNode(id, zone, primaryRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
-	node := newRedisNode(rapi.RedisClusterNodeRoleReplica, id, podName, nodeName, nil)
-	node.PrimaryRef = primaryRef
-	role := "replica"
-	redisNode := redis.Node{ID: id, PrimaryReferent: primaryRef, Zone: zone, Role: role, Pod: node.Pod}
-	return node, redisNode
-}
-
 func NewRedisPrimaryNode(id, zone, podName, nodeName string, slots []string) (rapi.RedisClusterNode, redis.Node) {
-	role := "primary"
 	slotsInt := redis.SlotSlice{}
 	for _, s := range slots {
 		i, _ := redis.DecodeSlot(s)
 		slotsInt = append(slotsInt, i)
 	}
-	node := newRedisNode(rapi.RedisClusterNodeRolePrimary, id, podName, nodeName, slots)
-	redisNode := redis.Node{ID: id, Zone: zone, Slots: slotsInt, Role: role, Pod: node.Pod}
+	node := newRedisNode(rapi.RedisClusterNodeRolePrimary, id, zone, podName, nodeName, slots)
+	redisNode := redis.Node{ID: id, Zone: zone, Slots: slotsInt, Role: string(rapi.RedisClusterNodeRolePrimary), Pod: node.Pod}
 	return node, redisNode
 }
 
-func newRedisNode(role rapi.RedisClusterNodeRole, id, podName, nodeName string, slots []string) rapi.RedisClusterNode {
+func NewRedisReplicaNode(id, zone, primaryRef, podName, nodeName string) (rapi.RedisClusterNode, redis.Node) {
+	node := newRedisNode(rapi.RedisClusterNodeRoleReplica, id, zone, podName, nodeName, nil)
+	node.PrimaryRef = primaryRef
+	redisNode := redis.Node{ID: id, PrimaryReferent: primaryRef, Zone: zone, Role: string(rapi.RedisClusterNodeRoleReplica), Pod: node.Pod}
+	return node, redisNode
+}
+
+func newRedisNode(role rapi.RedisClusterNodeRole, id, zone, podName, nodeName string, slots []string) rapi.RedisClusterNode {
 	pod := NewPod(podName, nodeName)
 
-	return rapi.RedisClusterNode{ID: id, Slots: slots, Role: role, Pod: pod}
+	return rapi.RedisClusterNode{ID: id, Zone: zone, Slots: slots, Role: role, Pod: pod}
 }
 
 func NewPod(name, node string) *kapiv1.Pod {

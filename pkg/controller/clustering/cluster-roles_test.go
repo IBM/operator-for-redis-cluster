@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/test"
+	"github.com/TheWeatherCompany/icm-redis-operator/internal/testutil"
 
 	v1 "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,15 +19,15 @@ func TestDispatchReplica(t *testing.T) {
 	primaryRole := "primary"
 	replicaRole := "replica"
 	ctx := context.Background()
-	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, IP: "1.1.1.1", Zone: "zone1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: test.NewPod("pod1", "node1")}
-	redisNode2 := &redis.Node{ID: "2", Role: primaryRole, IP: "1.1.1.2", Zone: "zone2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: test.NewPod("pod2", "node2")}
-	redisNode3 := &redis.Node{ID: "3", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.3", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod3", "node3")}
-	redisNode4 := &redis.Node{ID: "4", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.4", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod4", "node4")}
-	redisNode5 := &redis.Node{ID: "5", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.5", Zone: "zone1", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod5", "node5")}
-	redisNode6 := &redis.Node{ID: "6", Role: primaryRole, IP: "1.1.1.6", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod6", "node6")}
-	redisNode7 := &redis.Node{ID: "7", Role: primaryRole, IP: "1.1.1.7", Zone: "zone1", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: test.NewPod("pod7", "node7")}
-	redisNode8 := &redis.Node{ID: "8", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.8", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod8", "node8")}
-	redisNode9 := &redis.Node{ID: "9", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.9", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod9", "node9")}
+	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, IP: "1.1.1.1", Zone: "zone1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: testutil.NewPod("pod1", "node1")}
+	redisNode2 := &redis.Node{ID: "2", Role: primaryRole, IP: "1.1.1.2", Zone: "zone2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: testutil.NewPod("pod2", "node2")}
+	redisNode3 := &redis.Node{ID: "3", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.3", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod3", "node3")}
+	redisNode4 := &redis.Node{ID: "4", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.4", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod4", "node4")}
+	redisNode5 := &redis.Node{ID: "5", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.5", Zone: "zone1", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod5", "node5")}
+	redisNode6 := &redis.Node{ID: "6", Role: primaryRole, IP: "1.1.1.6", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod6", "node6")}
+	redisNode7 := &redis.Node{ID: "7", Role: primaryRole, IP: "1.1.1.7", Zone: "zone1", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: testutil.NewPod("pod7", "node7")}
+	redisNode8 := &redis.Node{ID: "8", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.8", Zone: "zone2", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod8", "node8")}
+	redisNode9 := &redis.Node{ID: "9", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.9", Zone: "zone3", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod9", "node9")}
 
 	nodes := redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode4, redisNode5, redisNode6, redisNode7, redisNode8, redisNode9}
 
@@ -82,15 +82,15 @@ func TestDispatchReplica(t *testing.T) {
 func TestClassifyNodesByRole(t *testing.T) {
 	primaryRole := "primary"
 	replicaRole := "replica"
-	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, IP: "1.1.1.1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: test.NewPod("pod1", "node1")}
-	redisNode2 := &redis.Node{ID: "2", Role: primaryRole, IP: "1.1.1.2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: test.NewPod("pod2", "node2")}
-	redisNode3 := &redis.Node{ID: "3", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod3", "node3")}
-	redisNode4 := &redis.Node{ID: "4", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod4", "node4")}
-	redisNode5 := &redis.Node{ID: "5", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.5", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod5", "node5")}
-	redisNode6 := &redis.Node{ID: "6", Role: primaryRole, IP: "1.1.1.6", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod6", "node6")}
-	redisNode7 := &redis.Node{ID: "7", Role: primaryRole, IP: "1.1.1.7", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: test.NewPod("pod7", "node7")}
-	redisNode8 := &redis.Node{ID: "8", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.8", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod8", "node8")}
-	redisNode9 := &redis.Node{ID: "9", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.9", Port: "1234", Slots: redis.SlotSlice{}, Pod: test.NewPod("pod9", "node9")}
+	redisNode1 := &redis.Node{ID: "1", Role: primaryRole, IP: "1.1.1.1", Port: "1234", Slots: append(redis.BuildSlotSlice(10, 20), 0), Pod: testutil.NewPod("pod1", "node1")}
+	redisNode2 := &redis.Node{ID: "2", Role: primaryRole, IP: "1.1.1.2", Port: "1234", Slots: append(redis.BuildSlotSlice(1, 5), redis.BuildSlotSlice(21, 30)...), Pod: testutil.NewPod("pod2", "node2")}
+	redisNode3 := &redis.Node{ID: "3", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.3", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod3", "node3")}
+	redisNode4 := &redis.Node{ID: "4", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.4", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod4", "node4")}
+	redisNode5 := &redis.Node{ID: "5", Role: replicaRole, PrimaryReferent: "1", IP: "1.1.1.5", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod5", "node5")}
+	redisNode6 := &redis.Node{ID: "6", Role: primaryRole, IP: "1.1.1.6", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod6", "node6")}
+	redisNode7 := &redis.Node{ID: "7", Role: primaryRole, IP: "1.1.1.7", Port: "1234", Slots: redis.BuildSlotSlice(31, 40), Pod: testutil.NewPod("pod7", "node7")}
+	redisNode8 := &redis.Node{ID: "8", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.8", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod8", "node8")}
+	redisNode9 := &redis.Node{ID: "9", Role: replicaRole, PrimaryReferent: "7", IP: "1.1.1.9", Port: "1234", Slots: redis.SlotSlice{}, Pod: testutil.NewPod("pod9", "node9")}
 
 	nodes := redis.Nodes{redisNode1, redisNode2, redisNode3, redisNode4, redisNode5, redisNode6, redisNode7, redisNode8, redisNode9}
 

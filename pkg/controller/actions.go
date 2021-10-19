@@ -723,7 +723,6 @@ func selectNewReplicasByZone(zones []string, primary *redis.Node, nodes redis.No
 			candidateReplicas = append(candidateReplicas, node)
 		}
 	}
-
 	zoneToReplicas := clustering.ZoneToNodes(zones, candidateReplicas)
 	zoneIndex := clustering.GetZoneIndex(zones, primary.Zone, primaryReplicas)
 	numEmptyZones := 0

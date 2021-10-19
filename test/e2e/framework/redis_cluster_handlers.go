@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/fields"
+
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
@@ -140,10 +142,10 @@ func BuildAndSetClients() kclient.Client {
 }
 
 // CreateRedisClusterFunc returns the func to create a RedisCluster
-func CreateRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+func CreateRedisClusterFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
-		if err := kubeClient.Create(context.Background(), rediscluster); err != nil {
-			glog.Warningf("cannot create RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+		if err := kubeClient.Create(context.Background(), redisCluster); err != nil {
+			glog.Warningf("cannot create RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 		Logf("RedisCluster created")
@@ -152,18 +154,18 @@ func CreateRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.RedisC
 }
 
 // UpdateRedisClusterFunc returns the func to update a RedisCluster
-func UpdateRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+func UpdateRedisClusterFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
 		cluster := &rapi.RedisCluster{}
-		clusterName := types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}
+		clusterName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
 		err := kubeClient.Get(context.Background(), clusterName, cluster)
 		if err != nil {
-			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			glog.Warningf("cannot get RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
-		cluster.Spec = rediscluster.Spec
+		cluster.Spec = redisCluster.Spec
 		if err := kubeClient.Update(context.Background(), cluster); err != nil {
-			glog.Warningf("cannot update RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			glog.Warningf("cannot update RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 		Logf("RedisCluster updated")
@@ -171,14 +173,14 @@ func UpdateRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.RedisC
 	}
 }
 
-// IsRedisClusterStartedFunc returns the func that checks whether or not the RedisCluster is started and configured properly
-func IsRedisClusterStartedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+// IsRedisClusterStartedFunc returns the func that checks whether the RedisCluster is started and configured properly
+func IsRedisClusterStartedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
 		cluster := &rapi.RedisCluster{}
-		clusterName := types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}
+		clusterName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
 		err := kubeClient.Get(context.Background(), clusterName, cluster)
 		if err != nil {
-			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			glog.Warningf("cannot get RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 		totalNbPods := *cluster.Spec.NumberOfPrimaries * (1 + *cluster.Spec.ReplicationFactor)
@@ -192,11 +194,11 @@ func IsRedisClusterStartedFunc(kubeClient kclient.Client, rediscluster *rapi.Red
 		}
 
 		if cluster.Status.Cluster.MinReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s has incorrect min replication factor, expected: %v - current: %v", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MinReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s has incorrect min replication factor, expected: %v - current: %v", cluster.Name, *cluster.Spec.ReplicationFactor, redisCluster.Status.Cluster.MinReplicationFactor)
 		}
 
 		if cluster.Status.Cluster.MaxReplicationFactor != *cluster.Spec.ReplicationFactor {
-			return LogAndReturnErrorf("RedisCluster %s has incorrect max replication factor, expected: %d - current: %v", cluster.Name, *cluster.Spec.ReplicationFactor, rediscluster.Status.Cluster.MaxReplicationFactor)
+			return LogAndReturnErrorf("RedisCluster %s has incorrect max replication factor, expected: %d - current: %v", cluster.Name, *cluster.Spec.ReplicationFactor, redisCluster.Status.Cluster.MaxReplicationFactor)
 		}
 
 		if cluster.Status.Cluster.NumberOfPods != totalNbPods {
@@ -212,25 +214,25 @@ func IsRedisClusterStartedFunc(kubeClient kclient.Client, rediscluster *rapi.Red
 }
 
 // UpdateConfigRedisClusterFunc returns the func to update the RedisCluster configuration
-func UpdateConfigRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster, nbPrimary, replicas *int32) func() error {
+func UpdateConfigRedisClusterFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster, nbPrimary, replicas *int32) func() error {
 	return func() error {
 		cluster := &rapi.RedisCluster{}
-		clusterName := types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}
+		clusterName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
 		err := kubeClient.Get(context.Background(), clusterName, cluster)
 		if err != nil {
-			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			glog.Warningf("cannot get RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 		if nbPrimary != nil {
-			rediscluster.Spec.NumberOfPrimaries = nbPrimary
+			redisCluster.Spec.NumberOfPrimaries = nbPrimary
 			cluster.Spec.NumberOfPrimaries = nbPrimary
 		}
 		if replicas != nil {
-			rediscluster.Spec.ReplicationFactor = replicas
+			redisCluster.Spec.ReplicationFactor = replicas
 			cluster.Spec.ReplicationFactor = replicas
 		}
-		if err := kubeClient.Update(context.Background(), cluster); err != nil {
-			Logf("cannot update RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+		if err = kubeClient.Update(context.Background(), cluster); err != nil {
+			Logf("cannot update RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 
@@ -239,22 +241,27 @@ func UpdateConfigRedisClusterFunc(kubeClient kclient.Client, rediscluster *rapi.
 	}
 }
 
-// CreateRedisClusterConfigMapFunc returns a func to create a RedisCluster server configuration config map
-func CreateRedisClusterConfigMapFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+// CreateRedisClusterConfigMapFunc returns a func to create the RedisCluster server configuration config map
+func CreateRedisClusterConfigMapFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
 		configMap := &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      rediscluster.Name,
-				Namespace: rediscluster.Namespace,
+				Name:      redisCluster.Name,
+				Namespace: redisCluster.Namespace,
 			},
 			Data: map[string]string{
-				"maxmemory-policy": "volatile-lfu",
-				"maxmemory":        "8gb",
-				"cluster-enabled":  "yes",
+				"redis.yaml": `
+maxmemory-policy: volatile-lfu
+maxmemory: 6gb
+cluster-enabled: yes`,
+				"redis.conf": `
+maxmemory-policy volatile-lfu
+maxmemory 6gb
+cluster-enabled yes`,
 			},
 		}
 		if err := kubeClient.Create(context.Background(), configMap); err != nil {
-			glog.Warningf("cannot create ConfigMap %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			glog.Warningf("cannot create ConfigMap %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 		Logf("ConfigMap created")
@@ -262,15 +269,53 @@ func CreateRedisClusterConfigMapFunc(kubeClient kclient.Client, rediscluster *ra
 	}
 }
 
+// UpdateRedisClusterConfigMapFunc returns a func to update the RedisCluster server configuration config map data
+func UpdateRedisClusterConfigMapFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster, config map[string]string) func() error {
+	return func() error {
+		cmName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
+		cm := &v1.ConfigMap{}
+		if err := kubeClient.Get(context.Background(), cmName, cm); err != nil {
+			glog.Warningf("cannot get ConfigMap %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
+			return err
+		}
+		cm.Data = config
+		if err := kubeClient.Update(context.Background(), cm); err != nil {
+			glog.Warningf("cannot update ConfigMap %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
+			return err
+		}
+		Logf("ConfigMap updated")
+		return nil
+	}
+}
+
+// GetConfigUpdateEventFunc returns a func to get the UpdateConfig event associated with the RedisCluster
+func GetConfigUpdateEventFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
+	return func() error {
+		events := &v1.EventList{}
+		if err := kubeClient.List(context.Background(), events,
+			kclient.InNamespace(redisCluster.Namespace),
+			kclient.MatchingFieldsSelector{Selector: fields.OneTermEqualSelector("involvedObject.name", redisCluster.Name)}); err != nil {
+			glog.Warningf("cannot get events for RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
+			return err
+		}
+		for _, event := range events.Items {
+			if event.Reason == "ConfigUpdate" {
+				return nil
+			}
+		}
+		return fmt.Errorf("no ConfigUpdate event for RedisCluster %s/%s", redisCluster.Namespace, redisCluster.Name)
+	}
+}
+
 // ZonesBalancedFunc checks if a RedisCluster's node zones are balanced
-func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+func ZonesBalancedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
 		primaryToReplicas := make(map[string][]rapi.RedisClusterNode)
 		primaryToZone := make(map[string]string)
 		ctx := context.Background()
 		cluster := &rapi.RedisCluster{}
-		if err := kubeClient.Get(ctx, types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}, cluster); err != nil {
-			glog.Warningf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+		if err := kubeClient.Get(ctx, types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}, cluster); err != nil {
+			glog.Warningf("cannot get RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 		kubeNodes, err := utils.GetKubeNodes(ctx, kubeClient, cluster.Spec.PodTemplate.Spec.NodeSelector)
@@ -290,7 +335,7 @@ func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluste
 				primaryToReplicas[node.PrimaryRef] = append(primaryToReplicas[node.PrimaryRef], node)
 			}
 		}
-		if int(*cluster.Spec.ReplicationFactor) < len(utils.GetZonesFromKubeNodes(kubeNodes)) {
+		if int(*cluster.Spec.ReplicationFactor) < len(utils.GetZones(kubeNodes)) {
 			// check for primaries and replicas in same zone
 			for primary, replicas := range primaryToReplicas {
 				for _, replica := range replicas {
@@ -317,14 +362,14 @@ func ZonesBalancedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluste
 }
 
 // IsPodSpecUpdatedFunc checks if all RedisCluster pods have the new PodSpec
-func IsPodSpecUpdatedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster, imageTag string) func() error {
+func IsPodSpecUpdatedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster, imageTag string) func() error {
 	return func() error {
 		labelSet := make(map[string]string)
-		labelSet[rapi.ClusterNameLabelKey] = rediscluster.Name
+		labelSet[rapi.ClusterNameLabelKey] = redisCluster.Name
 		podList := &v1.PodList{}
-		err := kubeClient.List(context.Background(), podList, kclient.InNamespace(rediscluster.Namespace), kclient.MatchingLabels(labelSet))
+		err := kubeClient.List(context.Background(), podList, kclient.InNamespace(redisCluster.Namespace), kclient.MatchingLabels(labelSet))
 		if err != nil {
-			return LogAndReturnErrorf("cannot get RedisCluster %s/%s: %v", rediscluster.Namespace, rediscluster.Name, err)
+			return LogAndReturnErrorf("cannot get RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
 		}
 
 		withOldTag := make([]string, 0)
@@ -358,15 +403,15 @@ func IsPodSpecUpdatedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisClu
 }
 
 // CreateRedisNodeServiceAccountFunc returns the func to create the service account associated with the redis node
-func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
-		saName := types.NamespacedName{Namespace: rediscluster.Namespace, Name: "redis-node"}
+		saName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: "redis-node"}
 		err := kubeClient.Get(context.Background(), saName, &v1.ServiceAccount{})
 		if err != nil && errors.IsNotFound(err) {
 			newSA := &v1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "redis-node",
-					Namespace: rediscluster.Namespace,
+					Namespace: redisCluster.Namespace,
 				},
 			}
 			err = kubeClient.Create(context.Background(), newSA)
@@ -396,13 +441,13 @@ func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, rediscluster *
 			}
 		}
 
-		rbName := types.NamespacedName{Name: "redis-node", Namespace: rediscluster.Namespace}
+		rbName := types.NamespacedName{Name: "redis-node", Namespace: redisCluster.Namespace}
 		err = kubeClient.Get(context.Background(), rbName, &rbacv1.RoleBinding{})
 		if err != nil && errors.IsNotFound(err) {
 			rb := &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "redis-node",
-					Namespace: rediscluster.Namespace,
+					Namespace: redisCluster.Namespace,
 				},
 				RoleRef: rbacv1.RoleRef{
 					APIGroup: "rbac.authorization.k8s.io",
@@ -413,7 +458,7 @@ func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, rediscluster *
 					{
 						Kind:      "ServiceAccount",
 						Name:      "redis-node",
-						Namespace: rediscluster.Namespace,
+						Namespace: redisCluster.Namespace,
 					},
 				},
 			}
@@ -428,12 +473,12 @@ func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, rediscluster *
 
 // IsPodDisruptionBudgetCreatedFunc returns the func that checks if the PodDisruptionBudget
 // associated with the the RedisCluster has been created properly.
-func IsPodDisruptionBudgetCreatedFunc(kubeClient kclient.Client, rediscluster *rapi.RedisCluster) func() error {
+func IsPodDisruptionBudgetCreatedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
-		pdbName := types.NamespacedName{Namespace: rediscluster.Namespace, Name: rediscluster.Name}
+		pdbName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
 		err := kubeClient.Get(context.Background(), pdbName, &v1beta1.PodDisruptionBudget{})
 		if err != nil {
-			Logf("Cannot get PodDisruptionBudget associated to the rediscluster:%s/%s, err:%v", rediscluster.Namespace, rediscluster.Name, err)
+			Logf("Cannot get PodDisruptionBudget associated to the redisCluster:%s/%s, err:%v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
 		}
 		return nil
