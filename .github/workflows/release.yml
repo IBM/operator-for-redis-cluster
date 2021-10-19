@@ -328,7 +328,7 @@ jobs:
         run: make build-kubectl-rc
 
       - name: Publish redis plugin to assets
-        uses: skx/github-action-publish-binaries@release-0.15
+        uses: skx/github-action-publish-binaries@release-2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
