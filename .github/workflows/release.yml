@@ -285,9 +285,9 @@ jobs:
         env:
           OPERATOR_VERSION: ${{ needs.cluster-node.outputs.version }}
         run: |
-          md5sum_var=$(md5sum ./icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz | awk '{ print $1 }')
-          sha1sum_var=$(sha1sum ./icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz | awk '{ print $1 }')
-          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-cluster-$OPERATOR_VERSION-${{ env.REDIS_VERSION }}.tgz
+          md5sum_var=$(md5sum ./icm-redis-cluster-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          sha1sum_var=$(sha1sum ./icm-redis-cluster-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-cluster-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-cluster-$OPERATOR_VERSION.tgz
 
   docs:
     name: Publish Docs
