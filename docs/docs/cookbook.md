@@ -5,31 +5,54 @@ slug: /cookbook
 
 # Cookbook
 
-## Minikube Configuration
+## Installation
 
-### Prerequisites
+Redis operator is written in [Go](https://golang.org/).
 
-- minikube version >= 0.20
-- kubectl >= 1.7
-- helm
-- golang >= 1.8
-- docker >= 1.10
-- make
-- git
+### Required Dependencies
 
-### Installation
+* `make`
+* [Go 1.15+](https://golang.org/doc/install)
+* [Docker](https://www.docker.com/)
+* [Helm 3](https://helm.sh)
 
-Project and environment setup:
+### Recommended Dependencies
+
+* [Kind](https://kind.sigs.k8s.io/) or [Minikube](https://github.com/kubernetes/minikube)
+* [golangci-lint](https://github.com/golangci/golangci-lint)
+
+### Download and build the source code
+
+Start by making a fork of the `redis-operator` repository. Then, clone your forked repo:
 
 ```console
-$ REPO="https://github.com/TheWeatherCompany/icm-redis-operator.git"
-$ FOLDER="$HOME/tmp/redis-operator"
+$ git clone git@github.com:<YOUR_USERNAME>/icm-redis-operator.git
+Cloning into 'icm-redis-operator'...
+$ cd icm-redis-operator
+```
 
-$ mkdir -p $FOLDER/src/github.com/TheWeatherCompany/icm-redis-operator
-$ cd $FOLDER
-$ export GOPATH=`pwd`
-$ git clone $REPO $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
-$ cd $GOPATH/src/github.com/TheWeatherCompany/icm-redis-operator
+Build the project:
+
+```console
+$ make build
+CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG=0.3.4 -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.OPERATOR_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REDIS_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME=2021-10-21/12:44:33 -s" -o bin/operator ./cmd/operator
+CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG=0.3.4 -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.OPERATOR_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REDIS_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME=2021-10-21/12:44:35 -s" -o bin/node ./cmd/node
+CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG=0.3.4 -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.OPERATOR_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REDIS_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME=2021-10-21/12:44:37 -s" -o bin/metrics ./cmd/metrics
+```
+
+Run the test suite to make sure everything works:
+
+```console
+$ make test
+./go.test.sh
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller	5.162s	coverage: 33.1% of statements
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/clustering	0.711s	coverage: 75.6% of statements
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod	1.726s	coverage: 40.0% of statements
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/sanitycheck	0.631s	coverage: 21.5% of statements
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/garbagecollector	1.740s	coverage: 75.0% of statements
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/redis	0.728s	coverage: 22.4% of statements
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake	0.148s	coverage: 85.8% of statements
+ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/redisnode	1.924s	coverage: 43.4% of statements
 ```
 
 Install the kubectl Redis cluster plugin (more info [here](./kubectl-plugin.md))
@@ -38,169 +61,140 @@ Install the kubectl Redis cluster plugin (more info [here](./kubectl-plugin.md))
 $ make plugin
 ```
 
-Start minikube with RBAC activated
+## Create a Kubernetes cluster
+To run the Redis operator, you need to have a running Kubernetes cluster. You can use local k8s cluster frameworks such as `kind` or `minikube`. Use the following guide to install a `kind` cluster similar to what we use in our e2e tests.
 
+From the project root directory, create your kind cluster using the e2e test configuration:
 ```console
-$ minikube start --extra-config=apiserver.Authorization.Mode=RBAC
+$ kind create cluster --config ./test/e2e/kind_config.yml
 ```
 
-Create the missing role binding for k8s dashboard
-
+Build the required docker images:
 ```console
-$ kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
-clusterrolebinding "add-on-cluster-admin" created
+make container PREFIX= TAG=latest
 ```
 
-Create the cluster role binding for the helm tiller
-
+Once the kind cluster is up and running, load the images into the kind cluster:
 ```console
-$ kubectl create clusterrolebinding tiller-cluster-admin  --clusterrole=cluster-admin --serviceaccount=kube-system:default
-clusterrolebinding "tiller-cluster-admin" created
+$ kind load docker-image icm-redis-operator:latest
+$ kind load docker-image icm-redis-node:latest
+$ kind load docker-image icm-redis-metrics:latest
 ```
 
-Init the helm tiller
+### Deploy a Redis operator
 
+Install the `icm-redis-operator` Helm chart:
 ```console
-$ helm init --wait
-HELM_HOME has been configured at /Users/<user>/.helm.
-Tiller (the Helm server-side component) has been installed into your Kubernetes Cluster.
-Happy Helming!
-```
-
-Check if Helm is running properly
-
-```console
-checkhelm(){ CHECKHELM=$(kubectl get pod -n kube-system -l app=helm,name=tiller | grep "1/1" | wc -l); }
-checkhelm; while [ ! $CHECKHELM -eq 1 ]; do sleep 1; checkhelm; done
-```
-
-Build docker images
-
-```console
-$ eval $(minikube docker-env)
-$ make TAG=latest container
-CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o docker/operator/operator ./cmd/operator/main.go
-...
-```
-
-Helm install the Redis operator
-
-```console
-$ helm install --wait -n operator chart/redis-operator
-NAME:   operator
-LAST DEPLOYED: Thu Feb 15 14:53:39 2018
+$ helm install op charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=latest
+NAME: op
+LAST DEPLOYED: Thu Oct 21 15:11:51 2021
 NAMESPACE: default
-STATUS: DEPLOYED
-
-RESOURCES:
-==> v1beta1/Deployment
-NAME                     DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
-operator-redis-operator  1        0        0           0          0s
-
-==> v1beta1/ClusterRole
-NAME            AGE
-redis-operator  0s
-
-==> v1beta1/ClusterRoleBinding
-NAME            AGE
-redis-operator  0s
-
-==> v1/ServiceAccount
-NAME            SECRETS  AGE
-redis-operator  1        0s
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
 ```
 
-Monitor that the operator is running properly
+Confirm that the operator is running properly:
 
-```console
-$ kubectl get pods -w
-NAME                                       READY     STATUS    RESTARTS   AGE
-operator-redis-operator-5d64589b66-9rwsx   1/1       Running   0          1m
-```
-
-# Create a redis cluster
-
-```console
-$ helm install --wait -n mycluster chart/redis-cluster --set numberOfPrimaries=3 --set replicationFactor=1
-NAME:   mycluster
-LAST DEPLOYED: Thu Feb 15 14:56:35 2018
-NAMESPACE: default
-STATUS: DEPLOYED
-
-RESOURCES:
-==> v1beta1/ClusterRoleBinding
-NAME        AGE
-redis-node  0s
-
-==> v1/ServiceAccount
-NAME        SECRETS  AGE
-redis-node  1        0s
-
-==> v1alpha1/RedisCluster
-NAME       AGE
-mycluster  0s
-
-==> v1beta1/ClusterRole
-redis-node  0s
-```
-
-Monitor the Redis cluster creation
-
-```console
-$ watch kubectl plugin rediscluster --rc myCluster
-Every 2.0s: kubectl plugin rediscluster
- NAME       NAMESPACE  PODS   STATUS  NB PRIMARY  REPLICATION
- mycluster  default    6/6/6  OK      3/3         1-1/1
-```
-
-Check the cluster status with `cluster info`:
-
-```console
-$ kubectl exec $(kubectl get pod -l redis-operator.k8s.io/cluster-name=mycluster -o jsonpath="{.items[0].metadata.name}") -- redis-cli cluster info
-cluster_state:ok
-cluster_slots_assigned:16384
-cluster_slots_ok:16384
-cluster_slots_pfail:0
-cluster_slots_fail:0
-cluster_known_nodes:6
-cluster_size:3
-cluster_current_epoch:4
-cluster_my_epoch:1
-cluster_stats_messages_ping_sent:7003
-cluster_stats_messages_pong_sent:6990
-cluster_stats_messages_sent:13993
-cluster_stats_messages_ping_received:6985
-cluster_stats_messages_pong_received:7003
-cluster_stats_messages_meet_received:5
-cluster_stats_messages_received:13993
-
-$ kubectl exec $(kubectl get pod -l redis-operator.k8s.io/cluster-name=mycluster -o jsonpath="{.items[0].metadata.name}") -- redis-cli cluster nodes
-7e4d1efc89a8230fe67c039bdb4101d44585a56a 172.17.0.9:6379@16379 slave f73d9e04184a3ab5a83f7073b28f02d481818f6c 0 1518704528057 0 connected
-147a54a784e46152ab4de0b6351e9d7c0908ad49 172.17.0.7:6379@16379 master - 0 1518704527250 1 connected 5462-10923
-f73d9e04184a3ab5a83f7073b28f02d481818f6c 172.17.0.8:6379@16379 master - 0 1518704527250 0 connected 0-5461
-42e36bbbcfb49eedb47220d345c578935c771094 172.17.0.11:6379@16379 myself,slave 147a54a784e46152ab4de0b6351e9d7c0908ad49 0 1518704527000 0 connected
-5dfadc738994f9b4ae8ae4af90dba0387ec676b2 172.17.0.10:6379@16379 slave caa70778d7b52f43a1145e6f19ccd31194b70c32 0 1518704527149 2 connected
-caa70778d7b52f43a1145e6f19ccd31194b70c32 172.17.0.6:6379@16379 master - 0 1518704527755 2 connected 10924-16383
-```
-
-## Clean up your environment
-
-Delete the Redis cluster
-
-```console
-$ helm delete mycluster
-release "mycluster" deleted
-```
-
-Delete the Redis operator
-
-```console
-$ helm delete operator
-release "operator" deleted
-```
-
-Ensure all pods have been deleted
 ```console
 $ kubectl get pods
-No resources found.
+NAME                                     READY   STATUS    RESTARTS   AGE
+op-icm-redis-operator-64dbfb4b59-xjttw   1/1     Running   0          31s
+```
+
+### Deploy a Redis cluster
+
+Install the `icm-redis-cluster` Helm chart:
+```console
+$ helm install --wait cluster charts/icm-redis-cluster --set image.repository=icm-redis-node --set image.tag=latest
+NAME: cluster
+LAST DEPLOYED: Thu Oct 21 15:12:05 2021
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
+
+Check the cluster status:
+```console
+$ kubectl rc
+  POD NAME                                        IP           NODE        ID                                        ZONE   USED MEMORY  MAX MEMORY  KEYS  SLOTS
+  + rediscluster-cluster-icm-redis-cluster-2h92v  10.244.1.89  172.18.0.3  5606ea9ab09678124a4b17de10ab92a78aac0b4d  dal13  35.55M       10.95G            5462-10923
+  | rediscluster-cluster-icm-redis-cluster-nf24b  10.244.2.89  172.18.0.2  6840c0e5db16ebf073f57c67a6487c1c7f0d12d1  dal10  2.62M        10.95G
+  + rediscluster-cluster-icm-redis-cluster-4h4s2  10.244.2.88  172.18.0.2  8a2f2db39b85cf059e88dc80d7c9cafefac94de0  dal10  34.63M       10.95G            10924-16383
+  | rediscluster-cluster-icm-redis-cluster-77bt2  10.244.3.87  172.18.0.4  74582d0e0cedb458e81f1e9d4f32cdc3f5e9399b  dal12  2.60M        10.95G
+  + rediscluster-cluster-icm-redis-cluster-dh6pt  10.244.3.86  172.18.0.4  81f5c13bec9a0545a62de08b2a309a87d29855c7  dal12  2.83M        10.95G            0-5461
+  | rediscluster-cluster-icm-redis-cluster-jnh2h  10.244.1.88  172.18.0.3  ffae381633377414597731597518529255fd9b69  dal13  2.64M        10.95G
+
+  NAME                       NAMESPACE  PODS   OPS STATUS  REDIS STATUS  NB PRIMARY  REPLICATION  ZONE SKEW
+  cluster-icm-redis-cluster  default    6/6/6  ClusterOK   OK            3/3         1-1/1        0/0/BALANCED
+```
+
+### Clean up your environment
+
+Delete the Redis cluster:
+```console
+$ helm uninstall cluster
+release "cluster" deleted
+```
+
+Delete the Redis operator:
+```console
+$ helm uninstall op
+release "op" deleted
+```
+
+Ensure all pods have been deleted:
+```console
+$ kubectl get pods
+No resources found in default namespace.
+```
+
+## Run end-to-end tests
+If you followed the steps for creating a `kind` cluster with the e2e test configuration, then running the e2e tests is simple.
+
+Build the required docker images:
+```console
+make container PREFIX= TAG=local
+make container-node PREFIX= TAG=new
+```
+Note that we need both `local` and `new` image tags for a rolling update e2e test case.
+
+Load the required images into the kind cluster:
+```console
+$ kind load docker-image icm-redis-operator:local
+$ kind load docker-image icm-redis-node:local
+$ kind load docker-image icm-redis-node:new
+```
+
+Once the kind cluster is up and running, deploy the `icm-redis-operator` Helm chart:
+```console
+$ helm install op charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local
+NAME: op
+LAST DEPLOYED: Thu Oct 21 15:11:51 2021
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
+
+When the `icm-redis-operator` pod is up and running, you can start the e2e regression:
+```console
+$ go test -timeout 30m ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
+Running Suite: RedisCluster Suite
+=================================
+Random Seed: 1634845111
+Will run 11 of 11 specs
+
+Oct 21 15:38:31.261: INFO: KubeconfigPath-> "/Users/kscharm/.kube/config"
+Oct 21 15:38:31.295: INFO: Check whether RedisCluster resource is registered...
+RedisCluster CRUD operations
+  should create a RedisCluster
+  
+...
+
+Ran 11 of 11 Specs in 517.299 seconds
+SUCCESS! -- 11 Passed | 0 Failed | 0 Pending | 0 Skipped
+PASS
+ok  	github.com/TheWeatherCompany/icm-redis-operator/test/e2e	517.776s
 ```

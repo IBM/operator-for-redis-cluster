@@ -1,3 +1,8 @@
+---
+title: Code of Conduct
+slug: /code-of-conduct
+---
+
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge
@@ -67,7 +72,5 @@ members of the project's leadership.
 
 ## Attribution
 
-This Code of Conduct is adapted from the [Contributor Covenant][homepage], version 1.4,
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 1.4,
 available at [https://www.contributor-covenant.org/version/1/4/code-of-conduct.html]( https://www.contributor-covenant.org/version/1/4/code-of-conduct.html)
-
-[homepage](https://www.contributor-covenant.org)

@@ -23,10 +23,10 @@ type frameworkContextType struct {
 	ImageTag       string
 }
 
-// FrameworkContext stores globally the framework context
+// FrameworkContext stores the framework context
 var FrameworkContext frameworkContextType
 
-// NewFramework creates and initializes the a Framework struct
+// NewFramework creates and initializes the Framework struct
 func NewFramework() (*Framework, error) {
 	Logf("KubeconfigPath-> %q", FrameworkContext.KubeConfigPath)
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", FrameworkContext.KubeConfigPath)

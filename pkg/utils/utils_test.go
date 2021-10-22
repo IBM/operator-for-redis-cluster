@@ -1,18 +1,20 @@
 package utils_test
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math"
 	"reflect"
 	"strconv"
 	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/TheWeatherCompany/icm-redis-operator/internal/testutil"
 	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
 
 	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
 )
+
 var (
 	redisPrimary1, _ = testutil.NewRedisPrimaryNode("primary1", "zone1", "pod1", "node1", []string{})
 	redisPrimary2, _ = testutil.NewRedisPrimaryNode("primary2", "zone2", "pod2", "node2", []string{})
@@ -28,7 +30,7 @@ var (
 	node4 = testutil.NewNode("node4", "zone1")
 	node5 = &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "node5",
+			Name:   "node5",
 			Labels: map[string]string{},
 		},
 	}
@@ -46,27 +48,27 @@ func TestIsPodReady(t *testing.T) {
 		Status: corev1.ConditionFalse,
 	})
 	tests := []struct {
-		name  string
-		pod *corev1.Pod
-		want bool
+		name    string
+		pod     *corev1.Pod
+		want    bool
 		wantErr bool
 	}{
 		{
-			name: "nil pod",
-			pod: nil,
-			want: false,
+			name:    "nil pod",
+			pod:     nil,
+			want:    false,
 			wantErr: true,
 		},
 		{
-			name: "pod not ready",
-			pod: unreadyPod,
-			want: false,
+			name:    "pod not ready",
+			pod:     unreadyPod,
+			want:    false,
 			wantErr: true,
 		},
 		{
-			name: "pod is ready",
-			pod: readyPod,
-			want: true,
+			name:    "pod is ready",
+			pod:     readyPod,
+			want:    true,
 			wantErr: false,
 		},
 	}
@@ -86,14 +88,14 @@ func TestIsPodReady(t *testing.T) {
 
 func TestGetZoneSkew(t *testing.T) {
 	tests := []struct {
-		name  string
+		name        string
 		zoneToNodes map[string][]string
-		want int
+		want        int
 	}{
 		{
-			name: "empty",
+			name:        "empty",
 			zoneToNodes: map[string][]string{},
-			want: 0,
+			want:        0,
 		},
 		{
 			name: "no nodes",
@@ -153,40 +155,40 @@ func TestGetZoneSkew(t *testing.T) {
 
 func TestGetZone(t *testing.T) {
 	tests := []struct {
-		name  string
+		name     string
 		nodeName string
-		nodes []corev1.Node
-		want string
+		nodes    []corev1.Node
+		want     string
 	}{
 		{
-			name: "no nodes",
+			name:     "no nodes",
 			nodeName: node1.Name,
-			nodes: []corev1.Node{},
-			want: "unknown",
+			nodes:    []corev1.Node{},
+			want:     "unknown",
 		},
 		{
-			name: "no name",
+			name:     "no name",
 			nodeName: "",
-			nodes: []corev1.Node{*node1, *node2, *node3},
-			want: "unknown",
+			nodes:    []corev1.Node{*node1, *node2, *node3},
+			want:     "unknown",
 		},
 		{
-			name: "no zone label",
+			name:     "no zone label",
 			nodeName: node1.Name,
-			nodes: []corev1.Node{*node5},
-			want: "unknown",
+			nodes:    []corev1.Node{*node5},
+			want:     "unknown",
 		},
 		{
-			name: "nodes in different zones",
+			name:     "nodes in different zones",
 			nodeName: node1.Name,
-			nodes: []corev1.Node{*node1, *node2, *node3},
-			want: "zone1",
+			nodes:    []corev1.Node{*node1, *node2, *node3},
+			want:     "zone1",
 		},
 		{
-			name: "some nodes in same zone",
+			name:     "some nodes in same zone",
 			nodeName: node1.Name,
-			nodes: []corev1.Node{*node1, *node2, *node4},
-			want: "zone1",
+			nodes:    []corev1.Node{*node1, *node2, *node4},
+			want:     "zone1",
 		},
 	}
 	for _, tt := range tests {
@@ -203,32 +205,32 @@ func TestGetZones(t *testing.T) {
 	tests := []struct {
 		name  string
 		nodes []corev1.Node
-		want []string
+		want  []string
 	}{
 		{
-			name: "no nodes",
+			name:  "no nodes",
 			nodes: []corev1.Node{},
-			want: []string{"unknown"},
+			want:  []string{"unknown"},
 		},
 		{
-			name: "node with no zone label",
+			name:  "node with no zone label",
 			nodes: []corev1.Node{*node5},
-			want: []string{"unknown"},
+			want:  []string{"unknown"},
 		},
 		{
-			name: "nodes in different zones",
+			name:  "nodes in different zones",
 			nodes: []corev1.Node{*node1, *node2, *node3},
-			want: []string{"zone1", "zone2", "zone3"},
+			want:  []string{"zone1", "zone2", "zone3"},
 		},
 		{
-			name: "some nodes in same zone",
+			name:  "some nodes in same zone",
 			nodes: []corev1.Node{*node1, *node2, *node4},
-			want: []string{"zone1", "zone2"},
+			want:  []string{"zone1", "zone2"},
 		},
 		{
-			name: "one node with unknown zone",
+			name:  "one node with unknown zone",
 			nodes: []corev1.Node{*node1, *node2, *node3, *node5},
-			want: []string{"unknown", "zone1", "zone2", "zone3"},
+			want:  []string{"unknown", "zone1", "zone2", "zone3"},
 		},
 	}
 	for _, tt := range tests {
@@ -244,20 +246,20 @@ func TestGetZones(t *testing.T) {
 func TestGetZoneSkewByRole(t *testing.T) {
 	redisPrimary5, _ := testutil.NewRedisPrimaryNode("primary5", "zone1", "pod8", "node1", []string{})
 	tests := []struct {
-		name  string
+		name            string
 		zoneToPrimaries map[string][]string
-		zoneToReplicas map[string][]string
-		want1 int
-		want2 int
-		ok bool
+		zoneToReplicas  map[string][]string
+		want1           int
+		want2           int
+		ok              bool
 	}{
 		{
-			name: "empty",
+			name:            "empty",
 			zoneToPrimaries: map[string][]string{},
-			zoneToReplicas: map[string][]string{},
-			want1: 0,
-			want2: 0,
-			ok: true,
+			zoneToReplicas:  map[string][]string{},
+			want1:           0,
+			want2:           0,
+			ok:              true,
 		},
 		{
 			name: "only primaries",
@@ -267,12 +269,12 @@ func TestGetZoneSkewByRole(t *testing.T) {
 				redisPrimary3.Zone: {redisPrimary3.ID},
 			},
 			zoneToReplicas: map[string][]string{},
-			want1: 0,
-			want2: 0,
-			ok: true,
+			want1:          0,
+			want2:          0,
+			ok:             true,
 		},
 		{
-			name: "only replicas",
+			name:            "only replicas",
 			zoneToPrimaries: map[string][]string{},
 			zoneToReplicas: map[string][]string{
 				redisReplica1.Zone: {redisReplica1.ID},
@@ -281,7 +283,7 @@ func TestGetZoneSkewByRole(t *testing.T) {
 			},
 			want1: 0,
 			want2: 0,
-			ok: true,
+			ok:    true,
 		},
 		{
 			name: "balanced primaries and replicas",
@@ -297,7 +299,7 @@ func TestGetZoneSkewByRole(t *testing.T) {
 			},
 			want1: 0,
 			want2: 0,
-			ok: true,
+			ok:    true,
 		},
 		{
 			name: "unbalanced primaries and unbalanced replicas",
@@ -313,7 +315,7 @@ func TestGetZoneSkewByRole(t *testing.T) {
 			},
 			want1: 1,
 			want2: 1,
-			ok: true,
+			ok:    true,
 		},
 		{
 			name: "unbalanced primaries and balanced replicas",
@@ -329,7 +331,7 @@ func TestGetZoneSkewByRole(t *testing.T) {
 			},
 			want1: 1,
 			want2: 0,
-			ok: true,
+			ok:    true,
 		},
 		{
 			name: "greatly unbalanced primaries and balanced replicas",
@@ -345,7 +347,7 @@ func TestGetZoneSkewByRole(t *testing.T) {
 			},
 			want1: 3,
 			want2: 0,
-			ok: false,
+			ok:    false,
 		},
 	}
 	for _, tt := range tests {

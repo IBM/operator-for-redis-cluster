@@ -400,7 +400,7 @@ func (a *Admin) SetSlots(ctx context.Context, addr, action string, slots SlotSli
 		c.PipeReset()
 		if retryAttempt < defaultRetryAttempts {
 			glog.Warningf("error %v occurred on node %s during CLUSTER SETSLOT %s; attempt: %d", err, addr, action, retryAttempt)
-			return a.SetSlots(ctx, addr, action, slots, nodeID, retryAttempt + 1)
+			return a.SetSlots(ctx, addr, action, slots, nodeID, retryAttempt+1)
 		}
 		return err
 	}

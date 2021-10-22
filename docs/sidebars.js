@@ -16,6 +16,8 @@ module.exports = {
     'kubectl-plugin',
     'scaling',
     'rolling-update',
-    'key-migration'
+    'key-migration',
+    'CONTRIBUTING',
+    'CODE_OF_CONDUCT',
   ],
 };
