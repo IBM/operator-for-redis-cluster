@@ -160,9 +160,11 @@ func buildClusterStatus(cluster *rapi.RedisCluster) string {
 
 	if hasStatus(cluster, rapi.RedisClusterRollingUpdate, kapiv1.ConditionTrue) {
 		status = append(status, string(rapi.RedisClusterRollingUpdate))
-	} else if hasStatus(cluster, rapi.RedisClusterScaling, kapiv1.ConditionTrue) {
+	}
+	if hasStatus(cluster, rapi.RedisClusterScaling, kapiv1.ConditionTrue) {
 		status = append(status, string(rapi.RedisClusterScaling))
-	} else if hasStatus(cluster, rapi.RedisClusterRebalancing, kapiv1.ConditionTrue) {
+	}
+	if hasStatus(cluster, rapi.RedisClusterRebalancing, kapiv1.ConditionTrue) {
 		status = append(status, string(rapi.RedisClusterRebalancing))
 	}
 

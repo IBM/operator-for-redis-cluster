@@ -44,8 +44,6 @@ type Controller struct {
 	serviceControl             ServicesControlInterface
 	podDisruptionBudgetControl PodDisruptionBudgetsControlInterface
 
-	updateHandler func(*rapi.RedisCluster) (*rapi.RedisCluster, error) // callback to update RedisCluster. Added as member for testing
-
 	recorder record.EventRecorder
 
 	config *Config
@@ -63,7 +61,6 @@ func NewController(cfg *Config, mgr manager.Manager, kubeClient kclient.Client, 
 		podDisruptionBudgetControl: NewPodDisruptionBudgetsControl(kubeClient, recorder),
 	}
 
-	controller.updateHandler = controller.updateRedisCluster
 	return controller
 }
 
@@ -85,50 +82,43 @@ func (c *Controller) Reconcile(ctx context.Context, namespacedName ctrl.Request)
 	startTime := metav1.Now()
 	defer func() {
 		reconcileTime := time.Since(startTime.Time)
-		glog.V(2).Infof("Finished reconciling RedisCluster %q (%v)", namespacedName, reconcileTime)
+		glog.V(2).Infof("finished reconciling RedisCluster %q (%v)", namespacedName, reconcileTime)
 	}()
-
-	glog.V(6).Infof("Reconciling %s", namespacedName)
+	result := ctrl.Result{}
 	sharedRedisCluster := &rapi.RedisCluster{}
 	err = c.client.Get(ctx, namespacedName.NamespacedName, sharedRedisCluster)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			glog.Infof("RedisCluster %s not found. Might be deleted.", namespacedName)
-			return ctrl.Result{}, nil
+			return result, nil
 		}
 		glog.Errorf("unable to get RedisCluster %s: %v", namespacedName, err)
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	if !rapi.IsRedisClusterDefaulted(sharedRedisCluster) {
 		defaultedRedisCluster := rapi.DefaultRedisCluster(sharedRedisCluster)
-		if _, err = c.updateHandler(defaultedRedisCluster); err != nil {
-			glog.Errorf("RedisCluster %s update error:, err", namespacedName)
-			return ctrl.Result{}, fmt.Errorf("unable to default RedisCluster %s: %v", namespacedName, err)
+		if result.Requeue = c.updateRedisClusterSpec(defaultedRedisCluster); result.Requeue {
+			return result, nil
 		}
-		glog.V(6).Infof("RedisCluster-Operator.Reconcile Defaulted %s", namespacedName)
-		return ctrl.Result{}, nil
+		glog.V(6).Infof("RedisCluster %s correctly defaulted", namespacedName)
 	}
 
 	if sharedRedisCluster.DeletionTimestamp != nil {
-		return ctrl.Result{}, nil
+		return result, nil
 	}
 
-	rediscluster := sharedRedisCluster.DeepCopy()
+	redisCluster := sharedRedisCluster.DeepCopy()
 
-	// Init status.StartTime
-	if rediscluster.Status.StartTime == nil {
-		rediscluster.Status.StartTime = &startTime
-		if _, err = c.updateHandler(rediscluster); err != nil {
-			glog.Errorf("unable init startTime for RedisCluster %s: %v", namespacedName, err)
-			return ctrl.Result{}, err
+	// init status.StartTime
+	if redisCluster.Status.StartTime == nil {
+		redisCluster.Status.StartTime = &startTime
+		if result.Requeue = c.updateRedisClusterStatus(ctx, redisCluster); result.Requeue {
+			return result, nil
 		}
 		glog.V(4).Infof("startTime updated for RedisCluster %s", namespacedName)
-		return ctrl.Result{}, nil
 	}
-
-	result, err := c.syncCluster(ctx, rediscluster)
-	return result, err
+	return c.syncCluster(ctx, redisCluster)
 }
 
 func (c *Controller) reconcileConfigMap(ctx context.Context, cluster *rapi.RedisCluster) (*v1.ConfigMap, error) {
@@ -282,29 +272,15 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 		return result, err
 	}
 
-	// From the Redis cluster nodes connections, build the cluster status
-	clusterStatus, err := c.buildClusterStatus(redisCluster, clusterInfos, redisPods, kubeNodes)
+	// build the cluster status from the RedisCluster nodes,
+	clusterState, err := c.buildClusterState(redisCluster, clusterInfos, redisPods, kubeNodes)
 	if err != nil {
-		glog.Errorf("unable to build the RedisClusterStatus, err:%v", err)
-		return result, fmt.Errorf("unable to build clusterStatus, err:%v", err)
+		return result, fmt.Errorf("unable to build RedisCluster status, err: %v", err)
 	}
-
-	updated, err := c.updateClusterStatus(ctx, redisCluster.Namespace, redisCluster.Name, clusterStatus)
-	if err != nil {
-		glog.Errorf("unable to update cluster %s/%s status: %v", redisCluster.Namespace, redisCluster.Name, err)
-	}
-	redisCluster.Status.Cluster.Nodes = clusterStatus.Nodes
-	if updated {
-		// If the cluster status changes requeue the key.
-		// We want to apply the RedisCluster operation on a
-		// stable cluster already stored in the API server.
-		glog.V(3).Infof("cluster updated %s-%s", redisCluster.Namespace, redisCluster.Name)
-		return ctrl.Result{Requeue: true}, nil
-	}
-
+	redisCluster.Status.Cluster = *clusterState
 	allPodsReady := true
-	if clusterStatus.NumberOfPods-clusterStatus.NumberOfRedisNodesRunning != 0 {
-		glog.V(3).Infof("not all redis nodes are running, numberOfPods: %d, numberOfRedisNodesRunning: %d", clusterStatus.NumberOfPods, clusterStatus.NumberOfRedisNodesRunning)
+	if clusterState.NumberOfPods-clusterState.NumberOfRedisNodesRunning != 0 {
+		glog.V(3).Infof("not all redis nodes are running, numberOfPods: %d, numberOfRedisNodesRunning: %d", clusterState.NumberOfPods, clusterState.NumberOfRedisNodesRunning)
 		allPodsReady = false
 	}
 
@@ -331,68 +307,85 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 			c.recorder.Event(redisCluster, v1.EventTypeWarning, "UnbalancedZones", "Zones are unbalanced")
 		}
 		if needClusterOperation(redisCluster) || needSanitize {
-			actionResult, err := c.clusterAction(ctx, admin, redisCluster, clusterInfos)
+			result, err = c.clusterAction(ctx, admin, redisCluster, clusterInfos)
 			if err != nil {
-				glog.Errorf("error during action on cluster: %s-%s, err: %v", redisCluster.Namespace, redisCluster.Name, err)
+				return result, err
 			}
-			_, err = c.updateHandler(redisCluster)
-			return actionResult, err
+			if c.updateClusterStatus(ctx, redisCluster) {
+				result.Requeue = true
+			}
+			return result, nil
 		}
 	}
 
-	if setRebalancingCondition(&redisCluster.Status, false) ||
-		setRollingUpdateCondition(&redisCluster.Status, false) ||
-		setScalingCondition(&redisCluster.Status, false) ||
-		setClusterStatusCondition(&redisCluster.Status, true) {
-		_, err = c.updateHandler(redisCluster)
-		return result, err
-	}
-
+	setClusterStatusCondition(&redisCluster.Status, true)
+	result.Requeue = c.updateClusterStatus(ctx, redisCluster)
 	return result, nil
 }
 
-func (c *Controller) updateRedisCluster(redisCluster *rapi.RedisCluster) (*rapi.RedisCluster, error) {
-	err := c.client.Update(context.Background(), redisCluster)
+func (c *Controller) updateRedisClusterSpec(desiredCluster *rapi.RedisCluster) bool {
+	ctx := context.Background()
+	actualCluster, err := c.getRedisCluster(ctx, desiredCluster.Namespace, desiredCluster.Name)
 	if err != nil {
-		glog.Errorf("updateRedisCluster cluster: %v, error: %v", *redisCluster, err)
-		return redisCluster, err
+		glog.Errorf("failed to get RedisCluster %s/%s: %v", desiredCluster.Namespace, desiredCluster.Name, err)
+		return false
+	}
+	actualCluster.Spec = desiredCluster.Spec
+	if err = c.client.Update(ctx, actualCluster); err != nil {
+		if errors.IsConflict(err) {
+			glog.V(6).Infof("conflict occurred when updating RedisCluster %s/%s", desiredCluster.Namespace, desiredCluster.Name)
+			return true
+		}
+		glog.Errorf("failed to update RedisCluster %s/%s: %v", desiredCluster.Name, desiredCluster.Namespace, err)
+		return true
+	}
+
+	glog.V(6).Infof("RedisCluster %s/%s updated", desiredCluster.Namespace, desiredCluster.Name)
+	return false
+}
+
+func (c *Controller) updateRedisClusterStatus(ctx context.Context, redisCluster *rapi.RedisCluster) bool {
+	if err := c.client.Status().Update(ctx, redisCluster); err != nil {
+		if errors.IsConflict(err) {
+			glog.V(6).Infof("conflict occurred when updating RedisCluster %s/%s", redisCluster.Namespace, redisCluster.Name)
+			return true
+		}
+		glog.Errorf("failed to update RedisCluster %s/%s: %v", redisCluster.Namespace, redisCluster.Name, err)
+		return true
 	}
 
 	glog.V(6).Infof("RedisCluster %s/%s updated", redisCluster.Namespace, redisCluster.Name)
-	return redisCluster, nil
+	return false
 }
 
-func (c *Controller) updateClusterStatus(ctx context.Context, namespace, name string, newStatus *rapi.RedisClusterState) (bool, error) {
-	cluster, err := c.getRedisCluster(ctx, namespace, name)
+func (c *Controller) updateClusterStatus(ctx context.Context, desiredCluster *rapi.RedisCluster) bool {
+	actualCluster, err := c.getRedisCluster(ctx, desiredCluster.Namespace, desiredCluster.Name)
 	if err != nil {
-		return false, err
+		glog.Errorf("failed to get RedisCluster %s/%s: %v", desiredCluster.Namespace, desiredCluster.Name, err)
+		return true
 	}
-	if compareStatus(&cluster.Status.Cluster, newStatus) {
-		glog.V(3).Infof("status changed for cluster %s/%s", cluster.Namespace, cluster.Name)
+	if compareStatus(&actualCluster.Status, &desiredCluster.Status) {
+		glog.V(3).Infof("status changed for RedisCluster %s/%s", actualCluster.Namespace, actualCluster.Name)
 		// the status have been update, needs to update the RedisCluster
-		cluster.Status.Cluster = *newStatus
-		_, err = c.updateHandler(cluster)
-		return true, err
+		actualCluster.Status = desiredCluster.Status
+		return c.updateRedisClusterStatus(ctx, actualCluster)
 	}
-	return false, nil
+	return false
 }
 
-func (c *Controller) buildClusterStatus(cluster *rapi.RedisCluster, clusterInfos *redis.ClusterInfos, pods []v1.Pod, kubeNodes []v1.Node) (*rapi.RedisClusterState, error) {
-	clusterStatus := getRedisClusterStatus(clusterInfos, pods, kubeNodes)
+func (c *Controller) buildClusterState(cluster *rapi.RedisCluster, clusterInfos *redis.ClusterInfos, pods []v1.Pod, kubeNodes []v1.Node) (*rapi.RedisClusterState, error) {
+	clusterState := getRedisClusterState(clusterInfos, pods, kubeNodes)
 	podLabels, err := pod.GetLabelsSet(cluster)
 	if err != nil {
 		glog.Errorf("unable to get label set: %v", err)
 	}
-	clusterStatus.LabelSelectorPath = podLabels.String()
-	min, max := getReplicationFactors(clusterStatus.NumberOfReplicasPerPrimary)
-	clusterStatus.MinReplicationFactor = int32(min)
-	clusterStatus.MaxReplicationFactor = int32(max)
-	clusterStatus.Status = cluster.Status.Cluster.Status
-	if clusterStatus.NumberOfRedisNodesRunning == clusterStatus.NumberOfPrimariesReady*(1+clusterStatus.MinReplicationFactor) {
-		clusterStatus.Status = rapi.ClusterStatusOK
-	}
-	glog.V(3).Infof("Build Bom, current node list: %s ", clusterStatus.String())
-	return clusterStatus, nil
+	clusterState.LabelSelectorPath = podLabels.String()
+	min, max := getReplicationFactors(clusterState.NumberOfReplicasPerPrimary)
+	clusterState.MinReplicationFactor = int32(min)
+	clusterState.MaxReplicationFactor = int32(max)
+	clusterState.Status = cluster.Status.Cluster.Status
+	glog.V(3).Infof("current cluster state: %s ", clusterState.String())
+	return clusterState, nil
 }
 
 func (c *Controller) checkSanity(ctx context.Context, cluster *rapi.RedisCluster, admin redis.AdminInterface, infos *redis.ClusterInfos) (bool, error) {
@@ -416,12 +409,12 @@ func getReplicationFactors(numberOfReplicasPerPrimary map[string]int) (int, int)
 	return minReplicationFactor, maxReplicationFactor
 }
 
-func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod, kubeNodes []v1.Node) *rapi.RedisClusterState {
-	clusterStatus := &rapi.RedisClusterState{}
-	clusterStatus.NumberOfPodsReady = 0
-	clusterStatus.NumberOfRedisNodesRunning = 0
-	clusterStatus.NumberOfPods = int32(len(pods))
-	clusterStatus.NumberOfReplicasPerPrimary = map[string]int{}
+func getRedisClusterState(clusterInfos *redis.ClusterInfos, pods []v1.Pod, kubeNodes []v1.Node) *rapi.RedisClusterState {
+	clusterState := &rapi.RedisClusterState{}
+	clusterState.NumberOfPodsReady = 0
+	clusterState.NumberOfRedisNodesRunning = 0
+	clusterState.NumberOfPods = int32(len(pods))
+	clusterState.NumberOfReplicasPerPrimary = map[string]int{}
 
 	numberOfPodsReady := int32(0)
 	numberOfRedisNodesRunning := int32(0)
@@ -479,14 +472,14 @@ func getRedisClusterStatus(clusterInfos *redis.ClusterInfos, pods []v1.Pod, kube
 			}
 			numberOfRedisNodesRunning++
 		}
-		clusterStatus.Nodes = append(clusterStatus.Nodes, newNode)
+		clusterState.Nodes = append(clusterState.Nodes, newNode)
 	}
 
-	clusterStatus.NumberOfRedisNodesRunning = numberOfRedisNodesRunning
-	clusterStatus.NumberOfPrimaries = numberOfPrimaries
-	clusterStatus.NumberOfPrimariesReady = numberOfPrimariesReady
-	clusterStatus.NumberOfPodsReady = numberOfPodsReady
-	clusterStatus.NumberOfReplicasPerPrimary = numberOfReplicasPerPrimary
+	clusterState.NumberOfRedisNodesRunning = numberOfRedisNodesRunning
+	clusterState.NumberOfPrimaries = numberOfPrimaries
+	clusterState.NumberOfPrimariesReady = numberOfPrimariesReady
+	clusterState.NumberOfPodsReady = numberOfPodsReady
+	clusterState.NumberOfReplicasPerPrimary = numberOfReplicasPerPrimary
 
-	return clusterStatus
+	return clusterState
 }

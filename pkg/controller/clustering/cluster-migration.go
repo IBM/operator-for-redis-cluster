@@ -29,7 +29,6 @@ func SelectPrimaries(cluster *redis.Cluster, currentPrimaries, candidatePrimarie
 
 	newPrimaryNodes = newPrimaryNodes.SortByFunc(func(a, b *redis.Node) bool { return a.ID < b.ID })
 
-	cluster.Status = rapi.ClusterStatusCalculatingRebalancing
 	if bestEffort {
 		cluster.NodesPlacement = rapi.NodesPlacementInfoBestEffort
 	} else {

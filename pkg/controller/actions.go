@@ -38,34 +38,14 @@ func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterfa
 		return result, err
 	}
 
-	// start more pods if needed
-	if needMorePods(cluster) {
-		if setScalingCondition(&cluster.Status, true) {
-			if _, err = c.updateHandler(cluster); err != nil {
-				return result, err
-			}
-		}
-		if _, err = c.createPod(ctx, cluster); err != nil {
-			return result, err
-		}
-		result.RequeueAfter = requeueDelay
-		return result, nil
-	}
-	if setScalingCondition(&cluster.Status, false) {
-		if _, err = c.updateHandler(cluster); err != nil {
-			return result, err
-		}
-	}
-
 	// reconfigure the cluster if needed
-	applyResult, err := c.applyConfiguration(ctx, admin, cluster)
-	if err != nil {
-		glog.Errorf("[clusterAction] cluster %s/%s, error: %v ", cluster.Namespace, cluster.Name, err)
+	if result, err = c.applyConfiguration(ctx, admin, cluster); err != nil {
+		glog.Errorf("[clusterAction] RedisCluster %s/%s, error: %v ", cluster.Namespace, cluster.Name, err)
 		return result, err
 	}
 
-	glog.V(6).Infof("[clusterAction] cluster change for cluster %s/%s: %v", cluster.Namespace, cluster.Name, applyResult.Requeue)
-	return applyResult, nil
+	glog.V(6).Infof("[clusterAction] cluster change for RedisCluster %s/%s: %v", cluster.Namespace, cluster.Name, result.Requeue)
+	return result, nil
 }
 
 // applyConfiguration apply new configuration if needed:
@@ -80,16 +60,15 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		glog.Errorf("unable to create the RedisCluster view: %v", err)
 		return result, err
 	}
-
-	if needsUpdate, err := c.rollingUpdateCondition(cluster); err != nil {
-		return result, err
-	} else if needsUpdate {
-		if ok, err := checkNodeResources(ctx, c.mgr, cluster, newCluster.KubeNodes); err != nil {
+	if c.needsMorePods(cluster) {
+		glog.Info("applyConfiguration needMorePods")
+		if _, err = c.createPod(ctx, cluster); err != nil {
 			return result, err
-		} else if !ok {
-			glog.Warningf("Insufficient resources to perform a rolling update on this cluster. Please allocate more resources for existing nodes or create additional nodes.")
-			c.recorder.Event(cluster, v1.EventTypeWarning, "InsufficientResources", "Insufficient resources to schedule pod")
 		}
+		result.RequeueAfter = requeueDelay
+		return result, nil
+	}
+	if c.needsRollingUpdate(cluster) {
 		glog.Info("applyConfiguration needRollingUpdate")
 		pods, err := c.createMigrationPods(ctx, cluster)
 		if err != nil {
@@ -105,11 +84,8 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 		}
 		return result, c.manageRollingUpdate(ctx, admin, cluster, newCluster, oldNodes, newNodes)
 	}
-
-	if needsLessPods, err := c.lessPodsCondition(cluster); err != nil {
-		return result, err
-	} else if needsLessPods {
-		glog.Info("applyConfiguration needPodScaleDown")
+	if c.needsLessPods(cluster) {
+		glog.Info("applyConfiguration needLessPods")
 		result.Requeue, err = c.managePodScaleDown(ctx, admin, cluster, newCluster, nodes)
 		return result, err
 	}
@@ -127,7 +103,7 @@ func (c *Controller) applyConfiguration(ctx context.Context, admin redis.AdminIn
 
 	glog.V(4).Infof("new nodes status: \n %v", nodes)
 
-	newCluster.Status = rapi.ClusterStatusOK
+	cluster.Status.Cluster.Status = rapi.ClusterStatusOK
 	// wait a bit for the cluster to propagate configuration to reduce warning logs because of temporary inconsistency
 	time.Sleep(1 * time.Second)
 	return result, nil
@@ -161,7 +137,7 @@ func (c *Controller) manageRollingUpdate(ctx context.Context, admin redis.AdminI
 	})
 
 	primaryToReplicas, unusedReplicas := clustering.GeneratePrimaryToReplicas(selectedPrimaries, currentReplicas, *cluster.Spec.ReplicationFactor)
-	candidateReplicas = addReplicasToPrimaries(cluster, primaryToReplicas, selectedNewPrimaries, candidateReplicas)
+	candidateReplicas = addReplicasToPrimaries(primaryToReplicas, selectedNewPrimaries, candidateReplicas, *cluster.Spec.ReplicationFactor)
 	if err = clustering.PlaceReplicas(rCluster, primaryToReplicas, clustering.RemoveOldReplicas(currentReplicas, candidateReplicas), unusedReplicas, *cluster.Spec.ReplicationFactor); err != nil {
 		glog.Errorf("unable to place replicas: %v", err)
 		return err
@@ -222,28 +198,28 @@ func (c *Controller) managePodScaleDown(ctx context.Context, admin redis.AdminIn
 	return false, nil
 }
 
-func (c *Controller) rollingUpdateCondition(cluster *rapi.RedisCluster) (bool, error) {
+func (c *Controller) needsRollingUpdate(cluster *rapi.RedisCluster) bool {
 	needsUpdate := needRollingUpdate(cluster)
-	cluster.Status.Cluster.Status = rapi.ClusterStatusOK
 	if setRollingUpdateCondition(&cluster.Status, needsUpdate) {
 		cluster.Status.Cluster.Status = rapi.ClusterStatusRollingUpdate
-		if _, err := c.updateHandler(cluster); err != nil {
-			return false, err
-		}
 	}
-	return needsUpdate, nil
+	return needsUpdate
 }
 
-func (c *Controller) lessPodsCondition(cluster *rapi.RedisCluster) (bool, error) {
+func (c *Controller) needsMorePods(cluster *rapi.RedisCluster) bool {
+	needsMorePods := needMorePods(cluster)
+	if setScalingCondition(&cluster.Status, needsMorePods) {
+		cluster.Status.Cluster.Status = rapi.ClusterStatusScaling
+	}
+	return needsMorePods
+}
+
+func (c *Controller) needsLessPods(cluster *rapi.RedisCluster) bool {
 	needsLessPods := needLessPods(cluster)
-	cluster.Status.Cluster.Status = rapi.ClusterStatusOK
 	if setRebalancingCondition(&cluster.Status, needsLessPods) {
 		cluster.Status.Cluster.Status = rapi.ClusterStatusRebalancing
-		if _, err := c.updateHandler(cluster); err != nil {
-			return false, err
-		}
 	}
-	return needsLessPods, nil
+	return needsLessPods
 }
 
 func (c *Controller) removeReplicasOfReplica(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, nodes redis.Nodes, replicasOfReplica map[string][]*rapi.RedisClusterNode) {
@@ -513,14 +489,14 @@ func scalingOperations(ctx context.Context, admin redis.AdminInterface, cluster 
 	return false, nil
 }
 
-func addReplicasToPrimaries(cluster *rapi.RedisCluster, primaryToReplicas map[string]redis.Nodes, primaries, replicas redis.Nodes) redis.Nodes {
+func addReplicasToPrimaries(primaryToReplicas map[string]redis.Nodes, primaries, replicas redis.Nodes, replicationFactor int32) redis.Nodes {
 	// attach replicas to primaries with no slots
 	for _, primary := range primaries {
 		i := 0
 		for _, replica := range replicas {
 			primaryToReplicas[primary.ID] = append(primaryToReplicas[primary.ID], replica)
 			i++
-			if len(primaryToReplicas[primary.ID]) >= int(*cluster.Spec.ReplicationFactor) {
+			if len(primaryToReplicas[primary.ID]) >= int(replicationFactor) {
 				break
 			}
 		}

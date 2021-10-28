@@ -18,6 +18,7 @@ import (
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:scope=Namespaced,shortName=rdc
 // +kubebuilder:subresource:scale:specpath=.spec.numberOfPrimaries,statuspath=.status.cluster.numberOfPrimariesReady,selectorpath=.status.cluster.labelSelectorPath
+// +kubebuilder:subresource:status
 type RedisCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object's metadata.
@@ -72,17 +73,11 @@ type RedisClusterSpec struct {
 type RedisClusterStatus struct {
 	// Conditions represent the latest available observations of an object's current state.
 	Conditions []RedisClusterCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
-	// Status of the condition, one of True, False, Unknown.
-	Status kapiv1.ConditionStatus `json:"status"`
 	// StartTime represents time when the workflow was acknowledged by the Workflow controller
 	// It is not guaranteed to be set in happens-before order across separate operations.
 	// It is represented in RFC3339 form and is in UTC.
 	// StartTime doesn't consider startime of `ExternalReference`
 	StartTime *metav1.Time `json:"startTime,omitempty"`
-	// (brief) reason for the condition's last transition.
-	Reason string `json:"reason,omitempty"`
-	// Human-readable message indicating details about last transition.
-	Message string `json:"message,omitempty"`
 	// Cluster a view of the current RedisCluster
 	Cluster RedisClusterState `json:"cluster"`
 }
@@ -227,8 +222,6 @@ const (
 	ClusterStatusKO ClusterStatus = "KO"
 	// ClusterStatusScaling ClusterStatus Scaling
 	ClusterStatusScaling ClusterStatus = "Scaling"
-	// ClusterStatusCalculatingRebalancing ClusterStatus Rebalancing
-	ClusterStatusCalculatingRebalancing ClusterStatus = "Calculating Rebalancing"
 	// ClusterStatusRebalancing ClusterStatus Rebalancing
 	ClusterStatusRebalancing ClusterStatus = "Rebalancing"
 	// ClusterStatusRollingUpdate ClusterStatus RollingUpdate

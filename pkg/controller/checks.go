@@ -28,47 +28,65 @@ type resources struct {
 	memory resource.Quantity
 }
 
-func compareStatus(old, new *rapi.RedisClusterState) bool {
-	if compareStringValue("ClusterStatus", string(old.Status), string(new.Status)) {
+func compareStatus(old, new *rapi.RedisClusterStatus) bool {
+	if compareStringValue("ClusterStatus", string(old.Cluster.Status), string(new.Cluster.Status)) {
 		return true
 	}
-	if compareInts("NumberOfPods", old.NumberOfPods, new.NumberOfPods) {
+	if compareInts("NumberOfPods", old.Cluster.NumberOfPods, new.Cluster.NumberOfPods) {
 		return true
 	}
-	if compareInts("NumberOfPodsReady", old.NumberOfPodsReady, new.NumberOfPodsReady) {
+	if compareInts("NumberOfPodsReady", old.Cluster.NumberOfPodsReady, new.Cluster.NumberOfPodsReady) {
 		return true
 	}
-	if compareInts("NumberOfRedisNodesRunning", old.NumberOfRedisNodesRunning, new.NumberOfRedisNodesRunning) {
+	if compareInts("NumberOfRedisNodesRunning", old.Cluster.NumberOfRedisNodesRunning, new.Cluster.NumberOfRedisNodesRunning) {
 		return true
 	}
-	if compareInts("NumberOfPrimaries", old.NumberOfPrimaries, new.NumberOfPrimaries) {
+	if compareInts("NumberOfPrimaries", old.Cluster.NumberOfPrimaries, new.Cluster.NumberOfPrimaries) {
 		return true
 	}
-	if compareInts("MinReplicationFactor", old.MinReplicationFactor, new.MinReplicationFactor) {
+	if compareInts("MinReplicationFactor", old.Cluster.MinReplicationFactor, new.Cluster.MinReplicationFactor) {
 		return true
 	}
-	if compareInts("MaxReplicationFactor", old.MaxReplicationFactor, new.MaxReplicationFactor) {
+	if compareInts("MaxReplicationFactor", old.Cluster.MaxReplicationFactor, new.Cluster.MaxReplicationFactor) {
 		return true
 	}
-	if compareStringValue("ClusterStatus", string(old.Status), string(new.Status)) {
+	if compareStringValue("ClusterStatus", string(old.Cluster.Status), string(new.Cluster.Status)) {
 		return true
 	}
-	if compareStringValue("NodesPlacement", string(old.NodesPlacement), string(new.NodesPlacement)) {
+	if compareStringValue("NodesPlacement", string(old.Cluster.NodesPlacement), string(new.Cluster.NodesPlacement)) {
 		return true
 	}
-	if compareInts("len(Nodes)", int32(len(old.Nodes)), int32(len(new.Nodes))) {
+	if compareInts("len(Nodes)", int32(len(old.Cluster.Nodes)), int32(len(new.Cluster.Nodes))) {
 		return true
 	}
 
-	if len(old.Nodes) != len(new.Nodes) {
+	if len(old.Cluster.Nodes) != len(new.Cluster.Nodes) {
 		return true
 	}
-	for _, nodeA := range old.Nodes {
+	for _, nodeA := range old.Cluster.Nodes {
 		found := false
-		for _, nodeB := range new.Nodes {
+		for _, nodeB := range new.Cluster.Nodes {
 			if nodeA.ID == nodeB.ID {
 				found = true
 				if compareNodes(&nodeA, &nodeB) {
+					return true
+				}
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+
+	if len(old.Conditions) != len(new.Conditions) {
+		return true
+	}
+	for _, condA := range old.Conditions {
+		found := false
+		for _, condB := range new.Conditions {
+			if condA.Type == condB.Type {
+				found = true
+				if compareConditions(&condA, &condB) {
 					return true
 				}
 			}
@@ -131,6 +149,22 @@ func compareNodes(nodeA, nodeB *rapi.RedisClusterNode) bool {
 	return false
 }
 
+func compareConditions(condA, condB *rapi.RedisClusterCondition) bool {
+	if compareStringValue("Condition.Type", string(condA.Type), string(condB.Type)) {
+		return true
+	}
+	if compareStringValue("Condition.Status", string(condA.Status), string(condB.Status)) {
+		return true
+	}
+	if compareStringValue("Condition.Reason", condA.Reason, condB.Reason) {
+		return true
+	}
+	if compareStringValue("Condition.Message", condA.Message, condB.Message) {
+		return true
+	}
+	return false
+}
+
 func compareIntValue(name string, old, new *int32) bool {
 	if old == nil && new == nil {
 		return true
@@ -178,6 +212,11 @@ func needClusterOperation(cluster *rapi.RedisCluster) bool {
 		return true
 	}
 
+	if needConditionUpdate(cluster) {
+		glog.V(6).Info("needClusterOperation---needConditionUpdate")
+		return true
+	}
+
 	if compareIntValue("NumberOfPrimaries", &cluster.Status.Cluster.NumberOfPrimaries, cluster.Spec.NumberOfPrimaries) {
 		glog.V(6).Info("needClusterOperation---NumberOfPrimaries")
 		return true
@@ -193,6 +232,17 @@ func needClusterOperation(cluster *rapi.RedisCluster) bool {
 		return true
 	}
 
+	return false
+}
+
+func needConditionUpdate(cluster *rapi.RedisCluster) bool {
+	for _, cond := range cluster.Status.Conditions {
+		if cond.Status == kapi.ConditionTrue {
+			if cond.Type == rapi.RedisClusterRollingUpdate || cond.Type == rapi.RedisClusterRebalancing || cond.Type == rapi.RedisClusterScaling {
+				return true
+			}
+		}
+	}
 	return false
 }
 

@@ -161,8 +161,8 @@ func Test_checkReplicationFactor(t *testing.T) {
 
 func Test_compareStatus(t *testing.T) {
 	type args struct {
-		old *rapi.RedisClusterState
-		new *rapi.RedisClusterState
+		old *rapi.RedisClusterStatus
+		new *rapi.RedisClusterStatus
 	}
 	tests := []struct {
 		name string
@@ -170,90 +170,112 @@ func Test_compareStatus(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "nothing change (setted)",
+			name: "nothing changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{},
 			},
 			want: false,
 		},
 		{
-			name: "Cluster status changed",
+			name: "Cluster state changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{Status: rapi.ClusterStatusKO},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					Status: rapi.ClusterStatusKO,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "NumberOfPrimaries changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NumberOfPrimaries: 5},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					NumberOfPrimaries: 5,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "MaxReplicationFactor changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{MaxReplicationFactor: 5},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					MaxReplicationFactor: 5,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "MinReplicationFactor changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{MinReplicationFactor: 1},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					MinReplicationFactor: 1,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "NumberOfPods changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NumberOfPods: 1},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					NumberOfPods: 1,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "NumberOfPodsReady changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NumberOfPodsReady: 1},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					NumberOfPodsReady: 1,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "NumberOfRedisNodesRunning changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NumberOfRedisNodesRunning: 5},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					NumberOfRedisNodesRunning: 5,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "NodesPlacement changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{NodesPlacement: rapi.NodesPlacementInfoOptimal},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					NodesPlacement: rapi.NodesPlacementInfoOptimal,
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "len(Nodes) changed",
 			args: args{
-				old: &rapi.RedisClusterState{},
-				new: &rapi.RedisClusterState{Nodes: []rapi.RedisClusterNode{{ID: "A"}}},
+				old: &rapi.RedisClusterStatus{},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					Nodes: []rapi.RedisClusterNode{{ID: "A"}},
+				}},
 			},
 			want: true,
 		},
 		{
 			name: "Nodes ID changed",
 			args: args{
-				old: &rapi.RedisClusterState{Nodes: []rapi.RedisClusterNode{{ID: "B"}}},
-				new: &rapi.RedisClusterState{Nodes: []rapi.RedisClusterNode{{ID: "A"}}},
+				old: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					Nodes: []rapi.RedisClusterNode{{ID: "B"}},
+				}},
+				new: &rapi.RedisClusterStatus{Cluster: rapi.RedisClusterState{
+					Nodes: []rapi.RedisClusterNode{{ID: "A"}},
+				}},
 			},
 			want: true,
 		},

@@ -459,7 +459,6 @@ func TestController_applyConfiguration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Controller{
-				updateHandler: func(rc *rapi.RedisCluster) (*rapi.RedisCluster, error) { return rc, nil },
 				client:        fakeKubeClient,
 			}
 			fakeAdmin := admin.NewFakeAdmin()

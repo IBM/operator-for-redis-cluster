@@ -8,7 +8,7 @@ rules:
   resources: ["customresourcedefinitions"]
   verbs: ["*"]
 - apiGroups: ["db.ibm.com"]
-  resources: ["redisclusters"]
+  resources: ["redisclusters", "redisclusters/status"]
   verbs: ["*"]
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]

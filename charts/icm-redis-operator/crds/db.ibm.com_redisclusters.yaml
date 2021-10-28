@@ -6493,13 +6493,6 @@ spec:
                   - type
                   type: object
                 type: array
-              message:
-                description: Human-readable message indicating details about last
-                  transition.
-                type: string
-              reason:
-                description: (brief) reason for the condition's last transition.
-                type: string
               startTime:
                 description: StartTime represents time when the workflow was acknowledged
                   by the Workflow controller It is not guaranteed to be set in happens-before
@@ -6507,12 +6500,8 @@ spec:
                   and is in UTC. StartTime doesn't consider startime of `ExternalReference`
                 format: date-time
                 type: string
-              status:
-                description: Status of the condition, one of True, False, Unknown.
-                type: string
             required:
             - cluster
-            - status
             type: object
         type: object
     served: true
@@ -6522,6 +6511,7 @@ spec:
         labelSelectorPath: .status.cluster.labelSelectorPath
         specReplicasPath: .spec.numberOfPrimaries
         statusReplicasPath: .status.cluster.numberOfPrimariesReady
+      status: {}
 status:
   acceptedNames:
     kind: ""
