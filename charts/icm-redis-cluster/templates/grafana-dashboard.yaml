@@ -148,7 +148,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "max(redis_config_maxclients) - sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
+              "expr": "sum(redis_config_maxclients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) - sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
               "hide": false,
               "instant": true,
               "interval": "",
