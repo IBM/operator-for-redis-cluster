@@ -45,6 +45,7 @@ spec:
                   (if any)
                 type: object
               numberOfPrimaries:
+                description: NumberOfPrimaries number of primary nodes
                 format: int32
                 type: integer
               podTemplate:
@@ -6325,11 +6326,12 @@ spec:
                     type: object
                 type: object
               replicationFactor:
+                description: ReplicationFactor number of replica nodes per primary
+                  node
                 format: int32
                 type: integer
               rollingUpdate:
-                description: Configuration for redis key migration during rolling
-                  updates
+                description: RollingUpdate configuration for redis key migration
                 properties:
                   idleTimeoutMillis:
                     description: Maximum idle time at any point during key migration
@@ -6354,8 +6356,7 @@ spec:
                     type: integer
                 type: object
               scaling:
-                description: Configuration for redis key migration during scaling
-                  operations
+                description: Scaling configuration for redis key migration
                 properties:
                   idleTimeoutMillis:
                     description: Maximum idle time at any point during key migration

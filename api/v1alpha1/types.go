@@ -46,7 +46,10 @@ type RedisClusterList struct {
 
 // RedisClusterSpec contains RedisCluster specification
 type RedisClusterSpec struct {
+	// NumberOfPrimaries number of primary nodes
 	NumberOfPrimaries *int32 `json:"numberOfPrimaries,omitempty"`
+
+	// ReplicationFactor number of replica nodes per primary node
 	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
 
 	// ServiceName name used to create the kubernetes service that fronts the RedisCluster nodes.
@@ -59,10 +62,10 @@ type RedisClusterSpec struct {
 	// ZoneAwareReplication spreads primary and replica nodes across all available zones
 	ZoneAwareReplication *bool `json:"zoneAwareReplication,omitempty"`
 
-	// Configuration for redis key migration during rolling updates
+	// RollingUpdate configuration for redis key migration
 	RollingUpdate *RollingUpdate `json:"rollingUpdate,omitempty"`
 
-	// Configuration for redis key migration during scaling operations
+	// Scaling configuration for redis key migration
 	Scaling *Migration `json:"scaling,omitempty"`
 
 	// Labels for created redis-cluster (deployment, rs, pod) (if any)
