@@ -620,7 +620,7 @@ func getOldNodesToRemove(currPrimaries, newPrimaries, nodes redis.Nodes) (redis.
 	return removedPrimaries, removedReplicas
 }
 
-func updateConfig(ctx context.Context, admin redis.AdminInterface, config map[string]string) error {
+func updateConfig(ctx context.Context, admin redis.AdminInterface, config map[string]string) {
 	var errs []error
 	for field, val := range config {
 		glog.V(6).Infof("updating config option from %s to %s", field, val)
@@ -630,7 +630,9 @@ func updateConfig(ctx context.Context, admin redis.AdminInterface, config map[st
 			}
 		}
 	}
-	return errors.NewAggregate(errs)
+	if len(errs) > 0 {
+		glog.Errorf("unable to update config: %v", errors.NewAggregate(errs))
+	}
 }
 
 func detachAndForgetNodes(ctx context.Context, admin redis.AdminInterface, primaries, replicas redis.Nodes) (redis.Nodes, error) {

@@ -297,9 +297,7 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 			glog.Warningf("unable to get server config: %v", err)
 		}
 		if len(configChanges) > 0 {
-			if err = updateConfig(ctx, admin, configChanges); err != nil {
-				return result, err
-			}
+			updateConfig(ctx, admin, configChanges)
 			c.recorder.Event(redisCluster, v1.EventTypeNormal, "ConfigUpdate", "Server configuration updated")
 		}
 		if !checkZoneBalance(redisCluster) {
