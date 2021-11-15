@@ -197,7 +197,8 @@ redis:
     # cluster-related --> https://redis.io/topics/cluster-tutorial
     # valueMap:
     #  maxmemory-policy: "volatile-lfu"
-    #  maxmemory: "26843545600"
+    #  maxmemory: "10Gb"
+    #  save: ""
     #  lazyfree-lazy-eviction: "yes"
     #  lazyfree-lazy-expire: "yes"
     #  lazyfree-lazy-server-del: "yes"
