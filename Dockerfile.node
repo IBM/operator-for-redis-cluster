@@ -1,0 +1,48 @@
+ARG REDIS_VERSION=6.2.6
+ARG BUILDIMAGE=golang:1.17-bullseye
+ARG BASEIMAGE=redis:${REDIS_VERSION}-buster
+ARG DOCKER_PROXY_REGISTRY
+
+FROM ${DOCKER_PROXY_REGISTRY}${BUILDIMAGE} AS builder
+
+ARG GOPROXY=direct
+ARG REDIS_VERSION
+ARG OPERATOR_VERSION
+ARG BUILDTIME
+ARG REVISION
+
+ENV DEBIAN_FRONTEND=noninteractive 
+ENV INSTALL_DIRECTORY=/usr/local/bin
+ENV GOPROXY=https://proxy.golang.org
+
+WORKDIR /go/src/operator-for-redis-cluster
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd/ cmd/
+COPY api/ api/
+COPY pkg/ pkg/
+COPY cmd/node/main.go ./
+
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build \
+    -ldflags "-w -s \
+      -X github.com/IBM/operator-for-redis-cluster/pkg/utils.BUILDTIME=$BUILDTIME \
+      -X github.com/IBM/operator-for-redis-cluster/pkg/utils.OPERATOR_VERSION=$OPERATOR_VERSION \
+      -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REDIS_VERSION=$REDIS_VERSION \
+      -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REVISION=$REVISION" \
+    -a \
+    -o redis-node \
+    .
+
+FROM ${DOCKER_PROXY_REGISTRY}${BASEIMAGE}
+LABEL maintainer="William Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>, Kenny Scharm <kenny.scharm@ibm.com>"
+COPY --from=builder /go/src/operator-for-redis-cluster/redis-node /
+ENTRYPOINT ["/redis-node"]

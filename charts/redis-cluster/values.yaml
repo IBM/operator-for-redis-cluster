@@ -1,0 +1,209 @@
+# Default values for icm-redis-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+numberOfPrimaries: 3
+replicationFactor: 1
+
+image:
+  repository: ibmcom/icm-redis-node
+  # Overrides the image tag whose default is the chart appVersion
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# The complete list of args extracted from a running redis-node.
+# Usage of /redisnode:
+#          --alsologtostderr                  log to standard error as well as files (default false)
+#          --bin string                       redis server binary file name (default "redis-server")
+#          --c string                         redis config file path (default "/redis-conf/redis.conf")
+#          --cluster-node-timeout int         redis node timeout (ms) (default 2000)
+#          --config-file stringArray          location of redis configuration file that will be include in the
+#          --d duration                       delay before that the redis-server is started (default 10s)
+#          --http-addr string                 the http server listen address (default "0.0.0.0:8080")
+#          --kubeconfig string                location of kubeconfig file for access to kubernetes service
+#          --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
+#          --log_dir string                   if non-empty, write log files in this directory
+#          --logtostderr                      log to standard error instead of files (default false)
+#          --master string                    The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.
+#          --ns string                        redis-node k8s namespace
+#          --port string                      redis server listen port (default "6379")
+#          --rdt int                          redis dial timeout (ms) (default 2000)
+#          --rename-command-file string       name of the file where rename-commands option for redis are available, disabled if empty
+#          --rename-command-path string       path to the folder where rename-commands option for redis are available (default "/etc/secret-volume")
+#          --rs string                        redis-node k8s service name
+#          --stderrthreshold severity         logs at or above this threshold go to stderr (default 2)
+#          --t duration                       max time waiting for redis to start (default 10s)
+#          -v, --v Level                      log level for V logs (default 0)
+#          --vmodule moduleSpec               comma-separated list of pattern=N settings for file-filtered logging
+args:
+  logLevel: 1
+  logToStderr: "true"
+  alsoLogToStderr: "true"
+  maxStartWait: 10s
+  startDelay: 10s
+  clusterNodeTimeout: 2000
+
+# To add extra arguments, uncomment the line below and define them as shown.
+# extraArgs: ["--bin=redis-server", "--http-addr=0.0.0.0:8080"]
+
+podAnnotations: {}
+
+additionalLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+livenessProbe:
+  httpGet:
+    path: /live
+    port: http
+  initialDelaySeconds: 12
+  timeoutSeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 30
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 12
+  timeoutSeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# When enabled, spreads primary and replica nodes across all available zones.
+# Kubernetes nodes are selected according to the nodeSelector field above.
+zoneAwareReplication: true
+
+# Configuration for redis key migration during rolling updates
+rollingUpdate:
+  # Whether to migrate keys during a rolling update
+  # If false, you will lose all current data during migration
+  keyMigration: true
+  # Number of keys to get from a single slot during each migration iteration
+  keyBatchSize: 10000
+  # Number of slots to migrate on each iteration
+  slotBatchSize: 16
+  # Maximum idle time at any point during key migration
+  idleTimeoutMillis: 30000
+  # Used to warm the cache of the new primary node
+  # Amount of time in between each slot batch iteration
+  warmingDelayMillis: 0
+
+# Configuration for redis key migration during scaling operations
+scaling:
+  keyBatchSize: 10000
+  slotBatchSize: 16
+  idleTimeoutMillis: 30000
+
+metrics:
+  enabled: false
+  exporter:
+    image:
+      repository: ibmcom/redis-exporter
+      tag: v1
+      pullPolicy: IfNotPresent
+    port:
+      name: metrics
+      number: 9121
+    serviceMonitor:
+      enabled: false
+      path: /metrics
+      interval: 30s
+      namespace: ""
+      labels: {}
+  server:
+    image:
+      repository: ibmcom/icm-redis-metrics
+      tag: latest
+      pullPolicy: IfNotPresent
+    port:
+      name: metrics
+      number: 8080
+    serviceMonitor:
+      enabled: false
+      interval: 30s
+      namespace: ""
+      labels: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 100Mi
+  grafanaDashboard:
+    enabled: false
+    datasourceName: ""
+    namespace: ""
+    labels:
+      grafana_dashboard: "1"
+
+sysctl:
+  netCoreSomaxconn: 65000
+  image:
+    repository: ibmcom/debian
+    tag: v11
+    imagePullPolicy: IfNotPresent
+
+redis:
+  configuration:
+    # You can provide the path of a redis configuration file that will be added in a configMap and included
+    # in the redis-server configuration in each redis-cluster node.
+    # The file must be local to the helm chart (in the chart folder).
+    file: ""
+    # You can provide the redis config directly as a map instead of a file as shown in the example below.
+    # If BOTH the "file" and "value" are defined, the value will be used, i.e. treated as an override value.
+    # Please see the redis.io docs for details on each of the fields below.
+    # memory-related --> https://redis.io/topics/lru-cache
+    # cluster-related --> https://redis.io/topics/cluster-tutorial
+    # valueMap:
+    #  maxmemory-policy: "volatile-lfu"
+    #  maxmemory: "10Gb"
+    #  save: ""
+    #  lazyfree-lazy-eviction: "yes"
+    #  lazyfree-lazy-expire: "yes"
+    #  lazyfree-lazy-server-del: "yes"
+    #  replica-lazy-flush: "yes"
+    #  cluster-enabled: "yes"
+    #  cluster-require-full-coverage: "no"
+    #  cluster-allow-reads-when-down: "yes"
+    valueMap: {}
