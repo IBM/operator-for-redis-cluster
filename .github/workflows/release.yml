@@ -9,12 +9,7 @@ env:
   GO_VERSION: 1.15
   HELM_VERSION: v3.6.3
   REDIS_VERSION: 6.2.6
-  ICR_USERNAME: iamapikey
-  ICR_PASSWORD: ${{ secrets.IBMCLOUD_API_KEY }}
-  HELM_REPO_USER: ${{ secrets.ARTIFACTORY_USER }}
-  HELM_REPO_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-  HELM_REPO: ${{ secrets.ARTIFACTORY_HELM_REPO }}
-  CRD_PATH: charts/operator-for-redis-cluster/crds/db.ibm.com_redisclusters.yaml
+  CRD_PATH: charts/operator-for-redis/crds/db.ibm.com_redisclusters.yaml
   CRD_DIFF: crd.diff
 
 jobs:
@@ -23,75 +18,31 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
 
       - name: Prepare image metadata
         uses: docker/metadata-action@v3
         id: meta
         with:
           images: |
-            ibmcom/operator-for-redis-cluster
-            uk.icr.io/icm-docker-images/operator-for-redis-cluster
-            de.icr.io/icm-docker-images/operator-for-redis-cluster
-            au.icr.io/icm-docker-images/operator-for-redis-cluster
-            jp.icr.io/icm-docker-images/operator-for-redis-cluster
+            ibmcom/operator-for-redis
           tags: type=ref,event=tag
 
-      - name: Setup Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to IBM Cloud Container Registry US
+      - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
-          registry: us.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry UK
-        uses: docker/login-action@v1
-        with:
-          registry: uk.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry DE
-        uses: docker/login-action@v1
-        with:
-          registry: de.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry AU
-        uses: docker/login-action@v1
-        with:
-          registry: au.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry JP
-        uses: docker/login-action@v1
-        with:
-          registry: jp.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Authenticate with docker proxy registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USER }}
-          password:  ${{ secrets.ARTIFACTORY_PASS }}
+          username: ${{ secrets.DOCKERHUB_USERNAME}}
+          password: ${{ secrets.DOCKERHUB_PASSWORD}}
 
       - name: Build and push operator image
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.operator
-          push: ${{ github.event_name == 'release' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          tags: ibmcom/operator-for-redis:${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
@@ -102,75 +53,31 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
 
       - name: Prepare image metadata
         uses: docker/metadata-action@v3
         id: meta
         with:
           images: |
-            ibmcom/icm-redis-node
-            uk.icr.io/icm-docker-images/icm-redis-node
-            de.icr.io/icm-docker-images/icm-redis-node
-            au.icr.io/icm-docker-images/icm-redis-node
-            jp.icr.io/icm-docker-images/icm-redis-node
+            ibmcom/node-for-redis
           tags: type=ref,event=tag
 
-      - name: Setup Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to IBM Cloud Container Registry US
+      - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
-          registry: us.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
+          username: ${{ secrets.DOCKERHUB_USERNAME}}
+          password: ${{ secrets.DOCKERHUB_PASSWORD}}
 
-      - name: Login to IBM Cloud Container Registry UK
-        uses: docker/login-action@v1
-        with:
-          registry: uk.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry DE
-        uses: docker/login-action@v1
-        with:
-          registry: de.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry AU
-        uses: docker/login-action@v1
-        with:
-          registry: au.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry JP
-        uses: docker/login-action@v1
-        with:
-          registry: jp.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Authenticate with docker proxy registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USER }}
-          password: ${{ secrets.ARTIFACTORY_PASS }}
-
-      - name: Build and push redis-node image
+      - name: Build and push cluster node image
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.node
-          push: ${{ github.event_name == 'release' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          tags: ibmcom/node-for-redis:${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
@@ -180,75 +87,31 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
 
       - name: Prepare image metadata
         uses: docker/metadata-action@v3
         id: meta
         with:
           images: |
-            ibmcom/icm-redis-metrics
-            uk.icr.io/icm-docker-images/icm-redis-metrics
-            de.icr.io/icm-docker-images/icm-redis-metrics
-            au.icr.io/icm-docker-images/icm-redis-metrics
-            jp.icr.io/icm-docker-images/icm-redis-metrics
+            ibmcom/metrics-for-redis
           tags: type=ref,event=tag
 
-      - name: Setup Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to IBM Cloud Container Registry US
+      - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
-          registry: us.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
+          username: ${{ secrets.DOCKERHUB_USERNAME}}
+          password: ${{ secrets.DOCKERHUB_PASSWORD}}
 
-      - name: Login to IBM Cloud Container Registry UK
-        uses: docker/login-action@v1
-        with:
-          registry: uk.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry DE
-        uses: docker/login-action@v1
-        with:
-          registry: de.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry AU
-        uses: docker/login-action@v1
-        with:
-          registry: au.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Login to IBM Cloud Container Registry JP
-        uses: docker/login-action@v1
-        with:
-          registry: jp.icr.io
-          username: ${{ env.ICR_USERNAME }}
-          password: ${{ env.ICR_PASSWORD }}
-
-      - name: Authenticate with docker proxy registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USER }}
-          password: ${{ secrets.ARTIFACTORY_PASS }}
-
-      - name: Build and push redis-metrics image
+      - name: Build and push metrics image
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.metrics
-          push: ${{ github.event_name == 'release' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          tags: ibmcom/metrics-for-redis:${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
@@ -265,31 +128,31 @@ jobs:
         with:
           version: ${{ env.HELM_VERSION }}
 
-      - name: Package operator-for-redis-cluster chart
+      - name: Package operator-for-redis chart
         env:
           OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
-        run: helm package charts/operator-for-redis-cluster --version=$OPERATOR_VERSION
+        run: helm package charts/operator-for-redis --version=$OPERATOR_VERSION
 
-      - name: Package icm-redis-cluster chart
+      - name: Package node-for-redis chart
         env:
           OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
-        run: helm package charts/icm-redis-cluster --version=$OPERATOR_VERSION --app-version=${{ env.REDIS_VERSION }}
+        run: helm package charts/node-for-redis --version=$OPERATOR_VERSION --app-version=${{ env.REDIS_VERSION }}
 
-      - name: Publish operator-for-redis-cluster chart
+      - name: Publish operator-for-redis chart
         env:
           OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
         run: |
-          md5sum_var=$(md5sum ./operator-for-redis-cluster-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          sha1sum_var=$(sha1sum ./operator-for-redis-cluster-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./operator-for-redis-cluster-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/operator-for-redis-cluster-$OPERATOR_VERSION.tgz
+          md5sum_var=$(md5sum ./operator-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          sha1sum_var=$(sha1sum ./operator-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./operator-for-redis-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/operator-for-redis-$OPERATOR_VERSION.tgz
 
-      - name: Publish icm-redis-cluster chart
+      - name: Publish node-for-redis chart
         env:
           OPERATOR_VERSION: ${{ needs.cluster-node.outputs.version }}
         run: |
-          md5sum_var=$(md5sum ./icm-redis-cluster-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          sha1sum_var=$(sha1sum ./icm-redis-cluster-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./icm-redis-cluster-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/icm-redis-cluster-$OPERATOR_VERSION.tgz
+          md5sum_var=$(md5sum ./node-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          sha1sum_var=$(sha1sum ./node-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
+          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./node-for-redis-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/node-for-redis-$OPERATOR_VERSION.tgz
 
   compare-crds:
     name: Compare CRDs

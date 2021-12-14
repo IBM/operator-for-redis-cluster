@@ -6,7 +6,7 @@ numberOfPrimaries: 3
 replicationFactor: 1
 
 image:
-  repository: ibmcom/icm-redis-node
+  repository: ibmcom/node-for-redis
   # Overrides the image tag whose default is the chart appVersion
   tag: ""
   pullPolicy: IfNotPresent
@@ -141,8 +141,8 @@ metrics:
   enabled: false
   exporter:
     image:
-      repository: ibmcom/redis-exporter
-      tag: v1
+      repository: ibmcom/exporter-for-redis
+      tag: latest
       pullPolicy: IfNotPresent
     port:
       name: metrics
@@ -155,7 +155,7 @@ metrics:
       labels: {}
   server:
     image:
-      repository: ibmcom/icm-redis-metrics
+      repository: ibmcom/metrics-for-redis
       tag: latest
       pullPolicy: IfNotPresent
     port:
@@ -180,8 +180,8 @@ metrics:
 sysctl:
   netCoreSomaxconn: 65000
   image:
-    repository: ibmcom/debian
-    tag: v11
+    repository: debian
+    tag: 11
     imagePullPolicy: IfNotPresent
 
 redis:
