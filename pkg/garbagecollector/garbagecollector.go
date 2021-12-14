@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 )
 
 const (

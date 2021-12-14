@@ -10,8 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	"github.com/IBM/operator-for-redis-cluster/pkg/controller/pod"
 )
 
 // ServicesControlInterface inferface for the ServicesControl

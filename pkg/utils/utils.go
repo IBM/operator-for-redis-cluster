@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"

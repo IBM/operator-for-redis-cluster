@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "icm-redis-operator.name" -}}
+{{- define "operator-for-redis-cluster.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "icm-redis-operator.fullname" -}}
+{{- define "operator-for-redis-cluster.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "icm-redis-operator.chart" -}}
+{{- define "operator-for-redis-cluster.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "icm-redis-operator.labels" -}}
-helm.sh/chart: {{ include "icm-redis-operator.chart" . }}
-{{ include "icm-redis-operator.selectorLabels" . }}
+{{- define "operator-for-redis-cluster.labels" -}}
+helm.sh/chart: {{ include "operator-for-redis-cluster.chart" . }}
+{{ include "operator-for-redis-cluster.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "icm-redis-operator.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "icm-redis-operator.name" . }}
+{{- define "operator-for-redis-cluster.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "operator-for-redis-cluster.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "icm-redis-operator.serviceAccountName" -}}
+{{- define "operator-for-redis-cluster.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "icm-redis-operator.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "operator-for-redis-cluster.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

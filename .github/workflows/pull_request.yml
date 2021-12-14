@@ -55,16 +55,16 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.operator
-          tags: icm-redis-operator:local
-          outputs: type=docker,dest=icm-redis-operator.tar
+          tags: operator-for-redis-cluster:local
+          outputs: type=docker,dest=operator-for-redis-cluster.tar
           build-args: |
             DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
 
       - name: Upload operator image artifact
         uses: actions/upload-artifact@v2
         with:
-          name: icm-redis-operator
-          path: icm-redis-operator.tar
+          name: operator-for-redis-cluster
+          path: operator-for-redis-cluster.tar
           retention-days: 1
 
 
@@ -206,7 +206,7 @@ jobs:
       - name: Download operator image artifact
         uses: actions/download-artifact@v2
         with:
-          name: icm-redis-operator
+          name: operator-for-redis-cluster
       
       - name: Download cluster-node image artifact
         uses: actions/download-artifact@v2
@@ -234,13 +234,13 @@ jobs:
             
       - name: Load Images to KIND
         run: |
-          kind load image-archive icm-redis-operator.tar
+          kind load image-archive operator-for-redis-cluster.tar
           kind load image-archive icm-redis-node.tar
           kind load image-archive icm-redis-metrics.tar
     
-      - name: Install icm-redis-operator with Helm
+      - name: Install operator-for-redis-cluster with Helm
         id: helm
-        run: helm install icm-redis-operator charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local --set logLevel=7
+        run: helm install operator-for-redis-cluster charts/operator-for-redis-cluster --wait --set image.repository=operator-for-redis-cluster --set image.tag=local --set logLevel=7
       
       - name: Run e2e tests
         id: e2e

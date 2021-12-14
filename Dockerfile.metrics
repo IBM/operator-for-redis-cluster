@@ -13,7 +13,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV INSTALL_DIRECTORY=/usr/local/bin
 ENV GOPROXY=https://proxy.golang.org
 
-WORKDIR /go/src/icm-redis-operator
+WORKDIR /go/src/operator-for-redis-cluster
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -32,14 +32,14 @@ COPY cmd/metrics/main.go ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
     -ldflags "-w -s \
-      -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME=$BUILDTIME \
-      -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.OPERATOR_VERSION=$OPERATOR_VERSION \
-      -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REVISION=$REVISION" \
+      -X github.com/IBM/operator-for-redis-cluster/pkg/utils.BUILDTIME=$BUILDTIME \
+      -X github.com/IBM/operator-for-redis-cluster/pkg/utils.OPERATOR_VERSION=$OPERATOR_VERSION \
+      -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REVISION=$REVISION" \
     -a \
     -o metrics \
     .
 
 FROM ${DOCKER_PROXY_REGISTRY}${BASEIMAGE}
 LABEL maintainer="William Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>, Kenny Scharm <kenny.scharm@ibm.com>"
-COPY --from=builder /go/src/icm-redis-operator/metrics /
+COPY --from=builder /go/src/operator-for-redis-cluster/metrics /
 ENTRYPOINT ["/metrics"]

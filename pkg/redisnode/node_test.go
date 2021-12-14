@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
+	"github.com/IBM/operator-for-redis-cluster/pkg/config"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis/fake/admin"
 )
 
 func TestUpdateNodeConfigFile(t *testing.T) {

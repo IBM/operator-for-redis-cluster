@@ -11,8 +11,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

@@ -9,7 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 
 	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,7 +19,7 @@ import (
 
 	"github.com/onsi/gomega"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

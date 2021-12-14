@@ -5,16 +5,16 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/internal/testutil"
+	"github.com/IBM/operator-for-redis-cluster/internal/testutil"
 
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 	kapiv1 "k8s.io/api/core/v1"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	ctrlpod "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	ctrlpod "github.com/IBM/operator-for-redis-cluster/pkg/controller/pod"
 )
 
 func Test_checkReplicationFactor(t *testing.T) {

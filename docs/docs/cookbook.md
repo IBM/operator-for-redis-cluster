@@ -26,18 +26,18 @@ Redis operator is written in [Go](https://golang.org/).
 Start by making a fork of the `redis-operator` repository. Then, clone your forked repo:
 
 ```console
-$ git clone git@github.com:<YOUR_USERNAME>/icm-redis-operator.git
-Cloning into 'icm-redis-operator'...
-$ cd icm-redis-operator
+$ git clone git@github.com:<YOUR_USERNAME>/operator-for-redis-cluster.git
+Cloning into 'operator-for-redis-cluster'...
+$ cd operator-for-redis-cluster
 ```
 
 Build the project:
 
 ```console
 $ make build
-CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG=0.3.4 -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.OPERATOR_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REDIS_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME=2021-10-21/12:44:33 -s" -o bin/operator ./cmd/operator
-CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG=0.3.4 -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.OPERATOR_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REDIS_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME=2021-10-21/12:44:35 -s" -o bin/node ./cmd/node
-CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.TAG=0.3.4 -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.OPERATOR_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.REDIS_VERSION= -X github.com/TheWeatherCompany/icm-redis-operator/pkg/utils.BUILDTIME=2021-10-21/12:44:37 -s" -o bin/metrics ./cmd/metrics
+CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/IBM/operator-for-redis-cluster/pkg/utils.TAG=0.3.4 -X github.com/IBM/operator-for-redis-cluster/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/IBM/operator-for-redis-cluster/pkg/utils.OPERATOR_VERSION= -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REDIS_VERSION= -X github.com/IBM/operator-for-redis-cluster/pkg/utils.BUILDTIME=2021-10-21/12:44:33 -s" -o bin/operator ./cmd/operator
+CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/IBM/operator-for-redis-cluster/pkg/utils.TAG=0.3.4 -X github.com/IBM/operator-for-redis-cluster/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/IBM/operator-for-redis-cluster/pkg/utils.OPERATOR_VERSION= -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REDIS_VERSION= -X github.com/IBM/operator-for-redis-cluster/pkg/utils.BUILDTIME=2021-10-21/12:44:35 -s" -o bin/node ./cmd/node
+CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-w -X github.com/IBM/operator-for-redis-cluster/pkg/utils.TAG=0.3.4 -X github.com/IBM/operator-for-redis-cluster/pkg/utils.COMMIT=81c58d3bb6e713679637d9971fc8f795ca5a3e2f -X github.com/IBM/operator-for-redis-cluster/pkg/utils.OPERATOR_VERSION= -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REDIS_VERSION= -X github.com/IBM/operator-for-redis-cluster/pkg/utils.BUILDTIME=2021-10-21/12:44:37 -s" -o bin/metrics ./cmd/metrics
 ```
 
 Run the test suite to make sure everything works:
@@ -45,14 +45,14 @@ Run the test suite to make sure everything works:
 ```console
 $ make test
 ./go.test.sh
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller	5.162s	coverage: 33.1% of statements
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/clustering	0.711s	coverage: 75.6% of statements
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod	1.726s	coverage: 40.0% of statements
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/sanitycheck	0.631s	coverage: 21.5% of statements
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/garbagecollector	1.740s	coverage: 75.0% of statements
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/redis	0.728s	coverage: 22.4% of statements
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake	0.148s	coverage: 85.8% of statements
-ok  	github.com/TheWeatherCompany/icm-redis-operator/pkg/redisnode	1.924s	coverage: 43.4% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/controller	5.162s	coverage: 33.1% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/controller/clustering	0.711s	coverage: 75.6% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/controller/pod	1.726s	coverage: 40.0% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/controller/sanitycheck	0.631s	coverage: 21.5% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/garbagecollector	1.740s	coverage: 75.0% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/redis	0.728s	coverage: 22.4% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/redis/fake	0.148s	coverage: 85.8% of statements
+ok  	github.com/IBM/operator-for-redis-cluster/pkg/redisnode	1.924s	coverage: 43.4% of statements
 ```
 
 Install the kubectl Redis cluster plugin (more info [here](./kubectl-plugin.md))
@@ -76,16 +76,16 @@ make container PREFIX= TAG=latest
 
 Once the kind cluster is up and running, load the images into the kind cluster:
 ```console
-$ kind load docker-image icm-redis-operator:latest
+$ kind load docker-image operator-for-redis-cluster:latest
 $ kind load docker-image icm-redis-node:latest
 $ kind load docker-image icm-redis-metrics:latest
 ```
 
 ### Deploy a Redis operator
 
-Install the `icm-redis-operator` Helm chart:
+Install the `operator-for-redis-cluster` Helm chart:
 ```console
-$ helm install op charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=latest
+$ helm install op charts/operator-for-redis-cluster --wait --set image.repository=operator-for-redis-cluster --set image.tag=latest
 NAME: op
 LAST DEPLOYED: Thu Oct 21 15:11:51 2021
 NAMESPACE: default
@@ -99,7 +99,7 @@ Confirm that the operator is running properly:
 ```console
 $ kubectl get pods
 NAME                                     READY   STATUS    RESTARTS   AGE
-op-icm-redis-operator-64dbfb4b59-xjttw   1/1     Running   0          31s
+op-operator-for-redis-cluster-64dbfb4b59-xjttw   1/1     Running   0          31s
 ```
 
 ### Deploy a Redis cluster
@@ -162,14 +162,14 @@ Note that we need both `local` and `new` image tags for a rolling update e2e tes
 
 Load the required images into the kind cluster:
 ```console
-$ kind load docker-image icm-redis-operator:local
+$ kind load docker-image operator-for-redis-cluster:local
 $ kind load docker-image icm-redis-node:local
 $ kind load docker-image icm-redis-node:new
 ```
 
-Once the kind cluster is up and running, deploy the `icm-redis-operator` Helm chart:
+Once the kind cluster is up and running, deploy the `operator-for-redis-cluster` Helm chart:
 ```console
-$ helm install op charts/icm-redis-operator --wait --set image.repository=icm-redis-operator --set image.tag=local
+$ helm install op charts/operator-for-redis-cluster --wait --set image.repository=operator-for-redis-cluster --set image.tag=local
 NAME: op
 LAST DEPLOYED: Thu Oct 21 15:11:51 2021
 NAMESPACE: default
@@ -178,7 +178,7 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-When the `icm-redis-operator` pod is up and running, you can start the e2e regression:
+When the `operator-for-redis-cluster` pod is up and running, you can start the e2e regression:
 ```console
 $ go test -timeout 30m ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
 Running Suite: RedisCluster Suite
@@ -196,5 +196,5 @@ RedisCluster CRUD operations
 Ran 11 of 11 Specs in 517.299 seconds
 SUCCESS! -- 11 Passed | 0 Failed | 0 Pending | 0 Skipped
 PASS
-ok  	github.com/TheWeatherCompany/icm-redis-operator/test/e2e	517.776s
+ok  	github.com/IBM/operator-for-redis-cluster/test/e2e	517.776s
 ```

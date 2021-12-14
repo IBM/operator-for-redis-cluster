@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/config"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 	"github.com/golang/glog"
 )
 

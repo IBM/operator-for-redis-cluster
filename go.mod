@@ -1,4 +1,4 @@
-module github.com/TheWeatherCompany/icm-redis-operator
+module github.com/IBM/operator-for-redis-cluster
 
 go 1.15
 

@@ -3,13 +3,13 @@ const isCI = !!process.env.CI;
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 module.exports = {
   title: 'ICM Redis Operator',
-  url: isCI ? 'https://icm-redis-operator-docs.dev.sun.weather.com' : 'http://localhost:3001',
+  url: isCI ? 'https://operator-for-redis-cluster-docs.dev.sun.weather.com' : 'http://localhost:3001',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
-  organizationName: 'TheWeatherCompany',
-  projectName: 'icm-redis-operator',
+  organizationName: 'IBM',
+  projectName: 'operator-for-redis-cluster',
   themeConfig: {
     hideableSidebar: true,
     colorMode: {
@@ -24,7 +24,7 @@ module.exports = {
       },
       items: [
         {
-          href: 'https://icm-redis-operator-docs.dev.sun.weather.com',
+          href: 'https://operator-for-redis-cluster-docs.dev.sun.weather.com',
           label: 'GitHub',
           position: 'right',
         },
@@ -51,13 +51,13 @@ module.exports = {
           sidebarPath: './sidebars.js',
           // Please change this to your repo.
           editUrl:
-            'https://icm-redis-operator-docs.dev.sun.weather.com',
+            'https://operator-for-redis-cluster-docs.dev.sun.weather.com',
         },
         blog: {
           showReadingTime: true,
           // Please change this to your repo.
           editUrl:
-            'https://icm-redis-operator-docs.dev.sun.weather.com/blog',
+            'https://operator-for-redis-cluster-docs.dev.sun.weather.com/blog',
         },
       },
     ],

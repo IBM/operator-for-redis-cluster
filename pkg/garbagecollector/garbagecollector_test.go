@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	cfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 )
 
 func TestGarbageCollector_CollectRedisClusterJobs(t *testing.T) {

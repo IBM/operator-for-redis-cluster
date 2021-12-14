@@ -9,8 +9,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/errors"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/config"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 )
 
 // FixClusterSplit use to detect and fix a cluster split

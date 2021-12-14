@@ -3,7 +3,7 @@ package framework
 import (
 	"fmt"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

@@ -8,9 +8,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/fields"
@@ -19,8 +19,8 @@ import (
 
 	kapi "k8s.io/api/core/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	podctrl "github.com/IBM/operator-for-redis-cluster/pkg/controller/pod"
 )
 
 type resources struct {

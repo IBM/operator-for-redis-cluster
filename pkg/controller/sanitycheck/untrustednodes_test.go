@@ -8,9 +8,9 @@ import (
 	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake/admin"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis/fake/admin"
 )
 
 func TestFixUntrustedNodes(t *testing.T) {

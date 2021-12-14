@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/internal/testutil"
+	"github.com/IBM/operator-for-redis-cluster/internal/testutil"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 )
 
 func TestReplacePrimaries(t *testing.T) {

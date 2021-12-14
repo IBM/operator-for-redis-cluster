@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/test/e2e/framework"
+	"github.com/IBM/operator-for-redis-cluster/test/e2e/framework"
 	"github.com/spf13/pflag"
 )
 

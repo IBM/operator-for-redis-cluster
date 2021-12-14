@@ -6,7 +6,7 @@ numberOfPrimaries: 3
 replicationFactor: 1
 
 image:
-  repository: us.icr.io/icm-docker-images/icm-redis-node
+  repository: ibmcom/icm-redis-node
   # Overrides the image tag whose default is the chart appVersion
   tag: ""
   pullPolicy: IfNotPresent
@@ -141,7 +141,7 @@ metrics:
   enabled: false
   exporter:
     image:
-      repository: us.icr.io/icm-docker-images/redis-exporter
+      repository: ibmcom/redis-exporter
       tag: v1
       pullPolicy: IfNotPresent
     port:
@@ -155,7 +155,7 @@ metrics:
       labels: {}
   server:
     image:
-      repository: us.icr.io/icm-docker-images/icm-redis-metrics
+      repository: ibmcom/icm-redis-metrics
       tag: latest
       pullPolicy: IfNotPresent
     port:
@@ -180,7 +180,7 @@ metrics:
 sysctl:
   netCoreSomaxconn: 65000
   image:
-    repository: us.icr.io/icm-docker-images/debian
+    repository: ibmcom/debian
     tag: v11
     imagePullPolicy: IfNotPresent
 

@@ -3,7 +3,7 @@ package admin
 import (
 	"context"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 )
 
 // Connections fake redis connection handler, do nothing

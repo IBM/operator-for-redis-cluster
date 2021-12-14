@@ -2,13 +2,13 @@
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "icm-redis-operator.fullname" . }}
-  labels: {{- include "icm-redis-operator.labels" . | nindent 4 }}
+  name: {{ include "operator-for-redis-cluster.fullname" . }}
+  labels: {{- include "operator-for-redis-cluster.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "icm-redis-operator.fullname" . }}
+    name: {{ include "operator-for-redis-cluster.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

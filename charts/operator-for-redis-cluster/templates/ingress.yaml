@@ -1,5 +1,5 @@
 {{- if .Values.ingress.enabled -}}
-{{- $fullName := include "icm-redis-operator.fullname" . -}}
+{{- $fullName := include "operator-for-redis-cluster.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- $networkingv1api := .Capabilities.APIVersions.Has "networking.k8s.io/v1/Ingress" -}}
 {{- if $networkingv1api -}}
@@ -10,7 +10,7 @@ apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: {{ $fullName }}
-  labels: {{- include "icm-redis-operator.labels" . | nindent 4 }}
+  labels: {{- include "operator-for-redis-cluster.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+	v1 "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 	kapiv1 "k8s.io/api/core/v1"
 )
 

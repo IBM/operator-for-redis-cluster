@@ -1,7 +1,7 @@
 domain: ibm.com
 layout: go.kubebuilder.io/v3-alpha
-repo: github.com/TheWeatherCompany/icm-redis-operator
-projectName: icm-redis-operator
+repo: github.com/IBM/operator-for-redis-cluster
+projectName: operator-for-redis-cluster
 resources:
 - api:
     crdVersion: v1
@@ -10,7 +10,7 @@ resources:
   domain: ibm.com
   group: db
   kind: RedisCluster
-  path: github.com/TheWeatherCompany/icm-redis-operator/pkg/api/redis/v1
+  path: github.com/IBM/operator-for-redis-cluster/pkg/api/redis/v1
   version: v1alpha1
 version: "3"
 plugins:

@@ -1,4 +1,4 @@
-# icm-redis-operator
+# operator-for-redis-cluster
 
 ![logo](docs/static/images/logo.png)
 
@@ -6,4 +6,4 @@ The goal of this project is to simplify the deployment and management of a [Redi
 
 ## Documentation
 
-This project's documentation is hosted at https://icm-redis-operator-docs.dev.sun.weather.com.
+This project's documentation is hosted at https://operator-for-redis-cluster-docs.dev.sun.weather.com.

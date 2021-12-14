@@ -1,8 +1,9 @@
 apiVersion: v2
-name: icm-redis-operator
+name: icm-redis-cluster
 type: application
-version: 0.0.0  # Overridden by release workflow
-description: ICM Redis Operator for creating and managing Redis clusters
+version: 0.0.0     # Overridden by release workflow
+appVersion: 0.0.0  # Overridden by release workflow
+description: IBM Cluster for interfacing with Redis
 maintainers:
   - name: tomashibm  # Tomash Sidei
   - name: cin        # Craig Ingram

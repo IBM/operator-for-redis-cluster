@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 )
 
 func main() {

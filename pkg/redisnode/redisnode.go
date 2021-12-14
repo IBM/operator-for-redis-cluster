@@ -24,8 +24,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 )
 
 // RedisNode contains all info to run the redis-node.

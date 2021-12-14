@@ -6,10 +6,10 @@ import (
 
 	"github.com/golang/glog"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	"github.com/IBM/operator-for-redis-cluster/pkg/config"
+	"github.com/IBM/operator-for-redis-cluster/pkg/controller/pod"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 )
 
 // RunSanityChecks function used to run all the sanity check on the current cluster

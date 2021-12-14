@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	podctrl "github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/pod"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/utils"
+	podctrl "github.com/IBM/operator-for-redis-cluster/pkg/controller/pod"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -17,10 +17,10 @@ import (
 	"github.com/golang/glog"
 	v1 "k8s.io/api/core/v1"
 
-	rapi "github.com/TheWeatherCompany/icm-redis-operator/api/v1alpha1"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/clustering"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/controller/sanitycheck"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	"github.com/IBM/operator-for-redis-cluster/pkg/controller/clustering"
+	"github.com/IBM/operator-for-redis-cluster/pkg/controller/sanitycheck"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 )
 
 func (c *Controller) clusterAction(ctx context.Context, admin redis.AdminInterface, cluster *rapi.RedisCluster, infos *redis.ClusterInfos) (ctrl.Result, error) {

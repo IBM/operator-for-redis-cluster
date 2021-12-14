@@ -3,7 +3,7 @@ package clustering
 import (
 	"fmt"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
 )
 
 // SelectPrimariesToReplace used to replace currentPrimaries with new redis nodes

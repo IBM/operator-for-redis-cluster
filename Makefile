@@ -1,7 +1,7 @@
 ARTIFACT_OPERATOR=redis-operator
 ARTIFACT_INITCONTAINER=init-container
 
-PREFIX=us.icr.io/icm-docker-images/
+PREFIX=ibmcom/
 
 SOURCES := $(shell find . ! -name "*_test.go" -name '*.go')
 
@@ -17,7 +17,7 @@ endif
 TAG?=$(shell git tag|tail -1)
 COMMIT=$(shell git rev-parse HEAD)
 DATE=$(shell date +%Y-%m-%d/%H:%M:%S)
-BUILDINFOPKG=github.com/TheWeatherCompany/icm-redis-operator/pkg/utils
+BUILDINFOPKG=github.com/IBM/operator-for-redis-cluster/pkg/utils
 LDFLAGS= -ldflags "-w -X ${BUILDINFOPKG}.TAG=${TAG} -X ${BUILDINFOPKG}.COMMIT=${COMMIT} -X ${BUILDINFOPKG}.OPERATOR_VERSION=${OPERATOR_VERSION} -X ${BUILDINFOPKG}.REDIS_VERSION=${REDIS_VERSION} -X ${BUILDINFOPKG}.BUILDTIME=${DATE} -s"
 
 all: build
@@ -43,7 +43,7 @@ buildlinux: $(addprefix buildlinux-,$(CMDBINS))
 container: $(addprefix container-,$(CMDBINS))
 
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role output:rbac:none paths="./..." output:crd:artifacts:config=charts/icm-redis-operator/crds/
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role output:rbac:none paths="./..." output:crd:artifacts:config=charts/operator-for-redis-cluster/crds/
 
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."

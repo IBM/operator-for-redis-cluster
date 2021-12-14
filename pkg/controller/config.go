@@ -1,6 +1,6 @@
 package controller
 
-import "github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
+import "github.com/IBM/operator-for-redis-cluster/pkg/config"
 
 // Config contains the Controller settings
 type Config struct {

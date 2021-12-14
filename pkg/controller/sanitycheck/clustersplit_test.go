@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/config"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis"
-	"github.com/TheWeatherCompany/icm-redis-operator/pkg/redis/fake"
+	"github.com/IBM/operator-for-redis-cluster/pkg/config"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/redis/fake"
 )
 
 func TestFixClusterSplit(t *testing.T) {
