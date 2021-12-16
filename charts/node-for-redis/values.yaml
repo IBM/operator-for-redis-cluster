@@ -141,8 +141,8 @@ metrics:
   enabled: false
   exporter:
     image:
-      repository: ibmcom/exporter-for-redis
-      tag: latest
+      repository: oliver006/redis_exporter
+      tag: v1.32.0
       pullPolicy: IfNotPresent
     port:
       name: metrics
