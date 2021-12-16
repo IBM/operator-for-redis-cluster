@@ -1,12 +1,12 @@
 apiVersion: db.ibm.com/v1alpha1
 kind: RedisCluster
 metadata:
-  name: {{ include "icm-redis-cluster.fullname" . }}
-  labels: {{- include "icm-redis-cluster.labels" . | nindent 4 }}
+  name: {{ include "node-for-redis.fullname" . }}
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
 spec:
   numberOfPrimaries: {{ .Values.numberOfPrimaries }}
   replicationFactor: {{ .Values.replicationFactor }}
-  serviceName: {{ include "icm-redis-cluster.fullname" . }}
+  serviceName: {{ include "node-for-redis.fullname" . }}
   {{- with .Values.additionalLabels }}
   additionalLabels:
     {{- toYaml . | nindent 4 }}
@@ -20,13 +20,13 @@ spec:
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      labels: {{- include "icm-redis-cluster.selectorLabels" . | nindent 8 }}
+      labels: {{- include "node-for-redis.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "icm-redis-cluster.serviceAccountName" . }}
+      serviceAccountName: {{ include "node-for-redis.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if .Values.zoneAwareReplication }}
@@ -35,7 +35,7 @@ spec:
           topologyKey: topology.kubernetes.io/zone
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
-            matchLabels: {{- include "icm-redis-cluster.selectorLabels" . | nindent 14 }}
+            matchLabels: {{- include "node-for-redis.selectorLabels" . | nindent 14 }}
       {{- end }}
       {{- with .Values.sysctl }}
       initContainers:
@@ -77,13 +77,13 @@ spec:
             "--c=/redis-conf/redis.conf",
             "--logtostderr={{ .Values.args.logToStderr }}",
             "--alsologtostderr={{ .Values.args.alsoLogToStderr }}",
-            "--rs={{ include "icm-redis-cluster.fullname" . }}",
+            "--rs={{ include "node-for-redis.fullname" . }}",
             "--t={{ .Values.args.maxStartWait }}",
             "--d={{ .Values.args.startDelay }}",
             "--ns=$(POD_NAMESPACE)",
             "--ip=$(POD_IP)",
             "--cluster-node-timeout={{ .Values.args.clusterNodeTimeout }}",
-            {{- if include "icm-redis-cluster.hasextraconfig" . }}
+            {{- if include "node-for-redis.hasextraconfig" . }}
             "--config-file=/redis-extra-conf/redis.conf",
             {{- end }}{{- include "redis-cluster.extraarglist" . }}
             ]
@@ -117,7 +117,7 @@ spec:
               mountPath: /redis-data
             - name: conf
               mountPath: /redis-conf
-            {{- if include "icm-redis-cluster.hasextraconfig" . }}
+            {{- if include "node-for-redis.hasextraconfig" . }}
             - name: extra-conf
               mountPath: /redis-extra-conf
             {{- end }}
@@ -139,16 +139,16 @@ spec:
         {{- if .Values.metrics.enabled }}
         - name: redis-exporter-lua-metrics
           configMap:
-            name: {{ include "icm-redis-cluster.fullname" . }}-lua-metrics
+            name: {{ include "node-for-redis.fullname" . }}-lua-metrics
         {{- end }}
         - name: data
           emptyDir: {}
         - name: conf
           emptyDir: {}
-        {{- if include "icm-redis-cluster.hasextraconfig" . }}
+        {{- if include "node-for-redis.hasextraconfig" . }}
         - name: extra-conf
           configMap:
-            name: {{ include "icm-redis-cluster.fullname" . }}
+            name: {{ include "node-for-redis.fullname" . }}
             items:
               - key: redis.conf
                 path: redis.conf

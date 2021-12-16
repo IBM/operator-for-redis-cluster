@@ -26,7 +26,7 @@ Scaling operations happen in real-time while the Redis cluster receives requests
 Like the rolling update procedure, scaling up requires additional resources to create new Redis pods. In the case where there are insufficient resources to schedule new Redis pods, the pods will get stuck in `Pending` state. If you find your newly created pods are in `Pending` state, increase the memory + cpu allocated to your k8s nodes, or add more nodes to your worker pool.
 
 ## Scaling primaries
-The first option for scaling your cluster is scaling the number of primaries. You can trigger a scaling operation by modifying the `numberOfPrimaries` field in `charts/icm-redis-cluster/values.yaml` and running `helm upgrade` on your cluster.
+The first option for scaling your cluster is scaling the number of primaries. You can trigger a scaling operation by modifying the `numberOfPrimaries` field in `charts/node-for-redis/values.yaml` and running `helm upgrade` on your cluster.
 
 ### Scaling up
 Scale up operations take place when the desired number of primaries is greater than the current number of primaries. We take the following actions for scale up operations:
@@ -53,7 +53,7 @@ replicationFactor: 1
 ```
 Assuming your helm release name is `redis-cluster`, scale up `numberOfPrimaries` by running the following:
 ```
-helm upgrade redis-cluster charts/icm-redis-cluster --set numberOfPrimaries=5
+helm upgrade redis-cluster charts/node-for-redis --set numberOfPrimaries=5
 ```
 
 ### Scaling down
@@ -81,11 +81,11 @@ replicationFactor: 1
 
 Scale down `numberOfPrimaries` by running the following:
 ```
-helm upgrade redis-cluster charts/icm-redis-cluster --set numberOfPrimaries=3
+helm upgrade redis-cluster charts/node-for-redis --set numberOfPrimaries=3
 ```
 
 ## Scaling replication factor
-The second option for scaling your cluster is scaling RF. You can trigger a scaling operation by modifying the `replicationFactor` field in `charts/icm-redis-cluster/values.yaml` and running `helm upgrade` on your cluster. 
+The second option for scaling your cluster is scaling RF. You can trigger a scaling operation by modifying the `replicationFactor` field in `charts/node-for-redis/values.yaml` and running `helm upgrade` on your cluster. 
 
 ### Scaling up
 Scale up operations for RF take place when the desired RF is greater than the current RF. We take the following actions for scale up operations:
@@ -112,7 +112,7 @@ replicationFactor: 1
 
 Scale up `replicationFactor` by running the following:
 ```
-helm upgrade redis-cluster charts/icm-redis-cluster --set replicationFactor=2
+helm upgrade redis-cluster charts/node-for-redis --set replicationFactor=2
 ```
 
 ### Scaling down
@@ -140,7 +140,7 @@ replicationFactor: 2
 
 Scale down `replicationFactor` by running the following:
 ```
-helm upgrade redis-cluster charts/icm-redis-cluster --set replicationFactor=1
+helm upgrade redis-cluster charts/node-for-redis --set replicationFactor=1
 ```
 
 ## Scaling primaries and replication factor
@@ -155,7 +155,7 @@ replicationFactor: 1
 
 Increase `numberOfPrimaries` and `replicationFactor` by running the following:
 ```
-helm upgrade redis-cluster charts/icm-redis-cluster --set numberOfPrimaries=4 --set replicationFactor=2
+helm upgrade redis-cluster charts/node-for-redis --set numberOfPrimaries=4 --set replicationFactor=2
 ```
 ---
 #### Example 2
@@ -167,5 +167,5 @@ replicationFactor: 2
 
 Increase `numberOfPrimaries` and decrease `replicationFactor` by running the following:
 ```
-helm upgrade redis-cluster charts/icm-redis-cluster --set numberOfPrimaries=5 --set replicationFactor=1
+helm upgrade redis-cluster charts/node-for-redis --set numberOfPrimaries=5 --set replicationFactor=1
 ```

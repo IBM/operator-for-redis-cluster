@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "operator-for-redis-cluster.fullname" . }}
+  name: {{ include "operator-for-redis.fullname" . }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "operator-for-redis-cluster.labels" . | nindent 4 }}
+  labels: {{- include "operator-for-redis.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "operator-for-redis-cluster.selectorLabels" . | nindent 6 }}
+      {{- include "operator-for-redis.selectorLabels" . | nindent 6 }}
   {{- with .Values.strategy }}
   strategy: {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -21,13 +21,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "operator-for-redis-cluster.selectorLabels" . | nindent 8 }}
+        {{- include "operator-for-redis.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "operator-for-redis-cluster.serviceAccountName" . | quote }}
+      serviceAccountName: {{ include "operator-for-redis.serviceAccountName" . | quote }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -38,7 +38,7 @@ spec:
           topologyKey: topology.kubernetes.io/zone
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
-            matchLabels: {{- include "operator-for-redis-cluster.selectorLabels" . | nindent 14 }}
+            matchLabels: {{- include "operator-for-redis.selectorLabels" . | nindent 14 }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -49,7 +49,7 @@ spec:
             value: {{ .Release.Namespace | quote }}
           - name: LEADERELECTION_ENABLED
             value: {{ if gt .Values.replicaCount 1.0 }}"true"{{ else }}"false"{{ end }}
-          args: [{{- include "redis-operator.arglist" . | nindent 12 }}]
+          args: [{{- include "operator-for-redis.arglist" . | nindent 12 }}]
           {{- with .Values.securityContext }}
           securityContext:
           {{- toYaml . | nindent 12 }}

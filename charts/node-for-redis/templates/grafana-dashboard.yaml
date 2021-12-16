@@ -2,13 +2,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "icm-redis-cluster.fullname" . }}-grafana-dashboard
+  name: {{ include "node-for-redis.fullname" . }}-grafana-dashboard
   namespace: {{ if .Values.metrics.grafanaDashboard.namespace }} {{ .Values.metrics.grafanaDashboard.namespace }} {{ else }} {{ .Release.Namespace }} {{ end }}
   labels:
-    {{- include "icm-redis-cluster.labels" . | nindent 4 }}
+    {{- include "node-for-redis.labels" . | nindent 4 }}
     {{- toYaml .Values.metrics.grafanaDashboard.labels | nindent 4 }}
 data:
-  {{ include "icm-redis-cluster.fullname" . }}.json: |-
+  {{ include "node-for-redis.fullname" . }}.json: |-
     {
       "annotations": {
         "list": [
@@ -135,7 +135,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
+              "expr": "sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" })",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -148,7 +148,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(redis_config_maxclients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) - sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
+              "expr": "sum(redis_config_maxclients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }) - sum(redis_connected_clients{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" })",
               "hide": false,
               "instant": true,
               "interval": "",
@@ -229,7 +229,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "sum(redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) / sum(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) * 100",
+              "expr": "sum(redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }) / sum(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }) * 100",
               "format": "time_series",
               "intervalFactor": 2,
               "metric": "",
@@ -304,7 +304,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(node_per_zone{namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }) by (name)",
+              "expr": "sum(node_per_zone{namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-metrics\" }) by (name)",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -372,7 +372,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "zone_skew{name=\"primaries\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }",
+              "expr": "zone_skew{name=\"primaries\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-metrics\" }",
               "hide": false,
               "interval": "",
               "refId": "A"
@@ -436,7 +436,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "zone_skew{name=\"replicas\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-metrics\" }",
+              "expr": "zone_skew{name=\"replicas\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-metrics\" }",
               "hide": false,
               "interval": "",
               "refId": "A"
@@ -519,7 +519,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "rate(redis_commands_processed_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\"}[1m])",
+              "expr": "rate(redis_commands_processed_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\"}[1m])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -610,7 +610,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "irate(redis_keyspace_hits_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
+              "expr": "irate(redis_keyspace_hits_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -622,7 +622,7 @@ data:
               "target": ""
             },
             {
-              "expr": "irate(redis_keyspace_misses_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
+              "expr": "irate(redis_keyspace_misses_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -746,7 +746,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }",
+              "expr": "redis_memory_used_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -758,7 +758,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "max(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
+              "expr": "max(redis_memory_max_bytes{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" })",
               "format": "time_series",
               "hide": false,
               "instant": false,
@@ -827,7 +827,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "rate(redis_net_input_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
+              "expr": "rate(redis_net_input_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{ "{{ pod }}" }} in",
@@ -835,7 +835,7 @@ data:
               "step": 240
             },
             {
-              "expr": "rate(redis_net_output_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m])",
+              "expr": "rate(redis_net_output_bytes_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }[5m])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -963,7 +963,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) by (db,pod)",
+              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }) by (db,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1052,7 +1052,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }) - sum (redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
+              "expr": "sum(redis_db_keys{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }) - sum (redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" })",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1062,7 +1062,7 @@ data:
               "target": ""
             },
             {
-              "expr": "sum(redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" })",
+              "expr": "sum(redis_db_keys_expiring{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" })",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1129,7 +1129,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(redis_expired_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m]))",
+              "expr": "sum(rate(redis_expired_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }[5m]))",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -1141,7 +1141,7 @@ data:
               "target": ""
             },
             {
-              "expr": "sum(rate(redis_evicted_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }[5m]))",
+              "expr": "sum(rate(redis_evicted_keys_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }[5m]))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1266,7 +1266,7 @@ data:
           "pluginVersion": "8.0.5",
           "targets": [
             {
-              "expr": "topk(5, sum by (cmd) (irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" } [1m])))",
+              "expr": "topk(5, sum by (cmd) (irate(redis_commands_total{pod=~\"$instance\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" } [1m])))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1359,7 +1359,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\", key=\"slots_owned\" }",
+              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\", key=\"slots_owned\" }",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -1431,7 +1431,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\", key=\"slots_owned\" }",
+              "expr": "redis_script_values{pod=~\"$masters\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\", key=\"slots_owned\" }",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -2018,7 +2018,7 @@ data:
             "name": "instance",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }, pod)",
+              "query": "label_values(redis_instance_info{role=~\"$role\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }, pod)",
               "refId": "Prometheus-instance-Variable-Query"
             },
             "refresh": 2,
@@ -2047,7 +2047,7 @@ data:
             "name": "masters",
             "options": [],
             "query": {
-              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "icm-redis-cluster.fullname" . }}-exporter\" }, pod)",
+              "query": "label_values(redis_instance_info{role=\"master\", namespace=\"{{ .Release.Namespace }}\", service=\"{{ include "node-for-redis.fullname" . }}-exporter\" }, pod)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -2091,7 +2091,7 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "Redis Cluster ({{ .Release.Namespace }}/{{ include "icm-redis-cluster.fullname" . }})",
+      "title": "Redis Cluster ({{ .Release.Namespace }}/{{ include "node-for-redis.fullname" . }})",
       "uid": "",
       "version": 3
     }

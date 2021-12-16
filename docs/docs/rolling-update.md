@@ -13,7 +13,7 @@ In production, developers aim for zero downtime when periodically deploying newe
 To learn more about how rolling updates work in k8s, see [Performing a Rolling Update](https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/).
 
 ## Redis cluster upgrades
-A rolling update occurs when the user applies a change to the Redis cluster pod template spec. For example, a user might update the Redis cluster pod image tag in `charts/icm-redis-cluster/values.yaml` and run `helm upgrade`. When the Redis operator detects the pod template spec change, the following procedure takes place:
+A rolling update occurs when the user applies a change to the Redis cluster pod template spec. For example, a user might update the Redis cluster pod image tag in `charts/node-for-redis/values.yaml` and run `helm upgrade`. When the Redis operator detects the pod template spec change, the following procedure takes place:
 
 1. Compare the number of running Redis pods with the number of pods required for the rolling update:
     ```

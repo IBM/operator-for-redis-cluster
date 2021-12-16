@@ -14,7 +14,7 @@ The goal of this project is to simplify the deployment and management of a [Redi
 
 ## Overview
 
-This project contains two Helm charts, namely `operator-for-redis-cluster` and `icm-redis-cluster`. The first chart deploys the Redis operator, `RedisCluster` Custom Resource Definition (CRD), and various other k8s resources. The second chart deploys the `RedisCluster` resource and various other k8s resources. Each node in the Redis cluster runs in its own Pod. Upon startup, each node joins the cluster as a primary node with no slots. See the cluster representation in the diagram below:
+This project contains two Helm charts, namely `operator-for-redis` and `node-for-redis`. The first chart deploys the Redis operator, `RedisCluster` Custom Resource Definition (CRD), and various other k8s resources. The second chart deploys the `RedisCluster` resource and various other k8s resources. Each node in the Redis cluster runs in its own Pod. Upon startup, each node joins the cluster as a primary node with no slots. See the cluster representation in the diagram below:
 
 ![Initial state](../static/images/overview_1.png)
 
@@ -39,8 +39,8 @@ The project may have started on Openshift, but it now supports Kubernetes as wel
 
 You can find two Helm charts in the `charts` folder:
 
-- `operator-for-redis-cluster` used to deploy the operator in your Kubernetes cluster.
-- `icm-redis-cluster` used to create the `RedisCluster` CR that will be managed by the operator.
+- `operator-for-redis` used to deploy the operator in your Kubernetes cluster.
+- `node-for-redis` used to create the `RedisCluster` CR that will be managed by the operator.
 
 Operator deployment example:
 ```console
@@ -62,8 +62,8 @@ You can configure the topology of the cluster by editing the provided `values.ya
 
 Redis cluster deployment example:
 ```console
-helm install icm-redis-cluster charts/icm-redis-cluster
-NAME: icm-redis-cluster
+helm install node-for-redis charts/node-for-redis
+NAME: node-for-redis
 LAST DEPLOYED: Fri Aug 13 11:48:29 2021
 NAMESPACE: default
 STATUS: deployed
@@ -71,10 +71,10 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-> **! Warning !**, if you want to use the docker images corresponding to the level of code present in the "main" branch. You need to set the image tag when you instantiate the icm-redis-cluster chart and the operator-for-redis-cluster chart. The "latest" tag is corresponding to the last validated release.
+> **! Warning !**, if you want to use the docker images corresponding to the level of code present in the "main" branch. You need to set the image tag when you instantiate the node-for-redis chart and the operator-for-redis-cluster chart. The "latest" tag is corresponding to the last validated release.
 
 ```console
-helm install icm-redis-cluster charts/icm-redis-cluster --set image.tag=main-$COMMIT-dev
+helm install node-for-redis charts/node-for-redis --set image.tag=main-$COMMIT-dev
 ```
 
 ### Install kubectl redis-cluster plugin

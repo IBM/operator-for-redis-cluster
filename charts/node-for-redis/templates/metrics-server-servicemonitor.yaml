@@ -2,17 +2,17 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "icm-redis-cluster.fullname" . }}-metrics
+  name: {{ include "node-for-redis.fullname" . }}-metrics
   namespace: {{ with .Values.metrics.server.serviceMonitor.namespace }}{{ . }}{{ else }}{{ $.Release.Namespace }}{{ end }}
-  labels: {{ include "icm-redis-cluster-metrics.labels" . | nindent 4 }}
+  labels: {{ include "node-for-redis-metrics.labels" . | nindent 4 }}
     {{- with .Values.metrics.server.serviceMonitor.labels }}
     {{- . | toYaml | nindent 4 }}
     {{- end }}
 spec:
-  jobLabel: {{ include "icm-redis-cluster.fullname" . }}
+  jobLabel: {{ include "node-for-redis.fullname" . }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}-metrics
+      app.kubernetes.io/name: {{ include "node-for-redis.name" . }}-metrics
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/component: metrics
   namespaceSelector:

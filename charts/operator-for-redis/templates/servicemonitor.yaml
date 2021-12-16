@@ -2,16 +2,16 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "operator-for-redis-cluster.fullname" . }}-metrics
+  name: {{ include "operator-for-redis.fullname" . }}-metrics
   namespace: {{ with .Values.metrics.serviceMonitor.namespace }}{{ . }}{{ else }}{{ $.Release.Namespace }}{{ end }}
-  labels: {{- include "operator-for-redis-cluster.labels" . | nindent 4 }}
+  labels: {{- include "operator-for-redis.labels" . | nindent 4 }}
     {{- with .Values.metrics.serviceMonitor.labels }}
     {{- . | toYaml | nindent 4 }}
     {{- end }}
 spec:
   selector:
     matchLabels:
-      {{- include "operator-for-redis-cluster.labels" . | nindent 6 }}
+      {{- include "operator-for-redis.labels" . | nindent 6 }}
   namespaceSelector:
     matchNames: [{{ .Release.Namespace }}]
   endpoints:

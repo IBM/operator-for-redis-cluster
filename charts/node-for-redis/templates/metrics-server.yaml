@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "icm-redis-cluster.fullname" . }}-metrics
-  labels: {{- include "icm-redis-cluster-metrics.labels" . | nindent 4 }}
+  name: {{ include "node-for-redis.fullname" . }}-metrics
+  labels: {{- include "node-for-redis-metrics.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
-    matchLabels: {{- include "icm-redis-cluster-metrics.labels" . | nindent 6 }}
+    matchLabels: {{- include "node-for-redis-metrics.labels" . | nindent 6 }}
   template:
     metadata:
-      labels: {{- include "icm-redis-cluster-metrics.labels" . | nindent 8 }}
+      labels: {{- include "node-for-redis-metrics.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
       {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "icm-redis-cluster.serviceAccountName" . }}
+      serviceAccountName: {{ include "node-for-redis.serviceAccountName" . }}
       containers:
         - name: metrics-server
           image: "{{ .Values.metrics.server.image.repository }}:{{ .Values.metrics.server.image.tag }}"
@@ -26,7 +26,7 @@ spec:
             - name: NAMESPACE
               value: {{ .Release.Namespace | quote }}
             - name: CLUSTER_NAME
-              value: {{ include "icm-redis-cluster.fullname" . }}
+              value: {{ include "node-for-redis.fullname" . }}
             - name: SERVER_PORT
               value: {{ .Values.metrics.server.port.number | quote }}
           ports:

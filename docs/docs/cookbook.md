@@ -104,9 +104,9 @@ op-operator-for-redis-cluster-64dbfb4b59-xjttw   1/1     Running   0          31
 
 ### Deploy a Redis cluster
 
-Install the `icm-redis-cluster` Helm chart:
+Install the `node-for-redis` Helm chart:
 ```console
-$ helm install --wait cluster charts/icm-redis-cluster --set image.repository=icm-redis-node --set image.tag=latest
+$ helm install --wait cluster charts/node-for-redis --set image.repository=icm-redis-node --set image.tag=latest
 NAME: cluster
 LAST DEPLOYED: Thu Oct 21 15:12:05 2021
 NAMESPACE: default
@@ -119,15 +119,15 @@ Check the cluster status:
 ```console
 $ kubectl rc
   POD NAME                                        IP           NODE        ID                                        ZONE   USED MEMORY  MAX MEMORY  KEYS  SLOTS
-  + rediscluster-cluster-icm-redis-cluster-2h92v  10.244.1.89  172.18.0.3  5606ea9ab09678124a4b17de10ab92a78aac0b4d  dal13  35.55M       10.95G            5462-10923
-  | rediscluster-cluster-icm-redis-cluster-nf24b  10.244.2.89  172.18.0.2  6840c0e5db16ebf073f57c67a6487c1c7f0d12d1  dal10  2.62M        10.95G
-  + rediscluster-cluster-icm-redis-cluster-4h4s2  10.244.2.88  172.18.0.2  8a2f2db39b85cf059e88dc80d7c9cafefac94de0  dal10  34.63M       10.95G            10924-16383
-  | rediscluster-cluster-icm-redis-cluster-77bt2  10.244.3.87  172.18.0.4  74582d0e0cedb458e81f1e9d4f32cdc3f5e9399b  dal12  2.60M        10.95G
-  + rediscluster-cluster-icm-redis-cluster-dh6pt  10.244.3.86  172.18.0.4  81f5c13bec9a0545a62de08b2a309a87d29855c7  dal12  2.83M        10.95G            0-5461
-  | rediscluster-cluster-icm-redis-cluster-jnh2h  10.244.1.88  172.18.0.3  ffae381633377414597731597518529255fd9b69  dal13  2.64M        10.95G
+  + rediscluster-cluster-node-for-redis-2h92v  10.244.1.89  172.18.0.3  5606ea9ab09678124a4b17de10ab92a78aac0b4d  dal13  35.55M       10.95G            5462-10923
+  | rediscluster-cluster-node-for-redis-nf24b  10.244.2.89  172.18.0.2  6840c0e5db16ebf073f57c67a6487c1c7f0d12d1  dal10  2.62M        10.95G
+  + rediscluster-cluster-node-for-redis-4h4s2  10.244.2.88  172.18.0.2  8a2f2db39b85cf059e88dc80d7c9cafefac94de0  dal10  34.63M       10.95G            10924-16383
+  | rediscluster-cluster-node-for-redis-77bt2  10.244.3.87  172.18.0.4  74582d0e0cedb458e81f1e9d4f32cdc3f5e9399b  dal12  2.60M        10.95G
+  + rediscluster-cluster-node-for-redis-dh6pt  10.244.3.86  172.18.0.4  81f5c13bec9a0545a62de08b2a309a87d29855c7  dal12  2.83M        10.95G            0-5461
+  | rediscluster-cluster-node-for-redis-jnh2h  10.244.1.88  172.18.0.3  ffae381633377414597731597518529255fd9b69  dal13  2.64M        10.95G
 
   NAME                       NAMESPACE  PODS   OPS STATUS  REDIS STATUS  NB PRIMARY  REPLICATION  ZONE SKEW
-  cluster-icm-redis-cluster  default    6/6/6  ClusterOK   OK            3/3         1-1/1        0/0/BALANCED
+  cluster-node-for-redis  default    6/6/6  ClusterOK   OK            3/3         1-1/1        0/0/BALANCED
 ```
 
 ### Clean up your environment

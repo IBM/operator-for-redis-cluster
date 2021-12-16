@@ -2,8 +2,8 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "icm-redis-cluster.fullname" . }}-metrics
-  labels: {{- include "icm-redis-cluster-metrics.labels" . | nindent 4 }}
+  name: {{ include "node-for-redis.fullname" . }}-metrics
+  labels: {{- include "node-for-redis-metrics.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -12,7 +12,7 @@ spec:
       protocol: TCP
       name: {{ .Values.metrics.server.port.name }}
   selector:
-    app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}-metrics
+    app.kubernetes.io/name: {{ include "node-for-redis.name" . }}-metrics
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: metrics
 {{- end }}

@@ -33,7 +33,6 @@ jobs:
       - name: Run integration tests
         run: make test
 
-
   build-operator:
     runs-on: ubuntu-latest
     needs: run-tests
@@ -44,29 +43,11 @@ jobs:
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Authenticate with docker proxy registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USER }}
-          password: ${{ secrets.ARTIFACTORY_PASS }}
-
       - name: Build operator image
         uses: docker/build-push-action@v2
         with:
+          tags: ibmcom/operator-for-redis:local
           file: Dockerfile.operator
-          tags: operator-for-redis-cluster:local
-          outputs: type=docker,dest=operator-for-redis-cluster.tar
-          build-args: |
-            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
-
-      - name: Upload operator image artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: operator-for-redis-cluster
-          path: operator-for-redis-cluster.tar
-          retention-days: 1
-
 
   build-cluster-node:
     runs-on: ubuntu-latest
@@ -78,28 +59,11 @@ jobs:
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Authenticate with docker proxy registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USER }}
-          password: ${{ secrets.ARTIFACTORY_PASS }}
-
-      - name: Build redis-node image
+      - name: Build redis node image
         uses: docker/build-push-action@v2
         with:
+          tags: ibmcom/node-for-redis:local
           file: Dockerfile.node
-          tags: icm-redis-node:local, icm-redis-node:new
-          outputs: type=docker,dest=icm-redis-node.tar
-          build-args: |
-            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
-
-      - name: Upload cluster-node image artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: icm-redis-node
-          path: icm-redis-node.tar
-          retention-days: 1
 
   build-metrics:
     runs-on: ubuntu-latest
@@ -111,28 +75,11 @@ jobs:
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Authenticate with docker proxy registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ secrets.DOCKER_PROXY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USER }}
-          password: ${{ secrets.ARTIFACTORY_PASS }}
-
-      - name: Build redis-metrics image
+      - name: Build redis metrics image
         uses: docker/build-push-action@v2
         with:
+          tags: ibmcom/metrics-for-redis:local
           file: Dockerfile.metrics
-          tags: icm-redis-metrics:local, icm-redis-metrics:new
-          outputs: type=docker,dest=icm-redis-metrics.tar
-          build-args: |
-            DOCKER_PROXY_REGISTRY=${{ secrets.DOCKER_PROXY_REGISTRY }}/
-
-      - name: Upload metrics image artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: icm-redis-metrics
-          path: icm-redis-metrics.tar
-          retention-days: 1
 
   validate-helm-charts:
     runs-on: ubuntu-latest
@@ -203,25 +150,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Download operator image artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: operator-for-redis-cluster
-      
-      - name: Download cluster-node image artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: icm-redis-node
-
-      - name: Download metrics image artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: icm-redis-metrics
-
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GO_VERSION }}
+
+      - name: build images
+        run: |
+          docker build -f Dockerfile.operator -t ibmcom/operator-for-redis:local .
+          docker build -f Dockerfile.node -t ibmcom/node-for-redis:local .
+          docker build -f Dockerfile.metrics -t ibmcom/metrics-for-redis:local .
 
       - name: kind create cluster
         uses: helm/kind-action@v1.2.0
@@ -234,13 +172,13 @@ jobs:
             
       - name: Load Images to KIND
         run: |
-          kind load image-archive operator-for-redis-cluster.tar
-          kind load image-archive icm-redis-node.tar
-          kind load image-archive icm-redis-metrics.tar
+          kind load docker-image ibmcom/operator-for-redis:local
+          kind load docker-image ibmcom/node-for-redis:local
+          kind load docker-image ibmcom/metrics-for-redis:local
     
-      - name: Install operator-for-redis-cluster with Helm
+      - name: Install operator-for-redis with Helm
         id: helm
-        run: helm install operator-for-redis-cluster charts/operator-for-redis-cluster --wait --set image.repository=operator-for-redis-cluster --set image.tag=local --set logLevel=7
+        run: helm install operator-for-redis charts/operator-for-redis --wait --set image.repository=ibmcom/operator-for-redis --set image.tag=local --set logLevel=7
       
       - name: Run e2e tests
         id: e2e

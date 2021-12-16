@@ -2,20 +2,20 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "operator-for-redis-cluster.fullname" . }}-grafana-dashboard
+  name: {{ include "operator-for-redis.fullname" . }}-grafana-dashboard
   namespace: {{ if .Values.metrics.grafanaDashboard.namespace }} {{ .Values.metrics.grafanaDashboard.namespace }} {{ else }} {{ .Release.Namespace }} {{ end }}
   labels:
-    {{- include "operator-for-redis-cluster.labels" . | nindent 4 }}
+    {{- include "operator-for-redis.labels" . | nindent 4 }}
     {{- toYaml .Values.metrics.grafanaDashboard.labels | nindent 4 }}
 data:
-  {{ include "operator-for-redis-cluster.fullname" . }}.json: |-
+  {{ include "operator-for-redis.fullname" . }}.json: |-
     {
       "annotations": {
         "list": [
           {
             "datasource": "{{ required "Field .Values.monitoring.grafanaDashboard.datasourceName is required" .Values.metrics.grafanaDashboard.datasourceName }}",
             "enable": true,
-            "expr": "up{service=\"{{ include "operator-for-redis-cluster.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"} unless (up{service=\"{{ include "operator-for-redis-cluster.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"} offset 1m)",
+            "expr": "up{service=\"{{ include "operator-for-redis.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"} unless (up{service=\"{{ include "operator-for-redis.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"} offset 1m)",
             "hide": false,
             "iconColor": "rgba(255, 96, 96, 1)",
             "limit": 100,
@@ -87,7 +87,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(controller_runtime_reconcile_total{service=\"{{ include "operator-for-redis-cluster.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"}[1m])) by (result)",
+              "expr": "sum(rate(controller_runtime_reconcile_total{service=\"{{ include "operator-for-redis.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"}[1m])) by (result)",
               "format": "time_series",
               "hide": false,
               "intervalFactor": 1,
@@ -177,7 +177,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(controller_runtime_reconcile_time_seconds_count{service=\"{{ include "operator-for-redis-cluster.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"}[1m]))",
+              "expr": "sum(rate(controller_runtime_reconcile_time_seconds_count{service=\"{{ include "operator-for-redis.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"}[1m]))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "",
@@ -269,7 +269,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(controller_runtime_reconcile_errors_total{service=\"{{ include "operator-for-redis-cluster.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"}[1m]))",
+              "expr": "sum(rate(controller_runtime_reconcile_errors_total{service=\"{{ include "operator-for-redis.fullname" . }}\", namespace=\"{{.Release.Namespace}}\"}[1m]))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "errors",

@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "icm-redis-cluster.name" -}}
+{{- define "node-for-redis.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "icm-redis-cluster.fullname" -}}
+{{- define "node-for-redis.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,15 +26,15 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "icm-redis-cluster.chart" -}}
+{{- define "node-for-redis.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Version labels
 */}}
-{{- define "icm-redis-cluster.chartLabels" }}
-helm.sh/chart: {{ include "icm-redis-cluster.chart" . }}
+{{- define "node-for-redis.chartLabels" }}
+helm.sh/chart: {{ include "node-for-redis.chart" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
@@ -44,23 +44,23 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{/*
 Common labels
 */}}
-{{- define "icm-redis-cluster.labels" -}}
-{{ include "icm-redis-cluster.selectorLabels" . }}
-{{ include "icm-redis-cluster.chartLabels" . }}
+{{- define "node-for-redis.labels" -}}
+{{ include "node-for-redis.selectorLabels" . }}
+{{ include "node-for-redis.chartLabels" . }}
 {{- end }}
 
-{{- define "icm-redis-cluster-metrics.labels" -}}
-app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}-metrics
+{{- define "node-for-redis-metrics.labels" -}}
+app.kubernetes.io/name: {{ include "node-for-redis.name" . }}-metrics
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: metrics
-{{ include "icm-redis-cluster.chartLabels" . }}
+{{ include "node-for-redis.chartLabels" . }}
 {{- end }}
 
 {{/*
 Selector labels
 */}}
-{{- define "icm-redis-cluster.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "icm-redis-cluster.name" . }}
+{{- define "node-for-redis.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "node-for-redis.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: database
 {{- end }}
@@ -68,9 +68,9 @@ app.kubernetes.io/component: database
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "icm-redis-cluster.serviceAccountName" -}}
+{{- define "node-for-redis.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "icm-redis-cluster.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "node-for-redis.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -88,6 +88,6 @@ Builds a list of extra arguments for the Redis cluster
 {{/*
 Tests to see if there is extra config
 */}}
-{{- define "icm-redis-cluster.hasextraconfig" -}}
+{{- define "node-for-redis.hasextraconfig" -}}
 {{- or .Values.redis.configuration.file .Values.redis.configuration.valueMap }}
 {{- end -}}

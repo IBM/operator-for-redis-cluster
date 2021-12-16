@@ -1,9 +1,9 @@
-{{- if include "icm-redis-cluster.hasextraconfig" . }}
+{{- if include "node-for-redis.hasextraconfig" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "icm-redis-cluster.fullname" . }}
-  labels: {{- include "icm-redis-cluster.labels" . | nindent 4 }}
+  name: {{ include "node-for-redis.fullname" . }}
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
 data:
   redis.yaml: |-
   {{- if .Values.redis.configuration.valueMap }}
