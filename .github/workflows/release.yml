@@ -128,31 +128,29 @@ jobs:
         with:
           version: ${{ env.HELM_VERSION }}
 
+      - name: Ensure helm-releases folder exists
+        run: mkdir -p helm-releases
+
       - name: Package operator-for-redis chart
         env:
           OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
-        run: helm package charts/operator-for-redis --version=$OPERATOR_VERSION
+        run: helm package charts/operator-for-redis --version=$OPERATOR_VERSION --destination helm-releases
 
       - name: Package node-for-redis chart
         env:
           OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
-        run: helm package charts/node-for-redis --version=$OPERATOR_VERSION --app-version=${{ env.REDIS_VERSION }}
+        run: helm package charts/node-for-redis --version=$OPERATOR_VERSION --app-version=${{ env.REDIS_VERSION }} --destination helm-releases
 
-      - name: Publish operator-for-redis chart
+      - name: Push helm charts
         env:
           OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
         run: |
-          md5sum_var=$(md5sum ./operator-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          sha1sum_var=$(sha1sum ./operator-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./operator-for-redis-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/operator-for-redis-$OPERATOR_VERSION.tgz
-
-      - name: Publish node-for-redis chart
-        env:
-          OPERATOR_VERSION: ${{ needs.cluster-node.outputs.version }}
-        run: |
-          md5sum_var=$(md5sum ./node-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          sha1sum_var=$(sha1sum ./node-for-redis-$OPERATOR_VERSION.tgz | awk '{ print $1 }')
-          curl -s -o /dev/null -w '%{http_code}' -u$HELM_REPO_USER:$HELM_REPO_PASS -T ./node-for-redis-$OPERATOR_VERSION.tgz --header X-Checksum-MD5:$md5sum_var --header X-Checksum-Sha1:$sha1sum_var $HELM_REPO/node-for-redis-$OPERATOR_VERSION.tgz
+          git config --global user.email ""
+          git config --global user.name "Github Actions CI"
+          helm repo index helm-releases --url https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases
+          git add helm-releases/*
+          git commit -a -m "Release $OPERATOR_VERSION"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
 
   compare-crds:
     name: Compare CRDs

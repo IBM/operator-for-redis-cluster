@@ -155,7 +155,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: build images
+      - name: Build images
         run: |
           docker build -f Dockerfile.operator -t ibmcom/operator-for-redis:local .
           docker build -f Dockerfile.node -t ibmcom/node-for-redis:local .
