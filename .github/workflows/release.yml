@@ -40,7 +40,7 @@ jobs:
         with:
           file: Dockerfile.operator
           push: true
-          tags: ibmcom/operator-for-redis:${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
@@ -75,7 +75,7 @@ jobs:
         with:
           file: Dockerfile.node
           push: true
-          tags: ibmcom/node-for-redis:${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
@@ -109,7 +109,7 @@ jobs:
         with:
           file: Dockerfile.metrics
           push: true
-          tags: ibmcom/metrics-for-redis:${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
