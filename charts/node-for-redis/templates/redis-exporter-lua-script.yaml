@@ -1,0 +1,25 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}-lua-metrics
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
+data:
+  metrics.lua: |-
+    local result = {}
+
+    local clusterSlots = redis.call('cluster', 'slots')
+    local myID = redis.call('cluster', 'myid')
+
+    local slotsOwned = 0
+    for i,v in ipairs(clusterSlots) do
+        if v[3][3] == myID then
+            slotsOwned = slotsOwned + (v[2] - v[1])
+        end
+    end
+
+    table.insert(result, 'slots_owned')
+    table.insert(result, tostring(slotsOwned))
+
+    return result
+{{- end }}

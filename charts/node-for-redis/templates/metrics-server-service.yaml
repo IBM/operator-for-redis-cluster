@@ -1,0 +1,18 @@
+{{- if .Values.metrics.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}-metrics
+  labels: {{- include "node-for-redis-metrics.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.metrics.server.port.number }}
+      targetPort: {{ .Values.metrics.server.port.name }}
+      protocol: TCP
+      name: {{ .Values.metrics.server.port.name }}
+  selector:
+    app.kubernetes.io/name: {{ include "node-for-redis.name" . }}-metrics
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: metrics
+{{- end }}

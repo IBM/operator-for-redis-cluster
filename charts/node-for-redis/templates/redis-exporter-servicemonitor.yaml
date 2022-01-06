@@ -1,0 +1,22 @@
+{{ if and .Values.metrics.enabled .Values.metrics.exporter.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}-exporter
+  namespace: {{ with .Values.metrics.exporter.serviceMonitor.namespace }}{{ . }}{{ else }}{{ $.Release.Namespace }}{{ end }}
+  labels: {{ include "node-for-redis.labels" . | nindent 4 }}
+    {{- with .Values.metrics.exporter.serviceMonitor.labels }}
+    {{- . | toYaml | nindent 4 }}
+    {{- end }}
+spec:
+  jobLabel: {{ include "node-for-redis.fullname" . }}
+  selector:
+    matchLabels:
+      {{ include "node-for-redis.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames: [{{ .Release.Namespace }}]
+  endpoints:
+    - port: {{ .Values.metrics.exporter.port.name }}
+      path: {{ .Values.metrics.exporter.serviceMonitor.path }}
+      interval: {{ .Values.metrics.exporter.serviceMonitor.interval }}
+{{ end }}

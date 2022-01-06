@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "services", "endpoints", "pods", "nodes"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["db.ibm.com"]
+  resources: ["rediscluster","redisclusters"]
+  verbs: ["list", "get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "node-for-redis.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "node-for-redis.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}

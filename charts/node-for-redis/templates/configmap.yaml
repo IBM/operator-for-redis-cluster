@@ -1,0 +1,27 @@
+{{- if include "node-for-redis.hasextraconfig" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
+data:
+  redis.yaml: |-
+  {{- if .Values.redis.configuration.valueMap }}
+    {{- toYaml .Values.redis.configuration.valueMap | nindent 4 }}
+  {{- else -}}
+    {{- range $line := .Files.Lines .Values.redis.configuration.file }}
+    {{- if ne (substr 0 1 $line) "#" }}
+    {{ $vals := splitn " " 2 $line -}}
+    {{- $vals._0 -}}: {{ $vals._1 -}}
+    {{- end }}
+    {{- end }}
+  {{- end }}
+  redis.conf: |-
+  {{- if .Values.redis.configuration.valueMap }}
+    {{- range $name, $value := .Values.redis.configuration.valueMap }}
+    {{ $name }} {{ $value -}}
+    {{- end }}
+  {{- else -}}
+    {{- (.Files.Get .Values.redis.configuration.file) | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,16 @@
+{{- if .Values.metrics.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}-exporter
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.metrics.exporter.port.number }}
+      targetPort: {{ .Values.metrics.exporter.port.name }}
+      protocol: TCP
+      name: {{ .Values.metrics.exporter.port.name }}
+  selector:
+    {{- include "node-for-redis.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: node-for-redis
+type: application
+version: 0.0.0     # Overridden by release workflow
+appVersion: 0.0.0  # Overridden by release workflow
+description: IBM Cluster for interfacing with Redis
+maintainers:
+  - name: tomashibm  # Tomash Sidei
+  - name: cin        # Craig Ingram
+  - name: antonioua  # Anton Kuznietsov
+  - name: kscharm    # Kenny Scharm

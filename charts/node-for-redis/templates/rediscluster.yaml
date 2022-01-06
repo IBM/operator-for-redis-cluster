@@ -1,0 +1,162 @@
+apiVersion: db.ibm.com/v1alpha1
+kind: RedisCluster
+metadata:
+  name: {{ include "node-for-redis.fullname" . }}
+  labels: {{- include "node-for-redis.labels" . | nindent 4 }}
+spec:
+  numberOfPrimaries: {{ .Values.numberOfPrimaries }}
+  replicationFactor: {{ .Values.replicationFactor }}
+  serviceName: {{ include "node-for-redis.fullname" . }}
+  {{- with .Values.additionalLabels }}
+  additionalLabels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  zoneAwareReplication: {{ .Values.zoneAwareReplication }}
+  rollingUpdate: {{- toYaml .Values.rollingUpdate | nindent 4 }}
+  scaling: {{- toYaml .Values.scaling | nindent 4 }}
+  podTemplate:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels: {{- include "node-for-redis.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "node-for-redis.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.zoneAwareReplication }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {{- include "node-for-redis.selectorLabels" . | nindent 14 }}
+      {{- end }}
+      {{- with .Values.sysctl }}
+      initContainers:
+        - name: sysctl-init
+          image: "{{ .image.repository }}:{{ .image.tag }}"
+          imagePullPolicy: {{ .image.imagePullPolicy }}
+          command:
+            - sh
+            - -c
+            - >-
+              sysctl -w net.core.somaxconn={{ .netCoreSomaxconn }};
+          resources: {}
+          securityContext:
+            privileged: true
+            procMount: Default
+      {{- end }}
+      containers:
+        {{- if .Values.metrics.enabled }}
+        - name: redis-exporter
+          image: "{{ .Values.metrics.exporter.image.repository }}:{{ .Values.metrics.exporter.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.exporter.image.pullPolicy }}
+          resources: {{- toYaml .Values.metrics.resources | nindent 12 }}
+          env:
+            - name: REDIS_EXPORTER_SCRIPT
+              value: /redis-metrics/metrics.lua
+          volumeMounts:
+            - name: redis-exporter-lua-metrics
+              mountPath: /redis-metrics
+          ports:
+          - containerPort: {{ .Values.metrics.exporter.port.number }}
+            name: {{ .Values.metrics.exporter.port.name }}
+        {{- end }}
+        - name: redis-node
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.Version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [
+            "--v={{ .Values.args.logLevel }}",
+            "--c=/redis-conf/redis.conf",
+            "--logtostderr={{ .Values.args.logToStderr }}",
+            "--alsologtostderr={{ .Values.args.alsoLogToStderr }}",
+            "--rs={{ include "node-for-redis.fullname" . }}",
+            "--t={{ .Values.args.maxStartWait }}",
+            "--d={{ .Values.args.startDelay }}",
+            "--ns=$(POD_NAMESPACE)",
+            "--ip=$(POD_IP)",
+            "--cluster-node-timeout={{ .Values.args.clusterNodeTimeout }}",
+            {{- if include "node-for-redis.hasextraconfig" . }}
+            "--config-file=/redis-extra-conf/redis.conf",
+            {{- end }}{{- include "redis-cluster.extraarglist" . }}
+            ]
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+            - name: cluster
+              containerPort: 16379
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /redis-data
+            - name: conf
+              mountPath: /redis-conf
+            {{- if include "node-for-redis.hasextraconfig" . }}
+            - name: extra-conf
+              mountPath: /redis-extra-conf
+            {{- end }}
+            - name: podinfo
+              mountPath: /podinfo
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- if .Values.metrics.enabled }}
+        - name: redis-exporter-lua-metrics
+          configMap:
+            name: {{ include "node-for-redis.fullname" . }}-lua-metrics
+        {{- end }}
+        - name: data
+          emptyDir: {}
+        - name: conf
+          emptyDir: {}
+        {{- if include "node-for-redis.hasextraconfig" . }}
+        - name: extra-conf
+          configMap:
+            name: {{ include "node-for-redis.fullname" . }}
+            items:
+              - key: redis.conf
+                path: redis.conf
+        {{- end }}
+        - name: podinfo
+          downwardAPI:
+            items:
+              - path: "mem_limit"
+                resourceFieldRef:
+                  containerName: redis-node
+                  resource: limits.memory

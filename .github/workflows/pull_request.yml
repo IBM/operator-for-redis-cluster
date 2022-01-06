@@ -1,0 +1,200 @@
+name: Pull Request Workflow
+
+on: 
+  pull_request:
+    branches:
+      - main
+
+env:
+  GO_VERSION: 1.15
+  HELM_VERSION: v3.6.3
+  PYTHON_VERSION: 3.7 # required for helm tester
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Go Lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          args: --timeout=5m --enable exportloopref
+          skip-pkg-cache: true
+          skip-build-cache: true
+          skip-go-installation: true
+      
+      - name: Run integration tests
+        run: make test
+
+  build-operator:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build operator image
+        uses: docker/build-push-action@v2
+        with:
+          tags: ibmcom/operator-for-redis:local
+          file: Dockerfile.operator
+
+  build-cluster-node:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build redis node image
+        uses: docker/build-push-action@v2
+        with:
+          tags: ibmcom/node-for-redis:local
+          file: Dockerfile.node
+
+  build-metrics:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build redis metrics image
+        uses: docker/build-push-action@v2
+        with:
+          tags: ibmcom/metrics-for-redis:local
+          file: Dockerfile.metrics
+
+  validate-helm-charts:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # ct needs history to compare
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup chart-testing
+        uses: helm/chart-testing-action@v2.1.0
+
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        run: |
+          changed=$(ct list-changed --target-branch=main)
+          if [[ -n "$changed" ]]; then
+            echo "::set-output name=changed::true"
+          fi
+
+      - name: Run chart-testing (lint)
+        run: ct lint --target-branch=main --check-version-increment=false
+
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14.15.4 # This is recommended LTS version which includes npm 6.14.10
+      - name: Build docs website
+        run: |
+          npm -v
+          node -v
+          cd docs
+          npm ci
+          npm run build
+
+  run-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [build-operator, build-cluster-node, build-metrics, validate-helm-charts]
+    strategy:
+      fail-fast: false
+      matrix:
+        kubernetes-version: ["1.21", "1.20", "1.19", "1.18"]
+        include:
+          - kubernetes-version: "1.21"
+            kind-node: kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6
+          - kubernetes-version: "1.20"
+            kind-node: kindest/node:v1.20.7@sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9
+          - kubernetes-version: "1.19"
+            kind-node: kindest/node:v1.19.11@sha256:07db187ae84b4b7de440a73886f008cf903fcf5764ba8106a9fd5243d6f32729
+          - kubernetes-version: "1.18"
+            kind-node: kindest/node:v1.18.19@sha256:7af1492e19b3192a79f606e43c35fb741e520d195f96399284515f077b3b622c
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build images
+        run: |
+          docker build -f Dockerfile.operator -t ibmcom/operator-for-redis:local .
+          docker build -f Dockerfile.node -t ibmcom/node-for-redis:local .
+          docker build -f Dockerfile.metrics -t ibmcom/metrics-for-redis:local .
+
+      - name: kind create cluster
+        uses: helm/kind-action@v1.2.0
+        with:
+          version: v0.11.1
+          config: ./test/e2e/kind_config.yml
+          cluster_name: kind
+          node_image: ${{ matrix.kind-node }}
+          wait: 120s
+            
+      - name: Load Images to KIND
+        run: |
+          kind load docker-image ibmcom/operator-for-redis:local
+          kind load docker-image ibmcom/node-for-redis:local
+          kind load docker-image ibmcom/metrics-for-redis:local
+    
+      - name: Install operator-for-redis with Helm
+        id: helm
+        run: helm install operator-for-redis charts/operator-for-redis --wait --set image.repository=ibmcom/operator-for-redis --set image.tag=local --set logLevel=7
+      
+      - name: Run e2e tests
+        id: e2e
+        run: go test -timeout 30m ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
+
+      - name: Capture logs if e2e failed
+        if: ${{ always() && (steps.e2e.outcome == 'failure' || steps.helm.outcome == 'failure') }}
+        run: |
+          mkdir ./kind-logs
+          kind export logs ./kind-logs
+          tar -cvf kind-e2e-logs-${{ matrix.kubernetes-version }}.tar ./kind-logs
+      
+      - name: Upload logs artifact
+        if: ${{ always() && (steps.e2e.outcome == 'failure' || steps.helm.outcome == 'failure') }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: kind-e2e-logs-${{ matrix.kubernetes-version }}.tar
+          path: kind-e2e-logs-${{ matrix.kubernetes-version }}.tar
+          retention-days: 7

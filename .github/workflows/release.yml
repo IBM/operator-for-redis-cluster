@@ -1,0 +1,234 @@
+name: Release Workflow
+
+on:
+  release:
+    types:
+      - published
+
+env:
+  GO_VERSION: 1.15
+  HELM_VERSION: v3.6.3
+  REDIS_VERSION: 6.2.6
+  CRD_PATH: charts/operator-for-redis/crds/db.ibm.com_redisclusters.yaml
+  CRD_DIFF: crd.diff
+
+jobs:
+  operator:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Prepare image metadata
+        uses: docker/metadata-action@v3
+        id: meta
+        with:
+          images: |
+            ibmcom/operator-for-redis
+          tags: type=ref,event=tag
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME}}
+          password: ${{ secrets.DOCKERHUB_PASSWORD}}
+
+      - name: Build and push operator image
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.operator
+          push: true
+          tags: ibmcom/operator-for-redis:${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+
+
+  cluster-node:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Prepare image metadata
+        uses: docker/metadata-action@v3
+        id: meta
+        with:
+          images: |
+            ibmcom/node-for-redis
+          tags: type=ref,event=tag
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME}}
+          password: ${{ secrets.DOCKERHUB_PASSWORD}}
+
+      - name: Build and push cluster node image
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.node
+          push: true
+          tags: ibmcom/node-for-redis:${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+
+  metrics:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Prepare image metadata
+        uses: docker/metadata-action@v3
+        id: meta
+        with:
+          images: |
+            ibmcom/metrics-for-redis
+          tags: type=ref,event=tag
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME}}
+          password: ${{ secrets.DOCKERHUB_PASSWORD}}
+
+      - name: Build and push metrics image
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.metrics
+          push: true
+          tags: ibmcom/metrics-for-redis:${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            OPERATOR_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+
+  helm-release:
+    runs-on: ubuntu-latest
+    needs: [ operator, cluster-node, metrics ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Ensure helm-releases folder exists
+        run: mkdir -p helm-releases
+
+      - name: Package operator-for-redis chart
+        env:
+          OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
+        run: helm package charts/operator-for-redis --version=$OPERATOR_VERSION --destination helm-releases
+
+      - name: Package node-for-redis chart
+        env:
+          OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
+        run: helm package charts/node-for-redis --version=$OPERATOR_VERSION --app-version=${{ env.REDIS_VERSION }} --destination helm-releases
+
+      - name: Push helm charts
+        env:
+          OPERATOR_VERSION: ${{ needs.operator.outputs.version }}
+        run: |
+          git config --global user.email ""
+          git config --global user.name "Github Actions CI"
+          helm repo index helm-releases --url https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases
+          git add helm-releases/*
+          git commit -a -m "Release $OPERATOR_VERSION"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+
+  compare-crds:
+    name: Compare CRDs
+    needs: [ helm-release ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get previous release
+        uses: octokit/request-action@v2.1.0
+        id: previous-release
+        with:
+          route: GET /repos/IBM/operator-for-redis-cluster/releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout previous release
+        if: ${{ fromJson(steps.previous-release.outputs.data)[1] }}
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ fromJson(steps.previous-release.outputs.data)[1].tag_name }}
+          path: previous-release
+
+      - name: Diff CRDs
+        if: ${{ fromJson(steps.previous-release.outputs.data)[1] }}
+        run: git diff -w --output=${{ env.CRD_DIFF }} ${{ fromJson(steps.previous-release.outputs.data)[1].tag_name }} ${{ github.event.release.tag_name }} -- ${{ env.CRD_PATH }}
+
+      - name: Publish CRD diff asset
+        uses: skx/github-action-publish-binaries@release-2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ env.CRD_DIFF }}
+
+  docs:
+    name: Publish Docs
+    needs: [ helm-release ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14.15.4 # This is recommended LTS version which includes npm 6.14.10
+      - name: Publish docs website
+        env:
+          USE_SSH: false
+          GIT_USER: git
+          CURRENT_BRANCH: main
+          DEPLOYMENT_BRANCH: gh-pages
+          GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "gh-actions"
+          cd ./docs
+          npm ci
+          npx docusaurus deploy
+
+  assets:
+    name: Publish Assets
+    needs: [ docs, compare-crds ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build redis plugin
+        run: make build-kubectl-rc
+
+      - name: Publish redis plugin to assets
+        uses: skx/github-action-publish-binaries@release-2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: './bin/kubectl-rc'
