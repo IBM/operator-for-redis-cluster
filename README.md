@@ -6,4 +6,4 @@ The goal of this project is to simplify the deployment and management of a [Redi
 
 ## Documentation
 
-This project's documentation is hosted at https://operator-for-redis-cluster-docs.dev.sun.weather.com.
+This project's documentation is hosted at https://ibm.github.io/operator-for-redis-cluster.

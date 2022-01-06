@@ -2,8 +2,8 @@ const isCI = !!process.env.CI;
 
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 module.exports = {
-  title: 'ICM Redis Operator',
-  url: isCI ? 'https://operator-for-redis-cluster-docs.dev.sun.weather.com' : 'http://localhost:3001',
+  title: 'IBM Operator for Redis Cluster',
+  url: isCI ? 'https://ibm.github.io/operator-for-redis-cluster' : 'http://localhost:3001',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -24,7 +24,7 @@ module.exports = {
       },
       items: [
         {
-          href: 'https://operator-for-redis-cluster-docs.dev.sun.weather.com',
+          href: 'https://ibm.github.io/operator-for-redis-cluster',
           label: 'GitHub',
           position: 'right',
         },
@@ -37,7 +37,7 @@ module.exports = {
     footer: {
       style: 'dark',
       links: [],
-      copyright: `ICM Redis Operator Documentation. Built with Docusaurus.`,
+      copyright: `IBM Operator for Redis Cluster Documentation. Built with Docusaurus.`,
     },
   },
   presets: [
@@ -51,13 +51,13 @@ module.exports = {
           sidebarPath: './sidebars.js',
           // Please change this to your repo.
           editUrl:
-            'https://operator-for-redis-cluster-docs.dev.sun.weather.com',
+            'https://ibm.github.io/operator-for-redis-cluster',
         },
         blog: {
           showReadingTime: true,
           // Please change this to your repo.
           editUrl:
-            'https://operator-for-redis-cluster-docs.dev.sun.weather.com/blog',
+            'https://ibm.github.io/operator-for-redis-cluster',
         },
       },
     ],
