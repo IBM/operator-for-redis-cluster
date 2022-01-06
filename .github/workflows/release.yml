@@ -152,42 +152,6 @@ jobs:
           git commit -a -m "Release $OPERATOR_VERSION"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
 
-  compare-crds:
-    name: Compare CRDs
-    needs: [ helm-release ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Get previous release
-        uses: octokit/request-action@v2.1.0
-        id: previous-release
-        with:
-          route: GET /repos/IBM/operator-for-redis-cluster/releases
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout previous release
-        if: ${{ fromJson(steps.previous-release.outputs.data)[1] }}
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ fromJson(steps.previous-release.outputs.data)[1].tag_name }}
-          path: previous-release
-
-      - name: Diff CRDs
-        if: ${{ fromJson(steps.previous-release.outputs.data)[1] }}
-        run: git diff -w --output=${{ env.CRD_DIFF }} ${{ fromJson(steps.previous-release.outputs.data)[1].tag_name }} ${{ github.event.release.tag_name }} -- ${{ env.CRD_PATH }}
-
-      - name: Publish CRD diff asset
-        uses: skx/github-action-publish-binaries@release-2.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: ${{ env.CRD_DIFF }}
-
   docs:
     name: Publish Docs
     needs: [ helm-release ]
@@ -214,7 +178,7 @@ jobs:
 
   assets:
     name: Publish Assets
-    needs: [ docs, compare-crds ]
+    needs: [ docs ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
