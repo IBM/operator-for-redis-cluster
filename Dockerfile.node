@@ -39,10 +39,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
       -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REDIS_VERSION=$REDIS_VERSION \
       -X github.com/IBM/operator-for-redis-cluster/pkg/utils.REVISION=$REVISION" \
     -a \
-    -o redis-node \
+    -o node \
     .
 
 FROM ${DOCKER_PROXY_REGISTRY}${BASEIMAGE}
 LABEL maintainer="William Cassanova <wssanova@us.ibm.com>, Tomash Sidei <tomash.sidei@ibm.com>, Kenny Scharm <kenny.scharm@ibm.com>"
-COPY --from=builder /go/src/operator-for-redis-cluster/redis-node /
-ENTRYPOINT ["/redis-node"]
+COPY --from=builder /go/src/operator-for-redis-cluster/node /
+ENTRYPOINT ["/node"]
