@@ -3,8 +3,8 @@ const isCI = !!process.env.CI;
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 module.exports = {
   title: 'IBM Operator for Redis Cluster',
-  url: isCI ? 'https://ibm.github.io/operator-for-redis-cluster' : 'http://localhost:3001',
-  baseUrl: '/',
+  url: isCI ? 'https://ibm.github.io' : 'http://localhost:3001',
+  baseUrl: '/operator-for-redis-cluster/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
