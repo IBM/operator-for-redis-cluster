@@ -1,0 +1,34 @@
+apiVersion: v1
+entries:
+  node-for-redis:
+  - apiVersion: v2
+    appVersion: 6.2.6
+    created: "2022-01-06T21:45:15.595366814Z"
+    description: IBM Cluster for interfacing with Redis
+    digest: cee77ec7fdb4276d24a02c62f672c0769fc153ebfd69d944a40930b04a5794c7
+    maintainers:
+    - name: tomashibm
+    - name: cin
+    - name: antonioua
+    - name: kscharm
+    name: node-for-redis
+    type: application
+    urls:
+    - https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases/node-for-redis-0.3.5.tgz
+    version: 0.3.5
+  operator-for-redis:
+  - apiVersion: v2
+    created: "2022-01-06T21:45:15.599074966Z"
+    description: IBM Operator for creating and managing Redis clusters
+    digest: f1eb5062bb0399d35efa12bea03a4464387846795fd918915d9c55197961e21c
+    maintainers:
+    - name: tomashibm
+    - name: cin
+    - name: antonioua
+    - name: kscharm
+    name: operator-for-redis
+    type: application
+    urls:
+    - https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases/operator-for-redis-0.3.5.tgz
+    version: 0.3.5
+generated: "2022-01-06T21:45:15.594058695Z"
