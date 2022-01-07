@@ -180,8 +180,8 @@ metrics:
 sysctl:
   netCoreSomaxconn: 65000
   image:
-    repository: debian
-    tag: 11
+    repository: alpine
+    tag: 3.15.0
     imagePullPolicy: IfNotPresent
 
 redis:

@@ -8,6 +8,7 @@ module.exports = {
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
+  trailingSlash: false,
   organizationName: 'IBM',
   projectName: 'operator-for-redis-cluster',
   themeConfig: {
