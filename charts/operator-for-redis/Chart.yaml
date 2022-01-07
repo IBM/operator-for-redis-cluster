@@ -2,7 +2,7 @@ apiVersion: v2
 name: operator-for-redis
 type: application
 version: 0.0.0  # Overridden by release workflow
-description: IBM Operator for creating and managing Redis clusters
+description: Operator for creating and managing Redis clusters
 maintainers:
   - name: tomashibm  # Tomash Sidei
   - name: cin        # Craig Ingram
