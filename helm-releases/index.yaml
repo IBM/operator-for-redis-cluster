@@ -19,7 +19,7 @@ entries:
   - apiVersion: v2
     appVersion: 6.2.6
     created: "2022-01-06T21:45:15.595366814Z"
-    description: IBM Cluster for interfacing with Redis
+    description: Cluster node for interfacing with Redis
     digest: cee77ec7fdb4276d24a02c62f672c0769fc153ebfd69d944a40930b04a5794c7
     maintainers:
     - name: tomashibm
@@ -48,7 +48,7 @@ entries:
     version: 0.3.6
   - apiVersion: v2
     created: "2022-01-06T21:45:15.595366814Z"
-    description: IBM Operator for creating and managing Redis clusters
+    description: Operator for creating and managing Redis clusters
     digest: f1eb5062bb0399d35efa12bea03a4464387846795fd918915d9c55197961e21c
     maintainers:
     - name: tomashibm
