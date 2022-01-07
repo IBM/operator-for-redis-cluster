@@ -3,8 +3,23 @@ entries:
   node-for-redis:
   - apiVersion: v2
     appVersion: 6.2.6
-    created: "2022-01-06T22:09:58.04939947Z"
+    created: "2022-01-07T21:48:26.274275875Z"
     description: Cluster node for interfacing with Redis
+    digest: e689e212862b195cc860149fbb8afccdc4b56e74970706babf513bf326cd3b9b
+    maintainers:
+    - name: tomashibm
+    - name: cin
+    - name: antonioua
+    - name: kscharm
+    name: node-for-redis
+    type: application
+    urls:
+    - https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases/node-for-redis-0.3.7.tgz
+    version: 0.3.7
+  - apiVersion: v2
+    appVersion: 6.2.6
+    created: "2022-01-07T21:48:26.272050262Z"
+    description: IBM Cluster for interfacing with Redis
     digest: 449a7fbe5164d6dca34426837f578420d7fa56280fc61b574fbd1f094cd99f8c
     maintainers:
     - name: tomashibm
@@ -18,8 +33,8 @@ entries:
     version: 0.3.6
   - apiVersion: v2
     appVersion: 6.2.6
-    created: "2022-01-06T22:09:58.048123653Z"
-    description: Cluster node for interfacing with Redis
+    created: "2022-01-07T21:48:26.270581954Z"
+    description: IBM Cluster for interfacing with Redis
     digest: cee77ec7fdb4276d24a02c62f672c0769fc153ebfd69d944a40930b04a5794c7
     maintainers:
     - name: tomashibm
@@ -33,8 +48,22 @@ entries:
     version: 0.3.5
   operator-for-redis:
   - apiVersion: v2
-    created: "2022-01-06T22:09:58.056363963Z"
+    created: "2022-01-07T21:48:26.285782739Z"
     description: Operator for creating and managing Redis clusters
+    digest: 5c679e77369d8ce64f09ca31ef5ac415d133ef2e4f45064bc2a2e188c6e691a8
+    maintainers:
+    - name: tomashibm
+    - name: cin
+    - name: antonioua
+    - name: kscharm
+    name: operator-for-redis
+    type: application
+    urls:
+    - https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases/operator-for-redis-0.3.7.tgz
+    version: 0.3.7
+  - apiVersion: v2
+    created: "2022-01-07T21:48:26.280958112Z"
+    description: IBM Operator for creating and managing Redis clusters
     digest: 2bc14cd0b4ed461de70c9a55fc684b9c9d863f1ed05402427321f26d51febce6
     maintainers:
     - name: tomashibm
@@ -47,8 +76,8 @@ entries:
     - https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases/operator-for-redis-0.3.6.tgz
     version: 0.3.6
   - apiVersion: v2
-    created: "2022-01-06T22:09:58.053555926Z"
-    description: Operator for creating and managing Redis clusters
+    created: "2022-01-07T21:48:26.277985695Z"
+    description: IBM Operator for creating and managing Redis clusters
     digest: f1eb5062bb0399d35efa12bea03a4464387846795fd918915d9c55197961e21c
     maintainers:
     - name: tomashibm
@@ -60,4 +89,4 @@ entries:
     urls:
     - https://raw.githubusercontent.com/IBM/operator-for-redis-cluster/main/helm-releases/operator-for-redis-0.3.5.tgz
     version: 0.3.5
-generated: "2022-01-06T22:09:58.046537332Z"
+generated: "2022-01-07T21:48:26.268930145Z"
