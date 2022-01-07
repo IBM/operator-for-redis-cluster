@@ -5,8 +5,6 @@ slug: /contributing
 
 # Contributing
 
-By participating in this project, you agree to our [code of conduct](CODE_OF_CONDUCT.md).
-
 ## Set up your machine
 
 Refer to our [cookbook](cookbook.md#installation) to learn how to set up your machine.

@@ -34,7 +34,7 @@ buildlinux-%: ${SOURCES}
 	CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo ${LDFLAGS} -o docker/$*/$* ./cmd/$*/main.go
 
 container-%: buildlinux-%
-	docker build -t $(PREFIX)icm-redis-$*:$(TAG) -f Dockerfile.$* .
+	docker build -t $(PREFIX)$*-for-redis:$(TAG) -f Dockerfile.$* .
 
 build: $(addprefix build-,$(CMDBINS))
 
@@ -70,7 +70,7 @@ test:
 	./go.test.sh
 
 push-%: container-%
-	docker push $(PREFIX)icm-redis-$*:$(TAG)
+	docker push $(PREFIX)$*-for-redis:$(TAG)
 
 push: $(addprefix push-,$(CMDBINS))
 
