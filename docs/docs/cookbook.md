@@ -7,7 +7,7 @@ slug: /cookbook
 
 ## Installation
 
-IBM Operator for Redis Cluster is written in [Go](https://golang.org/).
+Operator for Redis Cluster is written in [Go](https://golang.org/).
 
 ### Required Dependencies
 

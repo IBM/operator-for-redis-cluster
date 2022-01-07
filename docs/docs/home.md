@@ -18,7 +18,7 @@ This project contains two Helm charts, namely `operator-for-redis` and `node-for
 
 ![Initial state](../static/images/overview_1.png)
 
-At this point, your Redis process is running and each node is aware of each other, but only one primary has all the slots. In order to properly configure each node in the cluster, we introduce the `IBM Operator for Redis Cluster`.
+At this point, your Redis process is running and each node is aware of each other, but only one primary has all the slots. In order to properly configure each node in the cluster, we introduce the `Operator for Redis Cluster`.
 
 The operator watches the `RedisCluster` CR that stores cluster configuration: number of primaries, replication factor (number of replicas per primary), and the pod template. Then the operator tries to apply this configuration to the set of Redis server processes. If the number of Redis servers doesn't match the provided configuration, the manager scales the number of pods to obtain the proper number of Redis nodes. The operator continuously reconciles the state of the cluster with the configuration stored in the `RedisCluster` CR until they match. To understand how the reconciliation loop works, see the [Operator SDK docs](https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/#reconcile-loop).
 
