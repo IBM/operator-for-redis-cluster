@@ -7,7 +7,7 @@ slug: /cookbook
 
 ## Installation
 
-Redis operator is written in [Go](https://golang.org/).
+IBM Operator for Redis Cluster is written in [Go](https://golang.org/).
 
 ### Required Dependencies
 
@@ -23,7 +23,7 @@ Redis operator is written in [Go](https://golang.org/).
 
 ### Download and build the source code
 
-Start by making a fork of the `redis-operator` repository. Then, clone your forked repo:
+Start by making a fork of the `operator-for-redis-cluster` repository. Then, clone your forked repo:
 
 ```console
 $ git clone git@github.com:<YOUR_USERNAME>/operator-for-redis-cluster.git
@@ -76,16 +76,16 @@ make container PREFIX= TAG=latest
 
 Once the kind cluster is up and running, load the images into the kind cluster:
 ```console
-$ kind load docker-image operator-for-redis-cluster:latest
-$ kind load docker-image icm-redis-node:latest
-$ kind load docker-image icm-redis-metrics:latest
+$ kind load docker-image operator-for-redis:latest
+$ kind load docker-image node-for-redis:latest
+$ kind load docker-image metrics-for-redis:latest
 ```
 
 ### Deploy a Redis operator
 
-Install the `operator-for-redis-cluster` Helm chart:
+Install the `operator-for-redis` Helm chart:
 ```console
-$ helm install op charts/operator-for-redis-cluster --wait --set image.repository=operator-for-redis-cluster --set image.tag=latest
+$ helm install op charts/operator-for-redis --wait --set image.repository=operator-for-redis --set image.tag=latest
 NAME: op
 LAST DEPLOYED: Thu Oct 21 15:11:51 2021
 NAMESPACE: default
@@ -99,14 +99,14 @@ Confirm that the operator is running properly:
 ```console
 $ kubectl get pods
 NAME                                     READY   STATUS    RESTARTS   AGE
-op-operator-for-redis-cluster-64dbfb4b59-xjttw   1/1     Running   0          31s
+op-operator-for-redis-64dbfb4b59-xjttw   1/1     Running   0          31s
 ```
 
 ### Deploy a Redis cluster
 
 Install the `node-for-redis` Helm chart:
 ```console
-$ helm install --wait cluster charts/node-for-redis --set image.repository=icm-redis-node --set image.tag=latest
+$ helm install --wait cluster charts/node-for-redis --set image.repository=node-for-redis --set image.tag=latest
 NAME: cluster
 LAST DEPLOYED: Thu Oct 21 15:12:05 2021
 NAMESPACE: default
@@ -162,14 +162,14 @@ Note that we need both `local` and `new` image tags for a rolling update e2e tes
 
 Load the required images into the kind cluster:
 ```console
-$ kind load docker-image operator-for-redis-cluster:local
-$ kind load docker-image icm-redis-node:local
-$ kind load docker-image icm-redis-node:new
+$ kind load docker-image operator-for-redis:local
+$ kind load docker-image node-for-redis:local
+$ kind load docker-image node-for-redis:new
 ```
 
-Once the kind cluster is up and running, deploy the `operator-for-redis-cluster` Helm chart:
+Once the kind cluster is up and running, deploy the `operator-for-redis` Helm chart:
 ```console
-$ helm install op charts/operator-for-redis-cluster --wait --set image.repository=operator-for-redis-cluster --set image.tag=local
+$ helm install op charts/operator-for-redis --wait --set image.repository=operator-for-redis --set image.tag=local
 NAME: op
 LAST DEPLOYED: Thu Oct 21 15:11:51 2021
 NAMESPACE: default
@@ -178,7 +178,7 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-When the `operator-for-redis-cluster` pod is up and running, you can start the e2e regression:
+When the `operator-for-redis` pod is up and running, you can start the e2e regression:
 ```console
 $ go test -timeout 30m ./test/e2e --kubeconfig=$HOME/.kube/config --ginkgo.v --test.v
 Running Suite: RedisCluster Suite
