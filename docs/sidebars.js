@@ -19,6 +19,5 @@ module.exports = {
     'rolling-update',
     'key-migration',
     'CONTRIBUTING',
-    'CODE_OF_CONDUCT',
   ],
 };
