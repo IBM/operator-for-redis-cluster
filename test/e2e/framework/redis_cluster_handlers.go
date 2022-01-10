@@ -27,6 +27,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	redisImageName = "node-for-redis"
+)
+
 // NewRedisCluster builds and returns a new RedisCluster instance
 func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) *rapi.RedisCluster {
 	cluster := &rapi.RedisCluster{
@@ -67,7 +71,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 					Containers: []v1.Container{
 						{
 							Name:            "redis",
-							Image:           fmt.Sprintf("icm-redis-node:%s", tag),
+							Image:           fmt.Sprintf("%s:%s", redisImageName, tag),
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Args: []string{
 								"--v=6",
