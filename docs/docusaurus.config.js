@@ -18,7 +18,7 @@ module.exports = {
     },
     navbar: {
       hideOnScroll: false,
-      title: 'ICM Redis Operator',
+      title: 'Operator for Redis Cluster',
       logo: {
         src: 'images/logo.svg',
         srcDark: 'images/logo.svg',
