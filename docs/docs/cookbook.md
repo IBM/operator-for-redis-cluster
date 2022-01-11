@@ -155,21 +155,21 @@ If you followed the steps for creating a `kind` cluster with the e2e test config
 
 Build the required docker images:
 ```console
-make container PREFIX= TAG=local
-make container-node PREFIX= TAG=new
+make container PREFIX=ibmcom TAG=local
+make container-node PREFIX=ibmcom TAG=new
 ```
 Note that we need both `local` and `new` image tags for a rolling update e2e test case.
 
 Load the required images into the kind cluster:
 ```console
-$ kind load docker-image operator-for-redis:local
-$ kind load docker-image node-for-redis:local
-$ kind load docker-image node-for-redis:new
+$ kind load docker-image ibmcom/operator-for-redis:local
+$ kind load docker-image ibmcom/node-for-redis:local
+$ kind load docker-image ibmcom/node-for-redis:new
 ```
 
 Once the kind cluster is up and running, deploy the `operator-for-redis` Helm chart:
 ```console
-$ helm install op charts/operator-for-redis --wait --set image.repository=operator-for-redis --set image.tag=local
+$ helm install op charts/operator-for-redis --wait --set image.repository=ibmcom/operator-for-redis --set image.tag=local
 NAME: op
 LAST DEPLOYED: Thu Oct 21 15:11:51 2021
 NAMESPACE: default
