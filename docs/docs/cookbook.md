@@ -155,8 +155,8 @@ If you followed the steps for creating a `kind` cluster with the e2e test config
 
 Build the required docker images:
 ```console
-make container PREFIX=ibmcom TAG=local
-make container-node PREFIX=ibmcom TAG=new
+make container PREFIX=ibmcom/ TAG=local
+make container-node PREFIX=ibmcom/ TAG=new
 ```
 Note that we need both `local` and `new` image tags for a rolling update e2e test case.
 

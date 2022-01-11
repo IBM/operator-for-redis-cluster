@@ -476,7 +476,7 @@ func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, redisCluster *
 }
 
 // IsPodDisruptionBudgetCreatedFunc returns the func that checks if the PodDisruptionBudget
-// associated with the the RedisCluster has been created properly.
+// associated with the RedisCluster has been created properly.
 func IsPodDisruptionBudgetCreatedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
 		pdbName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
