@@ -97,12 +97,11 @@ make TAG=<Your-TAG> container
 
 ### How to Release the Redis Operator
 
-> THIS IS FOR RELEASE INTO ICM REPOS:
 >
 > Do the following in `main` branch:
 > 1. Create a tag on commit
 > 2. Push the commit and tag
-> 3. ICM automation will build and push docker images and helm charts with git tag version
+> 3. Github actions automation will build and push docker images and helm charts with release version
 >
 > NOTE: If you need to test the build prior to the above steps, you can run: `make build` and resolve any issues.
 
