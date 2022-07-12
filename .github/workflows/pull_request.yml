@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  GO_VERSION: 1.15
+  GO_VERSION: 1.17
   HELM_VERSION: v3.6.3
   PYTHON_VERSION: 3.7 # required for helm tester
 

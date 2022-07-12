@@ -12,7 +12,7 @@ Operator for Redis Cluster is written in [Go](https://golang.org/).
 ### Required Dependencies
 
 * `make`
-* [Go 1.15+](https://golang.org/doc/install)
+* [Go 1.17+](https://golang.org/doc/install)
 * [Docker](https://www.docker.com/)
 * [Helm 3](https://helm.sh)
 
