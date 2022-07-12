@@ -91,7 +91,7 @@ jobs:
           fetch-depth: 0 # ct needs history to compare
 
       - name: Setup Helm
-        uses: azure/setup-helm@v2.1
+        uses: azure/setup-helm@v3.1
         with:
           version: ${{ env.HELM_VERSION }}
 
