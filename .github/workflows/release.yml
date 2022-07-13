@@ -6,7 +6,7 @@ on:
       - published
 
 env:
-  GO_VERSION: 1.15
+  GO_VERSION: 1.17
   HELM_VERSION: v3.6.3
   REDIS_VERSION: 6.2.6
   CRD_PATH: charts/operator-for-redis/crds/db.ibm.com_redisclusters.yaml

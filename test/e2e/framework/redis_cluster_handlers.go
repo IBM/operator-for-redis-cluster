@@ -97,7 +97,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 								{Name: "POD_IP", ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "status.podIP"}}},
 							},
 							LivenessProbe: &v1.Probe{
-								Handler: v1.Handler{
+								ProbeHandler: v1.ProbeHandler{
 									HTTPGet: &v1.HTTPGetAction{
 										Path: "/live",
 										Port: intstr.FromInt(8080),
@@ -110,7 +110,7 @@ func NewRedisCluster(name, namespace, tag string, nbPrimary, replication int32) 
 								FailureThreshold:    30,
 							},
 							ReadinessProbe: &v1.Probe{
-								Handler: v1.Handler{
+								ProbeHandler: v1.ProbeHandler{
 									HTTPGet: &v1.HTTPGetAction{
 										Path: "/ready",
 										Port: intstr.FromInt(8080),
