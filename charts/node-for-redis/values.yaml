@@ -142,7 +142,7 @@ metrics:
   exporter:
     image:
       repository: oliver006/redis_exporter
-      tag: v1.32.0
+      tag: v1.43.0
       pullPolicy: IfNotPresent
     port:
       name: metrics
