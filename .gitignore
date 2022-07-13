@@ -42,3 +42,4 @@ vendor
 .idea
 *.iml
 examples
+skaffold.yaml
