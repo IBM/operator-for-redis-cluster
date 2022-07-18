@@ -181,7 +181,7 @@ sysctl:
   netCoreSomaxconn: 65000
   image:
     repository: alpine
-    tag: 3.15.0
+    tag: 3.16.0
     imagePullPolicy: IfNotPresent
 
 redis:
