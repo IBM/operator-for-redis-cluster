@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	podctrl "github.com/IBM/operator-for-redis-cluster/pkg/controller/pod"
@@ -735,16 +736,65 @@ func removeReplicaFromZone(replica *redis.Node, zoneToReplicas map[string]redis.
 	}
 }
 
-func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, nbReplicasToDelete int32) bool {
+func replicaInLargestZone(selection *redis.Nodes, primary *redis.Node, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, nbReplicasToDelete int32) bool {
+	if len(*selection) == int(nbReplicasToDelete) {
+		return true
+	}
 	largestZone := largestZoneSize(zoneToReplicas)
-	for _, replica := range replicas {
-		// check if this replica is in the largest zone and there are no other replica zones of equal size
-		if len(zoneToReplicas[replica.Zone]) == largestZone && isLargestZone(zoneToReplicas, largestZone) {
-			// add it to the selection of replicas to delete and remove it from zoneToReplicas
-			*selection = append(*selection, replica)
-			removeReplicaFromZone(replica, zoneToReplicas)
-			if len(*selection) == int(nbReplicasToDelete) {
-				return true
+	if len(zoneToReplicas[primary.Zone])+1 >= largestZone {
+		for _, replica := range zoneToReplicas[primary.Zone] {
+			if replica.Pod.Spec.NodeName == primary.Pod.Spec.NodeName {
+				// add it to the selection of replicas to delete and remove it from zoneToReplicas
+				*selection = append(*selection, replica)
+				removeReplicaFromZone(replica, zoneToReplicas)
+				return len(*selection) == int(nbReplicasToDelete)
+			}
+		}
+	}
+
+	var largestZones []string
+	for zone, replicas := range zoneToReplicas {
+		if largestZone == len(replicas) {
+			largestZones = append(largestZones, zone)
+		}
+	}
+	sort.Strings(largestZones)
+
+	for _, zone := range largestZones {
+		var nodes []string
+		var replicasPerNode = make(map[string]int)
+		nodeWithMostReplicas := ""
+		mostReplicas := 0
+		for _, replica := range zoneToReplicas[zone] {
+			if clustering.IsNodeNameUnique(replica, nodes) {
+				nodes = append(nodes, replica.Pod.Spec.NodeName)
+			}
+			replicasPerNode[replica.Pod.Spec.NodeName] += 1
+			if replicasPerNode[replica.Pod.Spec.NodeName] > mostReplicas {
+				mostReplicas = replicasPerNode[replica.Pod.Spec.NodeName]
+				nodeWithMostReplicas = replica.Pod.Spec.NodeName
+			}
+		}
+
+		isPrimaryNodeShared := !clustering.IsNodeNameUnique(primary, nodes)
+		if isPrimaryNodeShared && replicasPerNode[primary.Pod.Spec.NodeName]+1 >= mostReplicas {
+			for _, replica := range replicas {
+				if replica.Pod.Spec.NodeName == primary.Pod.Spec.NodeName {
+					// add it to the selection of replicas to delete and remove it from zoneToReplicas
+					*selection = append(*selection, replica)
+					removeReplicaFromZone(replica, zoneToReplicas)
+					return len(*selection) == int(nbReplicasToDelete)
+				}
+			}
+		}
+
+		// remove pod from node w/most replicas or primary node index + i
+		for _, replica := range zoneToReplicas[zone] {
+			if nodeWithMostReplicas == replica.Pod.Spec.NodeName {
+				// add it to the selection of replicas to delete and remove it from zoneToReplicas
+				*selection = append(*selection, replica)
+				removeReplicaFromZone(replica, zoneToReplicas)
+				return len(*selection) == int(nbReplicasToDelete)
 			}
 		}
 	}
@@ -753,8 +803,34 @@ func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, zoneToRe
 
 func removeReplicasByZone(zones []string, selection *redis.Nodes, primary *redis.Node, replicas redis.Nodes, allReplicas redis.Nodes, nbReplicasToDelete int32) bool {
 	zoneToReplicas := clustering.ZoneToNodes(zones, replicas)
+
+	// if all nodes are in one zone (unknown), then logic here needs to change and look at the nodes in use alone
+	// can't delete multiple replicas in the largest zone bc after deleting the first it may not be the largest zone anymore
+	// - get number of replicas on the primary node
+	// - get number of replicas per node
+	// - node with most replicas (or primary replicas + 1) should be first up on the chopping block
+	// - favor removing replica on same node as primary if there's a tie
+
+	//// how many nodes have pods scheduled on them?
+	//var nodes []string
+	//for _, replica := range replicas {
+	//	if clustering.IsNodeNameUnique(replica, nodes) {
+	//		nodes = append(nodes, replica.Pod.Spec.NodeName)
+	//	}
+	//}
+	//
+	//isPrimaryNodeShared := !clustering.IsNodeNameUnique(primary, nodes)
+	//if !isPrimaryNodeShared {
+	//	nodes = append(nodes, primary.Pod.Spec.NodeName)
+	//}
+	//
+	//sort.Strings(nodes)
+	//
+	////numReplicas := len(replicas)
+	//// is RF > than number of nodes
+
 	// remove replicas in the largest zone
-	if replicaInLargestZone(selection, replicas, zoneToReplicas, nbReplicasToDelete) {
+	if replicaInLargestZone(selection, primary, replicas, zoneToReplicas, nbReplicasToDelete) {
 		return true
 	}
 	// replicas are in zones of equal size, remove replicas in the same zone as their primary
@@ -776,7 +852,7 @@ func removeReplicasByZone(zones []string, selection *redis.Nodes, primary *redis
 	allReplicas = allReplicas[:i]
 	// remove replicas in the largest zone cluster-wide
 	zoneToAllReplicas := clustering.ZoneToNodes(zones, allReplicas)
-	if replicaInLargestZone(selection, replicas, zoneToAllReplicas, nbReplicasToDelete) {
+	if replicaInLargestZone(selection, primary, replicas, zoneToAllReplicas, nbReplicasToDelete) {
 		return true
 	}
 	// if we still do not have enough replicas, pick the first available
@@ -790,16 +866,6 @@ func removeReplicasByZone(zones []string, selection *redis.Nodes, primary *redis
 		}
 	}
 	return false
-}
-
-func isLargestZone(zoneToNodes map[string]redis.Nodes, largestZone int) bool {
-	count := 0
-	for _, nodes := range zoneToNodes {
-		if len(nodes) == largestZone {
-			count++
-		}
-	}
-	return count == 1
 }
 
 func largestZoneSize(zoneToNodes map[string]redis.Nodes) int {

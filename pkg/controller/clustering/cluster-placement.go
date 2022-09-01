@@ -249,7 +249,7 @@ func nodeIndex(node *redis.Node, nodes []string) int {
 	return 0
 }
 
-func isNodeNameUnique(node *redis.Node, nodes []string) bool {
+func IsNodeNameUnique(node *redis.Node, nodes []string) bool {
 	for _, nodeName := range nodes {
 		if nodeName == node.Pod.Spec.NodeName {
 			return false
@@ -261,13 +261,13 @@ func isNodeNameUnique(node *redis.Node, nodes []string) bool {
 func uniqueNodesInZone(primaryToReplicas map[string]redis.Nodes, zoneReplicas redis.Nodes, zone string) []string {
 	var nodes []string
 	for _, replica := range zoneReplicas {
-		if isNodeNameUnique(replica, nodes) {
+		if IsNodeNameUnique(replica, nodes) {
 			nodes = append(nodes, replica.Pod.Spec.NodeName)
 		}
 	}
 	for _, replicas := range primaryToReplicas {
 		for _, replica := range replicas {
-			if zone == replica.Zone && isNodeNameUnique(replica, nodes) {
+			if zone == replica.Zone && IsNodeNameUnique(replica, nodes) {
 				nodes = append(nodes, replica.Pod.Spec.NodeName)
 			}
 		}
