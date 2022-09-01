@@ -736,7 +736,7 @@ func removeReplicaFromZone(replica *redis.Node, zoneToReplicas map[string]redis.
 	}
 }
 
-func replicaInLargestZone(selection *redis.Nodes, primary *redis.Node, replicas redis.Nodes, zoneToReplicas map[string]redis.Nodes, nbReplicasToDelete int32) bool {
+func replicaInLargestZone(selection *redis.Nodes, primary *redis.Node, zoneToReplicas map[string]redis.Nodes, nbReplicasToDelete int32) bool {
 	if len(*selection) == int(nbReplicasToDelete) {
 		return true
 	}
@@ -778,7 +778,7 @@ func replicaInLargestZone(selection *redis.Nodes, primary *redis.Node, replicas 
 
 		isPrimaryNodeShared := !clustering.IsNodeNameUnique(primary, nodes)
 		if isPrimaryNodeShared && replicasPerNode[primary.Pod.Spec.NodeName]+1 >= mostReplicas {
-			for _, replica := range replicas {
+			for _, replica := range zoneToReplicas[primary.Zone] {
 				if replica.Pod.Spec.NodeName == primary.Pod.Spec.NodeName {
 					// add it to the selection of replicas to delete and remove it from zoneToReplicas
 					*selection = append(*selection, replica)
@@ -830,7 +830,7 @@ func removeReplicasByZone(zones []string, selection *redis.Nodes, primary *redis
 	//// is RF > than number of nodes
 
 	// remove replicas in the largest zone
-	if replicaInLargestZone(selection, primary, replicas, zoneToReplicas, nbReplicasToDelete) {
+	if replicaInLargestZone(selection, primary, zoneToReplicas, nbReplicasToDelete) {
 		return true
 	}
 	// replicas are in zones of equal size, remove replicas in the same zone as their primary
@@ -852,7 +852,7 @@ func removeReplicasByZone(zones []string, selection *redis.Nodes, primary *redis
 	allReplicas = allReplicas[:i]
 	// remove replicas in the largest zone cluster-wide
 	zoneToAllReplicas := clustering.ZoneToNodes(zones, allReplicas)
-	if replicaInLargestZone(selection, primary, replicas, zoneToAllReplicas, nbReplicasToDelete) {
+	if replicaInLargestZone(selection, primary, zoneToAllReplicas, nbReplicasToDelete) {
 		return true
 	}
 	// if we still do not have enough replicas, pick the first available
