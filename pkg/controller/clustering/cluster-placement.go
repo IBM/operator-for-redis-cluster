@@ -240,7 +240,7 @@ func SameZone(zone string, nodes redis.Nodes) bool {
 	return false
 }
 
-func nodeIndex(node *redis.Node, nodes []string) int {
+func NodeIndex(node *redis.Node, nodes []string) int {
 	for i, nodeName := range nodes {
 		if nodeName == node.Pod.Spec.NodeName {
 			return i
@@ -258,19 +258,15 @@ func IsNodeNameUnique(node *redis.Node, nodes []string) bool {
 	return true
 }
 
-func uniqueNodesInZone(primaryToReplicas map[string]redis.Nodes, zoneReplicas redis.Nodes, zone string) []string {
+func UniqueNodesInZone(primary *redis.Node, zoneReplicas redis.Nodes, zone string) []string {
 	var nodes []string
 	for _, replica := range zoneReplicas {
-		if IsNodeNameUnique(replica, nodes) {
+		if replica.Zone == zone && IsNodeNameUnique(replica, nodes) {
 			nodes = append(nodes, replica.Pod.Spec.NodeName)
 		}
 	}
-	for _, replicas := range primaryToReplicas {
-		for _, replica := range replicas {
-			if zone == replica.Zone && IsNodeNameUnique(replica, nodes) {
-				nodes = append(nodes, replica.Pod.Spec.NodeName)
-			}
-		}
+	if primary.Zone == zone && IsNodeNameUnique(primary, nodes) {
+		nodes = append(nodes, primary.Pod.Spec.NodeName)
 	}
 	sort.Strings(nodes)
 	return nodes
@@ -278,8 +274,8 @@ func uniqueNodesInZone(primaryToReplicas map[string]redis.Nodes, zoneReplicas re
 
 func selectOptimalZoneReplicaIndex(primary *redis.Node, primaryToReplicas map[string]redis.Nodes, zoneReplicas redis.Nodes) int {
 	numReplicas := len(primaryToReplicas[primary.ID])
-	nodes := uniqueNodesInZone(primaryToReplicas, zoneReplicas, primary.Zone)
-	primaryIndex := nodeIndex(primary, nodes)
+	nodes := UniqueNodesInZone(primary, zoneReplicas, primary.Zone)
+	primaryIndex := NodeIndex(primary, nodes)
 	replicaIndex := (primaryIndex + numReplicas + 1) % len(nodes)
 	replicaNodeName := nodes[replicaIndex]
 	zoneReplicaIndex := 0
