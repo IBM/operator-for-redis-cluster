@@ -752,7 +752,8 @@ func replicaInLargestZone(selection *redis.Nodes, replicas redis.Nodes, primary 
 
 	for _, zone := range largestZones {
 		numReplicas := len(replicas)
-		nodes := clustering.UniqueNodesInZone(primary, replicas, zone)
+		primaryToReplicas := make(map[string]redis.Nodes)
+		nodes := clustering.UniqueNodesInZone(primary, primaryToReplicas, replicas, zone)
 		primaryIndex := clustering.NodeIndex(primary, nodes)
 		replicaIndex := (primaryIndex + numReplicas - len(*selection)) % len(nodes)
 		replicaNodeName := nodes[replicaIndex]
