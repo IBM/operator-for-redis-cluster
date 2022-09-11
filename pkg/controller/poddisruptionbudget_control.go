@@ -83,7 +83,9 @@ func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redi
 	if err != nil {
 		return nil, err
 	}
-	maxUnavailable := intstr.FromInt(1)
+
+	minAvailable := intstr.FromInt(int(*redisCluster.Spec.NumberOfPrimaries*(1+*redisCluster.Spec.ReplicationFactor) - 1))
+
 	labelSelector := metav1.LabelSelector{
 		MatchLabels: desiredLabels,
 	}
@@ -96,8 +98,8 @@ func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redi
 			OwnerReferences: []metav1.OwnerReference{pod.BuildOwnerReference(redisCluster)},
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
-			MaxUnavailable: &maxUnavailable,
-			Selector:       &labelSelector,
+			MinAvailable: &minAvailable,
+			Selector:     &labelSelector,
 		},
 	}
 	err = s.KubeClient.Create(context.Background(), newPodDisruptionBudget)
