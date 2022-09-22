@@ -6,29 +6,25 @@ import (
 	"math"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"github.com/golang/glog"
 
-	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
-
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	"k8s.io/apimachinery/pkg/types"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/golang/glog"
 	v1 "k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
-	policyv1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
 	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 	"github.com/IBM/operator-for-redis-cluster/pkg/controller/pod"
 	"github.com/IBM/operator-for-redis-cluster/pkg/controller/sanitycheck"
 	"github.com/IBM/operator-for-redis-cluster/pkg/redis"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 )
 
 const (
@@ -71,7 +67,7 @@ func SetupRedisClusterController(mgr ctrl.Manager, redisClusterController *Contr
 		Owns(&v1.Pod{}).
 		Owns(&v1.Service{}).
 		Owns(&v1.ConfigMap{}).
-		Owns(&policy.PodDisruptionBudget{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
 		//WithEventFilter(predicate.NewRedisClusterPredicate()). //uncomment to see kubernetes events in the logs, e.g. ConfigMap updates
 		Complete(redisClusterController)
 }

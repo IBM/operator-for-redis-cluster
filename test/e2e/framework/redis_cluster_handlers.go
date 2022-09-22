@@ -5,26 +5,22 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/fields"
-
 	"github.com/gogo/protobuf/proto"
-
-	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
-
-	"k8s.io/api/policy/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
-	kclient "sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/golang/glog"
-
 	"github.com/onsi/gomega"
 
-	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"
+	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 )
 
 const (
@@ -480,7 +476,7 @@ func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, redisCluster *
 func IsPodDisruptionBudgetCreatedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
 		pdbName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
-		err := kubeClient.Get(context.Background(), pdbName, &v1beta1.PodDisruptionBudget{})
+		err := kubeClient.Get(context.Background(), pdbName, &policyv1.PodDisruptionBudget{})
 		if err != nil {
 			Logf("Cannot get PodDisruptionBudget associated to the redisCluster:%s/%s, err:%v", redisCluster.Namespace, redisCluster.Name, err)
 			return err

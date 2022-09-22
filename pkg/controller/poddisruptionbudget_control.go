@@ -3,14 +3,12 @@ package controller
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	policyv1 "k8s.io/api/policy/v1beta1"
-
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
 	"k8s.io/client-go/tools/record"
 
 	rapi "github.com/IBM/operator-for-redis-cluster/api/v1alpha1"

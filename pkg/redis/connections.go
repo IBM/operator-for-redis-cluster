@@ -168,7 +168,7 @@ func (cnx *AdminConnections) GetAll() map[string]ClientInterface {
 	return cnx.clients
 }
 
-//GetSelected returns a map of clients based on the input addresses
+// GetSelected returns a map of clients based on the input addresses
 func (cnx *AdminConnections) GetSelected(addrs []string) map[string]ClientInterface {
 	clientsSelected := make(map[string]ClientInterface)
 	for _, addr := range addrs {
