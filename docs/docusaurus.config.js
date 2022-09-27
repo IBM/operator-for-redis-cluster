@@ -12,7 +12,11 @@ module.exports = {
   organizationName: 'IBM',
   projectName: 'operator-for-redis-cluster',
   themeConfig: {
-    hideableSidebar: true,
+    docs: {
+      sidebar: {
+        hideable: true,
+      }
+    },
     colorMode: {
       defaultMode: 'dark',
     },
