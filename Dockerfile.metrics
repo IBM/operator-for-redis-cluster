@@ -1,4 +1,4 @@
-ARG BUILDIMAGE=golang:1.17-bullseye
+ARG BUILDIMAGE=golang:1.19-bullseye
 ARG BASEIMAGE=debian:bullseye-slim
 ARG DOCKER_PROXY_REGISTRY
 
