@@ -11,7 +11,7 @@ import (
 
 	"github.com/IBM/operator-for-redis-cluster/pkg/utils"
 
-	"k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -480,7 +480,7 @@ func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, redisCluster *
 func IsPodDisruptionBudgetCreatedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
 	return func() error {
 		pdbName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
-		err := kubeClient.Get(context.Background(), pdbName, &v1beta1.PodDisruptionBudget{})
+		err := kubeClient.Get(context.Background(), pdbName, &policyv1.PodDisruptionBudget{})
 		if err != nil {
 			Logf("Cannot get PodDisruptionBudget associated to the redisCluster:%s/%s, err:%v", redisCluster.Namespace, redisCluster.Name, err)
 			return err

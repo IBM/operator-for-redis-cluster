@@ -20,8 +20,7 @@ import (
 
 	"github.com/golang/glog"
 	v1 "k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
-	policyv1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 
@@ -71,7 +70,7 @@ func SetupRedisClusterController(mgr ctrl.Manager, redisClusterController *Contr
 		Owns(&v1.Pod{}).
 		Owns(&v1.Service{}).
 		Owns(&v1.ConfigMap{}).
-		Owns(&policy.PodDisruptionBudget{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
 		//WithEventFilter(predicate.NewRedisClusterPredicate()). //uncomment to see kubernetes events in the logs, e.g. ConfigMap updates
 		Complete(redisClusterController)
 }
