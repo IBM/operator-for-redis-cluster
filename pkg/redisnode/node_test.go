@@ -2,7 +2,6 @@ package redisnode
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -68,7 +67,7 @@ cluster-node-timeout 321`,
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 
-			redisConfDir, _ := ioutil.TempDir("", "redisconf")
+			redisConfDir, _ := os.MkdirTemp("", "redisconf")
 			redisConfFile, createerr := os.Create(filepath.Join(redisConfDir, "redisconfig.conf"))
 			if createerr != nil {
 				t.Errorf("Couldn' t create temporary config file: %v", createerr)
@@ -76,7 +75,7 @@ cluster-node-timeout 321`,
 			defer os.RemoveAll(redisConfDir)
 			redisConfFile.Close()
 
-			podInfoTempDir, _ := ioutil.TempDir("", "pod-info-test")
+			podInfoTempDir, _ := os.MkdirTemp("", "pod-info-test")
 			memLimitFile, err := os.Create(filepath.Join(podInfoTempDir, "mem-limit"))
 			if err != nil {
 				t.Errorf("Couldn' t create temporary config file: %v", err)
@@ -89,7 +88,7 @@ cluster-node-timeout 321`,
 			memLimitFile.Close()
 
 			var additionalConfigFileNames []string
-			additionalConfDir, _ := ioutil.TempDir("", "additional-redisconf")
+			additionalConfDir, _ := os.MkdirTemp("", "additional-redisconf")
 			for i, additionalConfigContent := range tc.additionalConfigs {
 				configFile, err := os.Create(filepath.Join(additionalConfDir, "additional-redisconf-"+strconv.Itoa(i)+".conf"))
 				if err != nil {
@@ -130,7 +129,7 @@ cluster-node-timeout 321`,
 			}
 			includePart += "\n"
 			// checking file content
-			content, _ := ioutil.ReadFile(redisConfFile.Name())
+			content, _ := os.ReadFile(redisConfFile.Name())
 			var expected = tc.expectedConfig + includePart
 			if expected != string(content) {
 				t.Errorf("Wrong file content, expected '%s', got '%s'", expected, string(content))

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -245,7 +245,7 @@ func getPodMemoryLimit(memFilePath string) (uint64, error) {
 	}
 	defer f.Close()
 
-	memLimitStr, err := ioutil.ReadAll(f)
+	memLimitStr, err := io.ReadAll(f)
 	if err != nil {
 		return 0, err
 	}

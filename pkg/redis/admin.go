@@ -206,7 +206,7 @@ func (a *Admin) GetClusterInfos(ctx context.Context) (*ClusterInfos, error) {
 	return infos, clusterErr
 }
 
-//GetClusterInfosSelected return the Nodes infos for all nodes selected in the cluster
+// GetClusterInfosSelected return the Nodes infos for all nodes selected in the cluster
 func (a *Admin) GetClusterInfosSelected(ctx context.Context, addrs []string) (*ClusterInfos, error) {
 	infos := NewClusterInfos()
 	clusterErr := NewClusterInfosError()

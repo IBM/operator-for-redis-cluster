@@ -3,7 +3,6 @@ package redisnode
 import (
 	"context"
 	"errors"
-	"io/ioutil"
 
 	//	"net"
 	"os"
@@ -82,7 +81,7 @@ func TestIsClusterInitialization(t *testing.T) {
 func TestRedisInitializationAttach(t *testing.T) {
 	myIP := "1.2.3.4"
 
-	tmpfile, err := ioutil.TempFile("", "config")
+	tmpfile, err := os.CreateTemp("", "config")
 	if err != nil {
 		t.Fatal(err)
 	}

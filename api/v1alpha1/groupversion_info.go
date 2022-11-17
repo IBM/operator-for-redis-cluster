@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the db v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=db.ibm.com
+// +kubebuilder:object:generate=true
+// +groupName=db.ibm.com
 package v1alpha1
 
 import (

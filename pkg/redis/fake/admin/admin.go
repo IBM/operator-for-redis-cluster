@@ -251,7 +251,7 @@ func (a *Admin) FlushAll(ctx context.Context, addr string) error {
 	return val
 }
 
-//RebuildConnectionMap rebuilds the connection map according to the given addresses
+// RebuildConnectionMap rebuilds the connection map according to the given addresses
 func (a *Admin) RebuildConnectionMap(ctx context.Context, addrs []string, options *redis.AdminOptions) {
 }
 
