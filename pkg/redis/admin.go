@@ -39,6 +39,8 @@ type AdminInterface interface {
 	DetachReplica(ctx context.Context, replica *Node) error
 	// StartFailover executes the failover of a redis primary with the corresponding addr
 	StartFailover(ctx context.Context, addr string) error
+	// StartReplicaFailover executes the failover command on the selected replica, making it the new primary
+	StartReplicaFailover(ctx context.Context, addr string) error
 	// ForgetNode forces the cluster to forget a node
 	ForgetNode(ctx context.Context, id string) error
 	// ForgetNodeByAddr forces the cluster to forget the node with the specified address
@@ -305,6 +307,34 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 	}
 
 	return nil
+}
+
+// StartReplicaFailover executes the failover command on the selected replica, making it  the new primary
+func (a *Admin) StartReplicaFailover(ctx context.Context, addr string) error {
+	// Get the replica client to execute commands on the specified replica
+	replicaClient, err := a.Connections().Get(ctx, addr)
+	if err != nil {
+		return err
+	}
+
+	// Check if the specified node is a replica node
+	var replicaInfo *NodeInfos
+	replicaInfo, err = a.getInfos(ctx, replicaClient, addr)
+	if err != nil {
+		return err
+	}
+
+	// if not a replica dont failover
+	if replicaInfo.Node.Role != redisReplicaRole {
+		glog.Warningf("Selected Node %s is not a replica node", replicaInfo.Node.ID)
+		return nil
+	}
+
+	var resp string
+	cmdErr := replicaClient.DoCmd(ctx, &resp, "CLUSTER", "FAILOVER")
+	err = a.Connections().ValidateResp(ctx, &resp, cmdErr, replicaInfo.Node.IPPort(), "unable to execute CLUSTER FAILOVER")
+
+	return err
 }
 
 // ForgetNode used to force other redis cluster node to forget a specific node

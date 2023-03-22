@@ -115,6 +115,15 @@ func (a *Admin) StartFailover(ctx context.Context, addr string) error {
 	return val
 }
 
+// StartReplicaFailover executes the failover command on the selected replica, making it the new primary
+func (a *Admin) StartReplicaFailover(ctx context.Context, addr string) error {
+	val, ok := a.AddrError[addr]
+	if !ok {
+		val = nil
+	}
+	return val
+}
+
 // ForgetNode forces a redis cluster node to forget a specific node
 func (a *Admin) ForgetNode(ctx context.Context, addr string) error {
 	val, ok := a.AddrError[addr]

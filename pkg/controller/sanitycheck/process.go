@@ -50,5 +50,13 @@ func RunSanityChecks(ctx context.Context, admin redis.AdminInterface, config *co
 		return actionDone, nil
 	}
 
+	// detect and fix zone balance
+	if actionDone, err = FixZoneBalance(ctx, admin, cluster, infos, dryRun); err != nil {
+		return actionDone, err
+	} else if actionDone {
+		glog.V(2).Infof("FixZoneBalance executed an action on the cluster (dryRun: %v)", dryRun)
+		return actionDone, nil
+	}
+
 	return actionDone, err
 }
