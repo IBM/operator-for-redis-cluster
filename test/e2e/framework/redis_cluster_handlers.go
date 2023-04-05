@@ -477,13 +477,18 @@ func CreateRedisNodeServiceAccountFunc(kubeClient kclient.Client, redisCluster *
 
 // IsPodDisruptionBudgetCreatedFunc returns the func that checks if the PodDisruptionBudget
 // associated with the RedisCluster has been created properly.
-func IsPodDisruptionBudgetCreatedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster) func() error {
+func IsPodDisruptionBudgetCreatedFunc(kubeClient kclient.Client, redisCluster *rapi.RedisCluster, minAvailable int32) func() error {
 	return func() error {
+		pdb := &policyv1.PodDisruptionBudget{}
 		pdbName := types.NamespacedName{Namespace: redisCluster.Namespace, Name: redisCluster.Name}
-		err := kubeClient.Get(context.Background(), pdbName, &policyv1.PodDisruptionBudget{})
+		err := kubeClient.Get(context.Background(), pdbName, pdb)
 		if err != nil {
 			Logf("Cannot get PodDisruptionBudget associated to the redisCluster:%s/%s, err:%v", redisCluster.Namespace, redisCluster.Name, err)
 			return err
+		}
+
+		if minAvailable != pdb.Spec.MinAvailable.IntVal {
+			return LogAndReturnErrorf("PodDisruptionBudget minAvailable mismatch: %v, but got: %v", minAvailable, pdb.Spec.MinAvailable.IntVal)
 		}
 		return nil
 	}

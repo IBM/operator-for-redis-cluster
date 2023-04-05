@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -21,6 +22,10 @@ import (
 type PodDisruptionBudgetsControlInterface interface {
 	// CreateRedisClusterPodDisruptionBudget used to create the Kubernetes PodDisruptionBudget needed to access the Redis Cluster
 	CreateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) (*policyv1.PodDisruptionBudget, error)
+	// UpdateRedisClusterPodDisruptionBudget used to update the Kubernetes PodDisruptionBudget needed to access the Redis Cluster
+	UpdateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster, existingPDB *policyv1.PodDisruptionBudget) (*policyv1.PodDisruptionBudget, error)
+	// NeedUpdateRedisClusterPodDisruptionBudget used to check if the Kubernetes PodDisruptionBudget needed to access the Redis cluster needs to be updated
+	NeedUpdateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster, existingPDB *policyv1.PodDisruptionBudget) (bool, error)
 	// DeleteRedisClusterPodDisruptionBudget used to delete the Kubernetes PodDisruptionBudget linked to the Redis Cluster
 	DeleteRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) error
 	// GetRedisClusterPodDisruptionBudget used to retrieve the Kubernetes PodDisruptionBudget associated to the RedisCluster
@@ -72,6 +77,56 @@ func (s *PodDisruptionBudgetsControl) DeleteRedisClusterPodDisruptionBudget(redi
 
 // CreateRedisClusterPodDisruptionBudget used to create the Kubernetes PodDisruptionBudget needed to access the Redis Cluster
 func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) (*policyv1.PodDisruptionBudget, error) {
+	desiredPodDisruptionBudget, err := s.desiredRedisClusterPodDisruptionBudget(redisCluster)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.KubeClient.Create(context.Background(), desiredPodDisruptionBudget)
+	if err != nil {
+		return nil, err
+	}
+
+	return desiredPodDisruptionBudget, nil
+}
+
+// NeedUpdateRedisClusterPodDisruptionBudget used to check if the Kubernetes PodDisruptionBudget needed to access the Redis cluster needs to be updated
+func (s *PodDisruptionBudgetsControl) NeedUpdateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster, existingPDB *policyv1.PodDisruptionBudget) (bool, error) {
+	desiredPodDisruptionBudget, err := s.desiredRedisClusterPodDisruptionBudget(redisCluster)
+	if err != nil {
+		return false, err
+	}
+
+	if !equality.Semantic.DeepEqual(existingPDB.Labels, desiredPodDisruptionBudget.Labels) ||
+		!equality.Semantic.DeepEqual(existingPDB.Annotations, desiredPodDisruptionBudget.Annotations) ||
+		!equality.Semantic.DeepEqual(existingPDB.Spec, desiredPodDisruptionBudget.Spec) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// UpdateRedisClusterPodDisruptionBudget used to update the Kubernetes PodDisruptionBudget needed to access the Redis Cluster
+func (s *PodDisruptionBudgetsControl) UpdateRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster, existingPDB *policyv1.PodDisruptionBudget) (*policyv1.PodDisruptionBudget, error) {
+	desiredPodDisruptionBudget, err := s.desiredRedisClusterPodDisruptionBudget(redisCluster)
+	if err != nil {
+		return nil, err
+	}
+
+	newPodDisruptionBudget := existingPDB.DeepCopy()
+	newPodDisruptionBudget.ObjectMeta.Labels = desiredPodDisruptionBudget.Labels
+	newPodDisruptionBudget.ObjectMeta.Annotations = desiredPodDisruptionBudget.Annotations
+	newPodDisruptionBudget.Spec = desiredPodDisruptionBudget.Spec
+
+	err = s.KubeClient.Update(context.Background(), newPodDisruptionBudget)
+	if err != nil {
+		return nil, err
+	}
+
+	return newPodDisruptionBudget, nil
+}
+
+func (s *PodDisruptionBudgetsControl) desiredRedisClusterPodDisruptionBudget(redisCluster *rapi.RedisCluster) (*policyv1.PodDisruptionBudget, error) {
 	PodDisruptionBudgetName := redisCluster.Name
 	desiredLabels, err := pod.GetLabelsSet(redisCluster)
 	if err != nil {
@@ -102,10 +157,5 @@ func (s *PodDisruptionBudgetsControl) CreateRedisClusterPodDisruptionBudget(redi
 			Selector:     &labelSelector,
 		},
 	}
-	err = s.KubeClient.Create(context.Background(), newPodDisruptionBudget)
-	if err != nil {
-		return nil, err
-	}
-
 	return newPodDisruptionBudget, nil
 }

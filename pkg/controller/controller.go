@@ -234,6 +234,17 @@ func (c *Controller) syncCluster(ctx context.Context, redisCluster *rapi.RedisCl
 			glog.Errorf("RedisCluster-Operator.Reconcile unable to create podDisruptionBudget associated with RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
 			return result, err
 		}
+	} else {
+		needUpdatePDB, err := c.podDisruptionBudgetControl.NeedUpdateRedisClusterPodDisruptionBudget(redisCluster, redisClusterPodDisruptionBudget)
+		if err != nil {
+			return result, err
+		}
+		if needUpdatePDB {
+			if _, err = c.podDisruptionBudgetControl.UpdateRedisClusterPodDisruptionBudget(redisCluster, redisClusterPodDisruptionBudget); err != nil {
+				glog.Errorf("RedisCluster-Operator.Reconcile unable to update podDisruptionBudget associated with RedisCluster: %s/%s", redisCluster.Namespace, redisCluster.Name)
+				return result, err
+			}
+		}
 	}
 
 	redisPods, err := c.podControl.GetRedisClusterPods(redisCluster)
