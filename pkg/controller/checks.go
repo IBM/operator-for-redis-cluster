@@ -251,12 +251,12 @@ func needRollingUpdate(cluster *rapi.RedisCluster) bool {
 }
 
 func comparePodsWithPodTemplate(cluster *rapi.RedisCluster) bool {
-	clusterPodSpecHash, _ := podctrl.GenerateMD5Spec(&cluster.Spec.PodTemplate.Spec)
+	clusterPodSpecHash, _ := podctrl.GenerateSHA2Spec(&cluster.Spec.PodTemplate.Spec)
 	for _, node := range cluster.Status.Cluster.Nodes {
 		if node.Pod == nil {
 			continue
 		}
-		if !comparePodSpecMD5Hash(clusterPodSpecHash, node.Pod) {
+		if !comparePodSpecSHA2Hash(clusterPodSpecHash, node.Pod) {
 			return false
 		}
 	}
@@ -280,8 +280,8 @@ func compareConfig(oldConfig, newConfig map[string]string) map[string]string {
 	return configChanges
 }
 
-func comparePodSpecMD5Hash(hash string, pod *kapi.Pod) bool {
-	if val, ok := pod.Annotations[rapi.PodSpecMD5LabelKey]; ok {
+func comparePodSpecSHA2Hash(hash string, pod *kapi.Pod) bool {
+	if val, ok := pod.Annotations[rapi.PodSpecSHA2LabelKey]; ok {
 		if val != hash {
 			return false
 		}

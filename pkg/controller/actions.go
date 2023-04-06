@@ -547,7 +547,7 @@ func scaleDown(ctx context.Context, admin redis.AdminInterface, cluster *rapi.Re
 }
 
 func getNodesWithNewHash(cluster *rapi.RedisCluster, nodes redis.Nodes) (redis.Nodes, redis.Nodes, error) {
-	clusterPodSpecHash, err := podctrl.GenerateMD5Spec(&cluster.Spec.PodTemplate.Spec)
+	clusterPodSpecHash, err := podctrl.GenerateSHA2Spec(&cluster.Spec.PodTemplate.Spec)
 	if err != nil {
 		return redis.Nodes{}, redis.Nodes{}, err
 	}
@@ -556,14 +556,14 @@ func getNodesWithNewHash(cluster *rapi.RedisCluster, nodes redis.Nodes) (redis.N
 		if n.Pod == nil {
 			return false
 		}
-		return comparePodSpecMD5Hash(clusterPodSpecHash, n.Pod)
+		return comparePodSpecSHA2Hash(clusterPodSpecHash, n.Pod)
 	})
 	// nodes with old pod spec version
 	oldNodes := nodes.FilterByFunc(func(n *redis.Node) bool {
 		if n.Pod == nil {
 			return false
 		}
-		return !comparePodSpecMD5Hash(clusterPodSpecHash, n.Pod)
+		return !comparePodSpecSHA2Hash(clusterPodSpecHash, n.Pod)
 	})
 
 	return oldNodes, newNodes, nil

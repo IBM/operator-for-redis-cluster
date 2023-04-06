@@ -12,7 +12,7 @@ import (
 )
 
 func Test_initPod(t *testing.T) {
-	emptyPodSpecMD5, _ := GenerateMD5Spec(&kapiv1.PodSpec{})
+	emptyPodSpecSHA2, _ := GenerateSHA2Spec(&kapiv1.PodSpec{})
 
 	type args struct {
 		redisCluster *rapi.RedisCluster
@@ -55,7 +55,7 @@ func Test_initPod(t *testing.T) {
 						Controller: boolPtr(true),
 					}},
 					Labels:      map[string]string{rapi.ClusterNameLabelKey: "testcluster"},
-					Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(emptyPodSpecMD5)},
+					Annotations: map[string]string{rapi.PodSpecSHA2LabelKey: string(emptyPodSpecSHA2)},
 				},
 			},
 			wantErr: false,
@@ -94,9 +94,9 @@ func Test_initPod(t *testing.T) {
 					}},
 					Labels: map[string]string{rapi.ClusterNameLabelKey: "testcluster"},
 					Annotations: map[string]string{
-						rapi.PodSpecMD5LabelKey: string(emptyPodSpecMD5),
-						"annotation1":           "foo",
-						"annotation2":           "bar",
+						rapi.PodSpecSHA2LabelKey: string(emptyPodSpecSHA2),
+						"annotation1":            "foo",
+						"annotation2":            "bar",
 					},
 				},
 			},

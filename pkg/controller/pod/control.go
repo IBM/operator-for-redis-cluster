@@ -1,13 +1,11 @@
 package pod
 
 import (
-	"bytes"
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -160,25 +158,30 @@ func initPod(redisCluster *rapi.RedisCluster) (*kapiv1.Pod, error) {
 	}
 	pod.Spec = *redisCluster.Spec.PodTemplate.Spec.DeepCopy()
 
-	// Generate a MD5 representing the PodSpec send
-	hash, err := GenerateMD5Spec(&pod.Spec)
+	// Generate a SHA2 representing the PodSpec send
+	hash, err := GenerateSHA2Spec(&pod.Spec)
 	if err != nil {
 		return nil, err
 	}
-	pod.Annotations[rapi.PodSpecMD5LabelKey] = hash
+	pod.Annotations[rapi.PodSpecSHA2LabelKey] = hash
 	return pod, nil
 }
 
-// GenerateMD5Spec used to generate the PodSpec MD5 hash
-func GenerateMD5Spec(spec *kapiv1.PodSpec) (string, error) {
+// GenerateSHA2Spec function takes in a pointer to kapiv1.PodSpec struct and returns a SHA-256 hash
+// of the marshalled PodSpec as a string along with any errors encountered.
+func GenerateSHA2Spec(spec *kapiv1.PodSpec) (string, error) {
+	// Marshal the PodSpec into a JSON-encoded byte slice.
 	b, err := json.Marshal(spec)
 	if err != nil {
 		return "", err
 	}
-	hash := md5.New()
-	if _, err = io.Copy(hash, bytes.NewReader(b)); err != nil {
+	// Create a new SHA-256 hash object.
+	hash := sha256.New()
+	// Write the marshalled PodSpec to the SHA-256 hash object.
+	if _, err = hash.Write(b); err != nil {
 		return "", err
 	}
+	// Return the hexadecimal string representation of the resulting hash along with any errors encountered.
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 

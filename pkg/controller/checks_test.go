@@ -1143,9 +1143,9 @@ func Test_comparePodSpec(t *testing.T) {
 	podSpec1 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:3.0.3"}}}
 	podSpec2 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:4.0.8"}}}
 	podSpec3 := kapiv1.PodSpec{Containers: []kapiv1.Container{{Name: "redis-node", Image: "redis-node:3.0.3"}, {Name: "prometheus", Image: "prometheus-exporter:latest"}}}
-	hashspec1, _ := ctrlpod.GenerateMD5Spec(&podSpec1)
-	hashspec2, _ := ctrlpod.GenerateMD5Spec(&podSpec2)
-	hashspec3, _ := ctrlpod.GenerateMD5Spec(&podSpec3)
+	hashspec1, _ := ctrlpod.GenerateSHA2Spec(&podSpec1)
+	hashspec2, _ := ctrlpod.GenerateSHA2Spec(&podSpec2)
+	hashspec3, _ := ctrlpod.GenerateSHA2Spec(&podSpec3)
 	type args struct {
 		spec string
 		pod  *kapiv1.Pod
@@ -1161,7 +1161,7 @@ func Test_comparePodSpec(t *testing.T) {
 				spec: hashspec1,
 				pod: &kapiv1.Pod{
 					ObjectMeta: kmetav1.ObjectMeta{
-						Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hashspec1)},
+						Annotations: map[string]string{rapi.PodSpecSHA2LabelKey: string(hashspec1)},
 					},
 					Spec: podSpec1,
 				},
@@ -1174,7 +1174,7 @@ func Test_comparePodSpec(t *testing.T) {
 				spec: hashspec1,
 				pod: &kapiv1.Pod{
 					ObjectMeta: kmetav1.ObjectMeta{
-						Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hashspec2)},
+						Annotations: map[string]string{rapi.PodSpecSHA2LabelKey: string(hashspec2)},
 					},
 					Spec: podSpec2},
 			},
@@ -1186,7 +1186,7 @@ func Test_comparePodSpec(t *testing.T) {
 				spec: hashspec1,
 				pod: &kapiv1.Pod{
 					ObjectMeta: kmetav1.ObjectMeta{
-						Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hashspec3)},
+						Annotations: map[string]string{rapi.PodSpecSHA2LabelKey: string(hashspec3)},
 					},
 					Spec: podSpec3},
 			},
@@ -1195,7 +1195,7 @@ func Test_comparePodSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := comparePodSpecMD5Hash(tt.args.spec, tt.args.pod); got != tt.want {
+			if got := comparePodSpecSHA2Hash(tt.args.spec, tt.args.pod); got != tt.want {
 				t.Errorf("comparePodSpec() = %v, want %v", got, tt.want)
 			}
 		})
@@ -1223,12 +1223,12 @@ func newPodWithContainer(name string, containersInfos map[string]string) *kapiv1
 		Containers: containers,
 	}
 
-	hash, _ := ctrlpod.GenerateMD5Spec(&spec)
+	hash, _ := ctrlpod.GenerateSHA2Spec(&spec)
 
 	pod := &kapiv1.Pod{
 		ObjectMeta: kmetav1.ObjectMeta{
 			Name:        name,
-			Annotations: map[string]string{rapi.PodSpecMD5LabelKey: string(hash)},
+			Annotations: map[string]string{rapi.PodSpecSHA2LabelKey: string(hash)},
 		},
 		Spec: spec,
 	}
