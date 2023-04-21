@@ -96,7 +96,7 @@ jobs:
           version: ${{ env.HELM_VERSION }}
 
       - name: Setup Python
-        uses: actions/setup-python@v4.5.0
+        uses: actions/setup-python@v4.6.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
